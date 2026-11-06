@@ -21,7 +21,8 @@ const flag = (name) => args.includes(name)
 const values = (name) => {
   const out = []
   for (let i = 0; i < args.length; i += 1) {
-    if (args[i] === name && args[i + 1] && !args[i + 1].startsWith('--')) out.push(args[i + 1])
+    if (args[i] !== name) continue
+    for (let j = i + 1; j < args.length && !args[j].startsWith('--'); j += 1) out.push(args[j]) // все значения до следующего флага
   }
   return out
 }
