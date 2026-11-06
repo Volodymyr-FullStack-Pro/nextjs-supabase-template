@@ -15,13 +15,14 @@
 npm run dev            # next dev
 npm run lint           # ESLint 10, strict TypeScript (a11y — только 6 правил из eslint-config-next, см. README)
 npm run typecheck      # next typegen && tsc --noEmit (tsconfig strictest)
-npm test               # Vitest (unit)
+npm test               # Vitest: unit и компоненты (jsdom)
 npm run test:e2e       # Playwright против production-сборки
 npm run knip           # мёртвый код и зависимости
 npm run jscpd          # дубли
 npm run build
 supabase start         # локальный Supabase; supabase test db — pgTAP; supabase db advisors --local — проверки безопасности
 npm run db:generate    # SQL из src/db/schema.ts в drizzle/ (для сверки; миграции — в supabase/migrations)
+npm run db:types       # типы supabase-js из локальной базы → src/lib/supabase/types.ts
 ```
 
 ## Правила работы
@@ -32,7 +33,8 @@ npm run db:generate    # SQL из src/db/schema.ts в drizzle/ (для свер�
 - После любого решения — строка в `docs/knowledge/decisions.md`; roadmap обновляется в конце задачи.
 - Процесс: эпик из roadmap → `brainstorming` → спецификация в `docs/superpowers/specs/` → `writing-plans` → `executing-plans` (планы не длиннее 12 задач) → `/simplify` → `/code-review` → `/security-review` для auth, денег и миграций → PR.
 - Перед «готово»: `npm run lint && npm run typecheck && npm test && npm run test:e2e`; при изменениях базы — `supabase test db`.
-- Миграции, `.env*` и lock-файлы Claude правит только с подтверждением (хук плагина).
+- Server Actions — через `authActionClient` / `actionClient` (`src/lib/safe-action.ts`), формы — `TextField` + react-hook-form + Zod-схема, общая с action; уведомления — sonner; фильтры — в URL (nuqs); компоненты — shadcn (`npx shadcn add`).
+- Миграции, `.env*` и lock-файлы Claude правит только с подтверждением (хук плагина). На коммите lint-staged прогоняет eslint и prettier по изменённым файлам.
 
 ## Плагин dev-kit
 

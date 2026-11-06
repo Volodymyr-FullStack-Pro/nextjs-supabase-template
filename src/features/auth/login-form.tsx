@@ -1,44 +1,49 @@
 'use client'
 
-import { useActionState } from 'react'
-import { signIn, type SignInState } from './action'
-
-const initial: SignInState = {}
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useHookFormAction } from '@next-safe-action/adapter-react-hook-form/hooks'
+import { toast } from 'sonner'
+import { TextField } from '@/components/form/text-field'
+import { Button } from '@/components/ui/button'
+import { FieldGroup } from '@/components/ui/field'
+import { signIn } from './action'
+import { SignInInput } from './schema'
 
 export function LoginForm() {
-  const [state, formAction, pending] = useActionState(signIn, initial)
+  const { form, action, handleSubmitWithAction } = useHookFormAction(
+    signIn,
+    zodResolver(SignInInput),
+    {
+      formProps: { defaultValues: { email: '', password: '' } },
+      actionProps: {
+        onError: ({ error }) => {
+          if (error.serverError) toast.error(error.serverError)
+        },
+      },
+    },
+  )
+
   return (
-    <form action={formAction} className="flex flex-col gap-3">
-      <label className="text-sm font-medium" htmlFor="email">
-        Почта
-      </label>
-      <input
-        id="email"
-        name="email"
-        type="email"
-        autoComplete="email"
-        required
-        className="rounded-md border px-3 py-2"
-      />
-      <label className="text-sm font-medium" htmlFor="password">
-        Пароль
-      </label>
-      <input
-        id="password"
-        name="password"
-        type="password"
-        autoComplete="current-password"
-        required
-        className="rounded-md border px-3 py-2"
-      />
-      <button type="submit" disabled={pending} className="rounded-md bg-black px-3 py-2 text-white">
-        {pending ? 'Вхожу…' : 'Войти'}
-      </button>
-      {state.error ? (
-        <p role="alert" className="text-sm text-red-700">
-          {state.error}
-        </p>
-      ) : null}
+    <form onSubmit={(e) => void handleSubmitWithAction(e)} className="flex flex-col gap-6">
+      <FieldGroup>
+        <TextField
+          control={form.control}
+          name="email"
+          label="Почта"
+          type="email"
+          autoComplete="email"
+        />
+        <TextField
+          control={form.control}
+          name="password"
+          label="Пароль"
+          type="password"
+          autoComplete="current-password"
+        />
+      </FieldGroup>
+      <Button type="submit" disabled={action.isPending}>
+        {action.isPending ? 'Вхожу…' : 'Войти'}
+      </Button>
     </form>
   )
 }

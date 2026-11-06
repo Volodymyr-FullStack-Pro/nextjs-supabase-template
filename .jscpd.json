@@ -3,6 +3,12 @@
   "minLines": 5,
   "threshold": 0,
   "gitignore": true,
-  "ignore": ["**/node_modules/**", "**/.next/**", "**/coverage/**", "**/playwright-report/**"],
+  "ignore": [
+    "**/node_modules/**",
+    "**/.next/**",
+    "**/coverage/**",
+    "**/playwright-report/**",
+    "**/*.css"
+  ],
   "reporters": ["console"]
 }
