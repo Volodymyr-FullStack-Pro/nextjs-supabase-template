@@ -1,34 +1,44 @@
 'use client'
 
-import { useActionState } from 'react'
-import { addNote, type ActionState } from './action'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useHookFormAction } from '@next-safe-action/adapter-react-hook-form/hooks'
+import { toast } from 'sonner'
+import { TextField } from '@/components/form/text-field'
+import { Button } from '@/components/ui/button'
+import { addNote } from './action'
+import { AddNoteInput } from './schema'
 
-const initial: ActionState = {}
-
+/** Форма: react-hook-form + Zod на клиенте, тот же Zod в action; ошибки сервера — в toast, ошибки полей — под полем. */
 export function NotesForm() {
-  const [state, formAction, pending] = useActionState(addNote, initial)
+  const { form, action, handleSubmitWithAction, resetFormAndAction } = useHookFormAction(
+    addNote,
+    zodResolver(AddNoteInput),
+    {
+      formProps: { defaultValues: { title: '' } },
+      actionProps: {
+        onSuccess: () => {
+          toast.success('Заметка сохранена')
+          resetFormAndAction()
+        },
+        onError: ({ error }) => {
+          if (error.serverError) toast.error(error.serverError)
+        },
+      },
+    },
+  )
+
   return (
-    <form action={formAction} className="flex flex-col gap-2">
-      <label className="text-sm font-medium" htmlFor="title">
-        Новая заметка
-      </label>
-      <input
-        id="title"
+    <form onSubmit={(e) => void handleSubmitWithAction(e)} className="flex flex-col gap-4">
+      <TextField
+        control={form.control}
         name="title"
-        required
-        maxLength={200}
-        className="rounded-md border px-3 py-2"
+        label="Новая заметка"
         placeholder="Заголовок"
+        maxLength={200}
       />
-      <button type="submit" disabled={pending} className="rounded-md bg-black px-3 py-2 text-white">
-        {pending ? 'Сохраняю…' : 'Добавить'}
-      </button>
-      {state.error ? (
-        <p role="alert" className="text-sm text-red-700">
-          {state.error}
-        </p>
-      ) : null}
-      {state.ok ? <p className="text-sm text-green-700">Сохранено</p> : null}
+      <Button type="submit" disabled={action.isPending}>
+        {action.isPending ? 'Сохраняю…' : 'Добавить'}
+      </Button>
     </form>
   )
 }

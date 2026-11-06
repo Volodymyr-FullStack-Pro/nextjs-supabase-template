@@ -1,24 +1,19 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { z } from 'zod'
 import { createNote } from '@/data/notes'
-import { verifySession } from '@/data/session'
+import { ActionError, authActionClient } from '@/lib/safe-action'
+import { AddNoteInput } from './schema'
 
-export type ActionState = { ok?: true; error?: string }
-
-const AddNoteInput = z.object({ title: z.string().trim().min(1, 'Введите заголовок').max(200) })
-
-/** Пример Server Action: сессия → валидация → DAL → ошибки как значения. */
-export async function addNote(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const session = await verifySession()
-  const parsed = AddNoteInput.safeParse({ title: formData.get('title') })
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Проверьте поля' }
-  try {
-    await createNote(parsed.data, session.userId)
-  } catch {
-    return { error: 'Не удалось сохранить заметку' }
-  }
-  revalidatePath('/notes')
-  return { ok: true }
-}
+/** Пример Server Action: сессия (middleware authActionClient) → Zod → DAL → revalidate. Ошибки уходят в result, не исключениями. */
+export const addNote = authActionClient
+  .inputSchema(AddNoteInput)
+  .action(async ({ parsedInput, ctx }) => {
+    try {
+      await createNote(parsedInput, ctx.session.userId)
+    } catch (cause) {
+      throw new ActionError('Не удалось сохранить заметку', { cause }) // причина попадает в лог сервера
+    }
+    revalidatePath('/notes')
+    return { ok: true as const }
+  })

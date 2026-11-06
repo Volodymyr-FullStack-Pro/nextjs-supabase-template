@@ -1,29 +1,19 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { z } from 'zod'
+import { ActionError, actionClient } from '@/lib/safe-action'
 import { createClient } from '@/lib/supabase/server'
+import { SignInInput } from './schema'
 
-export type SignInState = { error?: string }
-
-const SignInInput = z.object({
-  email: z.email('Проверьте почту'),
-  password: z.string().min(1),
-})
-
-export async function signIn(_prev: SignInState, formData: FormData): Promise<SignInState> {
-  const parsed = SignInInput.safeParse({
-    email: formData.get('email'),
-    password: formData.get('password'),
-  })
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Проверьте поля' }
+/** Вход по почте и паролю. Публичный action (без сессии), поэтому actionClient, а не authActionClient. */
+export const signIn = actionClient.inputSchema(SignInInput).action(async ({ parsedInput }) => {
   let supabase
   try {
     supabase = await createClient()
   } catch {
-    return { error: 'Supabase не настроен: заполните .env.local по образцу .env.example' }
+    throw new ActionError('Supabase не настроен: заполните .env.local по образцу .env.example')
   }
-  const { error } = await supabase.auth.signInWithPassword(parsed.data)
-  if (error) return { error: 'Неверная почта или пароль' }
+  const { error } = await supabase.auth.signInWithPassword(parsedInput)
+  if (error) throw new ActionError('Неверная почта или пароль')
   redirect('/notes')
-}
+})
