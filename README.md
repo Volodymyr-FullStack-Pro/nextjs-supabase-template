@@ -28,6 +28,7 @@ npm run dev
 | `npm run test:e2e`                | Playwright против `next build && next start`                                  |
 | `npm run knip`                    | неиспользуемые файлы, экспорты, зависимости                                   |
 | `npm run jscpd`                   | дубли кода (порог 0 %)                                                        |
+| `npm run req:check`               | реестр требований заказчика: повторы номеров, статусы, требования без ссылки  |
 | `npm run db:generate`             | SQL из `src/db/schema.ts` в `drizzle/` для сверки с `supabase/migrations`     |
 | `npm run db:studio`               | Drizzle Studio                                                                |
 | `supabase test db`                | pgTAP-тесты RLS из `supabase/tests`                                           |
@@ -44,7 +45,8 @@ npm run dev
 - `supabase/migrations` — источник правды для базы; `supabase/tests` — pgTAP; `supabase/config.toml` — локальный стек (`supabase start`).
 - `tests/unit`, `tests/e2e` — Vitest и Playwright.
 - `.claude/` — `settings.json` (маркетплейс `claude-kit`, плагин `dev-kit`, запреты), `rules/` (правила по областям).
-- `docs/knowledge` — статус, решения, открытые вопросы; `docs/roadmap.md` — спринты; `docs/superpowers` — спецификации и планы.
+- `docs/knowledge` — статус, реестр требований заказчика (`requirements.md`), решения, открытые вопросы; `docs/roadmap.md` — спринты; `docs/superpowers` — спецификации и планы.
+- `scripts/requirements-check.mjs` — проверка реестра требований (`npm run req:check`).
 - `.github/workflows` — `ci.yml` (lint, typecheck, тесты, knip, jscpd, build, e2e, gitleaks, semgrep), `db.yml` (advisors + pgTAP при изменениях базы).
 
 ## Claude Code

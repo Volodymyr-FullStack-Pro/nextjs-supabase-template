@@ -16,6 +16,7 @@
     "format:check": "prettier --check .",
     "knip": "knip",
     "jscpd": "jscpd -c .jscpd.json src",
+    "req:check": "node scripts/requirements-check.mjs",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "db:generate": "drizzle-kit generate",

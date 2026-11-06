@@ -28,6 +28,7 @@ npm run db:generate    # SQL из src/db/schema.ts в drizzle/ (для свер�
 
 - Язык общения — русский, коротко и по делу. Код, имена файлов и ключи — на английском.
 - Правила по областям — в `.claude/rules/` (безопасность данных, база, интерфейс, тесты, документация); подробности — в скилах плагина `dev-kit`.
+- Ответ или решение заказчика из любого канала — строка в `docs/knowledge/requirements.md` в тот же день; задачи и тесты ссылаются на её номера (скил `dev-kit:requirements-register`).
 - После любого решения — строка в `docs/knowledge/decisions.md`; roadmap обновляется в конце задачи.
 - Процесс: эпик из roadmap → `brainstorming` → спецификация в `docs/superpowers/specs/` → `writing-plans` → `executing-plans` (планы не длиннее 12 задач) → `/simplify` → `/code-review` → `/security-review` для auth, денег и миграций → PR.
 - Перед «готово»: `npm run lint && npm run typecheck && npm test && npm run test:e2e`; при изменениях базы — `supabase test db`.
