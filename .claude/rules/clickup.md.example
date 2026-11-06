@@ -1,0 +1,9 @@
+# ClickUp — карточки задач (образец; переименовать в clickup.md и заполнить)
+
+Карточки ведёт Claude через ClickUp MCP (`claude mcp add --transport http --scope user clickup https://mcp.clickup.com/mcp`, вход по OAuth через `/mcp`).
+
+- Список: «<имя списка>», `list_id` <id>, папка «<папка>», пространство <пространство>. Пользователь ClickUp — <имя>, в инструментах это `"me"`.
+- Статусы: `to do` → `in progress` → `in review` → `complete`; ещё `blocked`, `cancelled`. `complete` ставит человек.
+- Префикс названий: `[XXX]`; название на английском, описание на русском по шаблону Цель / Сделано / Осталось / Ссылки.
+
+Перед задачей: `clickup_search` по префиксу, затем `clickup_create_task` (`assignees: ["me"]`, `status: "in progress"`). По завершении Claude карточку не трогает: даёт в чат блок «Сделано / Результат», статус переводит человек. Удалять задачи нельзя (запрет в `.claude/settings.json`).
