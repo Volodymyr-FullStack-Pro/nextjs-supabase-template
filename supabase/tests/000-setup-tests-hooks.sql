@@ -1,8 +1,11 @@
 -- Хелперы для pgTAP-тестов RLS (упрощённая версия basejump/supabase-test-helpers).
--- Запуск: supabase test db
+-- Запуск: supabase test db. Файл без транзакции: хелперы остаются для следующих файлов.
 create extension if not exists pgtap with schema extensions;
 
 create schema if not exists tests;
+-- Тесты переключаются в роль authenticated и продолжают звать хелперы, поэтому схема и функции доступны всем ролям API.
+grant usage on schema tests to anon, authenticated, service_role;
+alter default privileges in schema tests grant execute on functions to anon, authenticated, service_role;
 
 create or replace function tests.create_supabase_user(identifier text)
 returns uuid language plpgsql security definer set search_path = '' as $$
@@ -26,6 +29,9 @@ returns void language plpgsql as $$
 declare
   uid uuid := tests.get_supabase_uid(identifier);
 begin
+  if uid is null then
+    raise exception 'tests.authenticate_as: пользователь % не создан (tests.create_supabase_user)', identifier;
+  end if;
   perform set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated')::text, true);
   perform set_config('request.jwt.claim.sub', uid::text, true);
   perform set_config('request.jwt.claim.role', 'authenticated', true);
@@ -36,7 +42,16 @@ $$;
 create or replace function tests.clear_authentication()
 returns void language plpgsql as $$
 begin
-  perform set_config('request.jwt.claims', null, true);
-  set local role postgres;
+  perform set_config('request.jwt.claims', '', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', '', true);
+  reset role; -- обратно к роли сессии (postgres); set role postgres из authenticated запрещён
 end;
 $$;
+
+grant execute on all functions in schema tests to anon, authenticated, service_role;
+
+-- supabase test db ждёт TAP-вывод от каждого файла.
+select plan(1);
+select has_function('tests', 'authenticate_as', array['text'], 'test helpers installed');
+select * from finish();

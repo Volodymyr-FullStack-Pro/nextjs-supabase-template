@@ -14,6 +14,6 @@ paths:
 - Деньги и доли: `numeric(18, 2)` / `numeric(12, 6)` в базе, в Drizzle `numeric()` как строка (`mode: 'number'` запрещён), расчёты через `decimal.js`, округление только на выводе.
 - `update` и `delete` всегда с `where`.
 - Пользовательские запросы — через клиент Supabase (RLS применяется); `db()` из `src/db` — прямое подключение мимо RLS, только для серверных задач.
-- Новая политика без pgTAP-теста в `supabase/tests/` с негативным случаем не считается готовой; `supabase db advisors` без ошибок.
+- Новая политика без pgTAP-теста в `supabase/tests/` с негативным случаем не считается готовой; `supabase db advisors --local` без ошибок.
 
 Подробно: скилы `dev-kit:supabase-rls-drizzle`, `dev-kit:money-decimal`.

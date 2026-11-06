@@ -20,7 +20,7 @@ export default function Home() {
           <Link href="/notes" className="underline">
             Заметки
           </Link>{' '}
-          — защищённая страница с Server Action, DAL и RLS
+          — защищённая страница с Server Action, DAL и RLS (без входа уведёт на /login)
         </li>
       </ul>
     </main>

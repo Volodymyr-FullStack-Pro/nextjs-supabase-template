@@ -25,9 +25,9 @@ jobs:
         with:
           version: latest
       - name: Start local Supabase (applies supabase/migrations)
-        run: supabase start -x studio,imgproxy,inbucket,edge-runtime,logflare,vector
-      - name: Security advisors
-        run: supabase db lint --level warning
+        run: supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector
+      - name: Security and performance advisors
+        run: supabase db advisors --local
       - name: pgTAP
         run: supabase test db
       - if: always()

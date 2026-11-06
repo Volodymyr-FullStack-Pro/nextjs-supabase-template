@@ -7,11 +7,10 @@
 ## Локально
 
 ```bash
-supabase init        # один раз, если нет supabase/config.toml
-supabase start       # Postgres, Auth, Studio на 54323
+supabase start       # Postgres, Auth, Studio на 54323 (настройки — supabase/config.toml, project_id поменять на имя проекта)
 supabase status      # URL и ключи → .env.local
 supabase test db     # pgTAP
-supabase db advisors # проверки безопасности (RLS, security definer, search_path)
+supabase db advisors --local # проверки безопасности и производительности (RLS, security definer, search_path, индексы)
 ```
 
 Требуется Supabase CLI: `brew install supabase/tap/supabase`.

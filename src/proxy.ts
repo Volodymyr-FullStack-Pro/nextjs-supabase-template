@@ -33,7 +33,9 @@ export async function proxy(request: NextRequest) {
   if (!data?.claims && !isPublic) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
-    return NextResponse.redirect(url)
+    const redirect = NextResponse.redirect(url)
+    for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie) // обновлённая сессия не теряется
+    return redirect
   }
   return response
 }

@@ -10,6 +10,9 @@ updates:
       minor-and-patch:
         update-types: [minor, patch]
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major'] # мажоры — руками, после чтения changelog
   - package-ecosystem: github-actions
     directory: /
     schedule:

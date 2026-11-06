@@ -13,14 +13,14 @@
 
 ```bash
 npm run dev            # next dev
-npm run lint           # ESLint 10, strict TypeScript, a11y
-npm run typecheck      # tsc --noEmit (tsconfig strictest)
+npm run lint           # ESLint 10, strict TypeScript (a11y — только 6 правил из eslint-config-next, см. README)
+npm run typecheck      # next typegen && tsc --noEmit (tsconfig strictest)
 npm test               # Vitest (unit)
 npm run test:e2e       # Playwright против production-сборки
 npm run knip           # мёртвый код и зависимости
 npm run jscpd          # дубли
 npm run build
-supabase start         # локальный Supabase; supabase test db — pgTAP; supabase db advisors — проверки безопасности
+supabase start         # локальный Supabase; supabase test db — pgTAP; supabase db advisors --local — проверки безопасности
 npm run db:generate    # SQL из src/db/schema.ts в drizzle/ (для сверки; миграции — в supabase/migrations)
 ```
 

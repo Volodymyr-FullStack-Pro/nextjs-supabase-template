@@ -4,7 +4,7 @@ title = "nextjs-supabase-template"
 [extend]
 useDefault = true
 
-[allowlist]
+[[allowlists]]
 description = "Образцы и фикстуры без настоящих секретов"
 paths = [
   '''\.env\.example$''',

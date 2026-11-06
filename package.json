@@ -2,13 +2,16 @@
   "name": "nextjs-supabase-template",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "knip": "knip",
@@ -16,7 +19,6 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "test:e2e": "playwright test"
   },

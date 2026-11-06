@@ -18,20 +18,20 @@ npm run dev
 
 ## Команды
 
-| Команда                           | Что делает                                                                |
-| --------------------------------- | ------------------------------------------------------------------------- |
-| `npm run dev` / `build` / `start` | Next.js                                                                   |
-| `npm run lint`, `lint:fix`        | ESLint 10: правила Next.js, `strictTypeChecked`, доступность, Prettier    |
-| `npm run typecheck`               | `tsc --noEmit`                                                            |
-| `npm run format`, `format:check`  | Prettier                                                                  |
-| `npm test`, `test:coverage`       | Vitest (`tests/unit`, `*.test.ts`); 100 % на `src/lib/money.ts`           |
-| `npm run test:e2e`                | Playwright против `next build && next start`                              |
-| `npm run knip`                    | неиспользуемые файлы, экспорты, зависимости                               |
-| `npm run jscpd`                   | дубли кода (порог 0 %)                                                    |
-| `npm run db:generate`             | SQL из `src/db/schema.ts` в `drizzle/` для сверки с `supabase/migrations` |
-| `npm run db:studio`               | Drizzle Studio                                                            |
-| `supabase test db`                | pgTAP-тесты RLS из `supabase/tests`                                       |
-| `supabase db advisors`            | проверки безопасности базы                                                |
+| Команда                           | Что делает                                                                    |
+| --------------------------------- | ----------------------------------------------------------------------------- |
+| `npm run dev` / `build` / `start` | Next.js                                                                       |
+| `npm run lint`, `lint:fix`        | ESLint 10: правила Next.js, `strictTypeChecked`, Prettier (см. «Доступность») |
+| `npm run typecheck`               | `next typegen && tsc --noEmit` (типы маршрутов, напр. `LayoutProps`)          |
+| `npm run format`, `format:check`  | Prettier                                                                      |
+| `npm test`, `test:coverage`       | Vitest (`tests/unit`, `*.test.ts`); 100 % на `src/lib/money.ts`               |
+| `npm run test:e2e`                | Playwright против `next build && next start`                                  |
+| `npm run knip`                    | неиспользуемые файлы, экспорты, зависимости                                   |
+| `npm run jscpd`                   | дубли кода (порог 0 %)                                                        |
+| `npm run db:generate`             | SQL из `src/db/schema.ts` в `drizzle/` для сверки с `supabase/migrations`     |
+| `npm run db:studio`               | Drizzle Studio                                                                |
+| `supabase test db`                | pgTAP-тесты RLS из `supabase/tests`                                           |
+| `supabase db advisors --local`    | проверки безопасности и производительности базы                               |
 
 ## Что где лежит
 
@@ -40,8 +40,8 @@ npm run dev
 - `src/data` — слой доступа к данным: `server-only`, проверка сессии (`verifySession`), DTO наружу.
 - `src/db` — схема Drizzle с политиками `pgPolicy` и прямое подключение `db()` для серверных задач (мимо RLS — осознанно).
 - `src/lib` — `env.ts` (ленивое чтение переменных), `money.ts` (decimal.js, `formatMoney`), `supabase/` (клиенты `@supabase/ssr`).
-- `proxy.ts` — обновление сессии и редирект неавторизованных; не единственная защита.
-- `supabase/migrations` — источник правды для базы; `supabase/tests` — pgTAP.
+- `src/proxy.ts` — обновление сессии и редирект неавторизованных; не единственная защита. Что proxy попал в сборку, проверяет e2e-тест.
+- `supabase/migrations` — источник правды для базы; `supabase/tests` — pgTAP; `supabase/config.toml` — локальный стек (`supabase start`).
 - `tests/unit`, `tests/e2e` — Vitest и Playwright.
 - `.claude/` — `settings.json` (маркетплейс `claude-kit`, плагин `dev-kit`, запреты), `rules/` (правила по областям).
 - `docs/knowledge` — статус, решения, открытые вопросы; `docs/roadmap.md` — спринты; `docs/superpowers` — спецификации и планы.
@@ -50,3 +50,7 @@ npm run dev
 ## Claude Code
 
 В `.claude/settings.json` записаны маркетплейс `Volodymyr-FullStack-Pro/claude-kit` и плагин `dev-kit@claude-kit`: после доверия папке Claude Code предложит установить плагин (скилы по безопасности данных, RLS, деньгам, тестам, ревью; хуки форматирования, проверки типов и защиты `.env`/миграций; команды `/dev-kit:handoff`, `/dev-kit:resume`, `/dev-kit:clickup-card`). Правила проекта — в `.claude/rules/`, процесс — в `CLAUDE.md`.
+
+## Доступность
+
+`eslint-plugin-jsx-a11y` целиком пока не ставится: его peer-зависимость — ESLint ≤ 9. Из `eslint-config-next` работают только шесть базовых правил a11y (alt у изображений, роли ARIA и т. п.). Остальное — ручная проверка по чеклисту `/web-design-guidelines` и Playwright-сценарии с клавиатурой; когда плагин поддержит ESLint 10 — добавить `jsx-a11y/strict` в `eslint.config.mjs`.

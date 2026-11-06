@@ -4,8 +4,8 @@ import nextTs from 'eslint-config-next/typescript'
 import tseslint from 'typescript-eslint'
 import eslintConfigPrettier from 'eslint-config-prettier/flat'
 
-// Порядок: правила Next.js (включая доступность jsx-a11y из core-web-vitals) → строгий TypeScript
-// с проверкой типов → Prettier последним, чтобы снять конфликты форматирования.
+// Порядок: правила Next.js (core-web-vitals даёт лишь шесть правил jsx-a11y; полный плагин ждёт поддержки ESLint 10)
+// → строгий TypeScript с проверкой типов → Prettier последним, чтобы снять конфликты форматирования.
 export default defineConfig([
   globalIgnores([
     '.next/**',

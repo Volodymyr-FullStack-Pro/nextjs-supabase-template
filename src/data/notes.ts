@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 /** Наружу уходит DTO с нужными полями, а не строка таблицы. */
 export type NoteDto = { id: string; title: string; createdAt: string }
 
+/** Список только своих заметок: фильтр по владельцу даёт RLS (политика select), поэтому where здесь не нужен. */
 export async function listNotes(): Promise<NoteDto[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
