@@ -61,7 +61,7 @@ npm run dev
 - **Форма** = `useHookFormAction(action, zodResolver(Schema))` + `TextField`: та же Zod-схема на клиенте и сервере, ошибки полей под полем, ошибки сервера — `toast.error` (sonner), успех — `toast.success`.
 - **Состояние в URL** = nuqs: `useQueryState` на клиенте, `createLoader` на сервере (`src/features/notes/search-params.ts`). Глобального стора нет: данные живут на сервере, фильтры — в URL, формы — локально; zustand добавляется только под доказанную нужду.
 - **Тема** — класс `dark` через next-themes; **даты** — date-fns (`ru`); **иконки** — lucide-react.
-- **Git-хуки** — simple-git-hooks ставит `pre-commit` при `npm ci`/`npm install` (`prepare`), lint-staged прогоняет eslint и prettier по изменённым файлам. Где нет `.git` (Docker, Vercel), установка хуков пропускается автоматически.
+- **Git-хуки** — simple-git-hooks ставит `pre-commit` при `npm ci`/`npm install` (`prepare`), lint-staged прогоняет eslint и prettier по изменённым файлам. Где нет `.git` (Docker, Vercel) установка пропускается; при `npm install --omit=dev` бинаря нет, поэтому скрипт `prepare` не падает (`|| true`).
 
 ## Что добавлять по мере надобности
 
@@ -73,6 +73,8 @@ npm run dev
 | Ошибки в проде                    | `@sentry/nextjs` (нужен DSN проекта)                             |
 | Клиентский стор                   | `zustand`; серверные данные на клиенте — `@tanstack/react-query` |
 | Письма                            | `resend` + `react-email`                                         |
+
+Официальные компоненты импортируют `cn` из пакета `cn`; сторонним реестрам с `@/lib/utils` нужен файл `src/lib/utils.ts` с `export { cn } from 'cn'`.
 
 Если `npx shadcn add` падает с `EALLOWSCRIPTS` (настройка `allow-scripts` в вашем `~/.npmrc`), запустите с чистым пользовательским конфигом: `NPM_CONFIG_USERCONFIG=/dev/null npx shadcn@latest add <имя>`.
 

@@ -8,7 +8,7 @@
     "**/.next/**",
     "**/coverage/**",
     "**/playwright-report/**",
-    "**/*.css"
+    "src/app/globals.css"
   ],
   "reporters": ["console"]
 }

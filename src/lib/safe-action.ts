@@ -3,7 +3,9 @@ import { createSafeActionClient } from 'next-safe-action'
 import { verifySession } from '@/data/session'
 
 /** Ошибка, текст которой можно показать пользователю. Всё остальное наружу уходит общей фразой. */
-export class ActionError extends Error {}
+export class ActionError extends Error {
+  override readonly name = 'ActionError'
+}
 
 /** Базовый клиент Server Actions: Zod на входе, ошибки сервера — одной строкой без внутренних деталей. */
 export const actionClient = createSafeActionClient({

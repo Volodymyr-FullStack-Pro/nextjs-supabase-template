@@ -1,6 +1,8 @@
 'use client'
 
-/** Неожиданные ошибки сегмента. Ожидаемые (валидация, нет прав) возвращаются из actions как значения. */
+import { Button } from '@/components/ui/button'
+
+/** Неожиданные ошибки сегмента. Ожидаемые (валидация, нет прав) приходят из actions в result, не сюда. */
 export default function ErrorPage({
   reset,
 }: {
@@ -10,12 +12,12 @@ export default function ErrorPage({
   return (
     <main className="mx-auto flex max-w-xl flex-col gap-4 p-6">
       <h1 className="text-xl font-semibold">Что-то пошло не так</h1>
-      <p className="text-sm text-neutral-600">
+      <p className="text-sm text-muted-foreground">
         Попробуйте ещё раз. Если повторяется, сообщите администратору.
       </p>
-      <button type="button" onClick={reset} className="w-fit rounded-md border px-3 py-2">
+      <Button type="button" variant="outline" className="w-fit" onClick={reset}>
         Повторить
-      </button>
+      </Button>
     </main>
   )
 }

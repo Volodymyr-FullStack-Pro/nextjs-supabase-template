@@ -1,12 +1,15 @@
 'use client'
 
-import { useQueryState } from 'nuqs'
+import { debounce, useQueryState } from 'nuqs'
 import { Input } from '@/components/ui/input'
 import { notesSearchParams } from './search-params'
 
-/** Фильтр живёт в URL (nuqs): ссылку можно скинуть, «назад» работает; shallow: false — сервер перечитывает список. */
+/** Фильтр живёт в URL (nuqs): ссылку можно скинуть; shallow: false — сервер перечитывает список, debounce бережёт базу. */
 export function NotesSearch() {
-  const [q, setQ] = useQueryState('q', notesSearchParams.q.withOptions({ shallow: false }))
+  const [q, setQ] = useQueryState(
+    'q',
+    notesSearchParams.q.withOptions({ shallow: false, limitUrlUpdates: debounce(300) }),
+  )
   return (
     <Input
       type="search"

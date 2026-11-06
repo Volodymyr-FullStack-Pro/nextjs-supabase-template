@@ -5,6 +5,7 @@ export default defineConfig({
   plugins: [tsconfigPaths()],
   test: {
     environment: 'node',
+    globals: true, // только ради auto-cleanup Testing Library (afterEach); в тестах импортировать из 'vitest' явно
     include: ['tests/unit/**/*.test.{ts,tsx}', 'src/**/*.test.{ts,tsx}'],
     coverage: {
       provider: 'v8',

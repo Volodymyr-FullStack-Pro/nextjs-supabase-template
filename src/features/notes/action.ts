@@ -11,8 +11,8 @@ export const addNote = authActionClient
   .action(async ({ parsedInput, ctx }) => {
     try {
       await createNote(parsedInput, ctx.session.userId)
-    } catch {
-      throw new ActionError('Не удалось сохранить заметку')
+    } catch (cause) {
+      throw new ActionError('Не удалось сохранить заметку', { cause }) // причина попадает в лог сервера
     }
     revalidatePath('/notes')
     return { ok: true as const }
