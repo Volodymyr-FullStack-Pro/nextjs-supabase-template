@@ -1,9 +1,9 @@
 ---
 paths:
-  - "src/app/**"
-  - "src/features/**"
-  - "src/data/**"
-  - "proxy.ts"
+  - 'src/app/**'
+  - 'src/features/**'
+  - 'src/data/**'
+  - 'proxy.ts'
 ---
 
 # Безопасность данных (Next.js App Router)

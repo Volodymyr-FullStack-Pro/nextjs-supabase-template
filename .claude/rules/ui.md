@@ -1,7 +1,7 @@
 ---
 paths:
-  - "src/app/**"
-  - "src/features/**/*.tsx"
+  - 'src/app/**'
+  - 'src/features/**/*.tsx'
 ---
 
 # Интерфейс

@@ -1,0 +1,34 @@
+name: Database
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/**'
+      - 'src/db/**'
+      - '.github/workflows/db.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/**'
+      - 'src/db/**'
+
+permissions:
+  contents: read
+
+jobs:
+  rls:
+    name: Advisors and pgTAP
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Start local Supabase (applies supabase/migrations)
+        run: supabase start -x studio,imgproxy,inbucket,edge-runtime,logflare,vector
+      - name: Security advisors
+        run: supabase db lint --level warning
+      - name: pgTAP
+        run: supabase test db
+      - if: always()
+        run: supabase stop

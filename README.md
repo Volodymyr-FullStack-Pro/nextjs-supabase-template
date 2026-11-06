@@ -18,20 +18,20 @@ npm run dev
 
 ## Команды
 
-| Команда | Что делает |
-|---|---|
-| `npm run dev` / `build` / `start` | Next.js |
-| `npm run lint`, `lint:fix` | ESLint 10: правила Next.js, `strictTypeChecked`, доступность, Prettier |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm run format`, `format:check` | Prettier |
-| `npm test`, `test:coverage` | Vitest (`tests/unit`, `*.test.ts`); 100 % на `src/lib/money.ts` |
-| `npm run test:e2e` | Playwright против `next build && next start` |
-| `npm run knip` | неиспользуемые файлы, экспорты, зависимости |
-| `npm run jscpd` | дубли кода (порог 0 %) |
-| `npm run db:generate` | SQL из `src/db/schema.ts` в `drizzle/` для сверки с `supabase/migrations` |
-| `npm run db:studio` | Drizzle Studio |
-| `supabase test db` | pgTAP-тесты RLS из `supabase/tests` |
-| `supabase db advisors` | проверки безопасности базы |
+| Команда                           | Что делает                                                                |
+| --------------------------------- | ------------------------------------------------------------------------- |
+| `npm run dev` / `build` / `start` | Next.js                                                                   |
+| `npm run lint`, `lint:fix`        | ESLint 10: правила Next.js, `strictTypeChecked`, доступность, Prettier    |
+| `npm run typecheck`               | `tsc --noEmit`                                                            |
+| `npm run format`, `format:check`  | Prettier                                                                  |
+| `npm test`, `test:coverage`       | Vitest (`tests/unit`, `*.test.ts`); 100 % на `src/lib/money.ts`           |
+| `npm run test:e2e`                | Playwright против `next build && next start`                              |
+| `npm run knip`                    | неиспользуемые файлы, экспорты, зависимости                               |
+| `npm run jscpd`                   | дубли кода (порог 0 %)                                                    |
+| `npm run db:generate`             | SQL из `src/db/schema.ts` в `drizzle/` для сверки с `supabase/migrations` |
+| `npm run db:studio`               | Drizzle Studio                                                            |
+| `supabase test db`                | pgTAP-тесты RLS из `supabase/tests`                                       |
+| `supabase db advisors`            | проверки безопасности базы                                                |
 
 ## Что где лежит
 

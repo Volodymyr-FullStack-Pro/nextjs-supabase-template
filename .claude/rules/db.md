@@ -1,9 +1,9 @@
 ---
 paths:
-  - "src/db/**"
-  - "supabase/**"
-  - "drizzle.config.ts"
-  - "drizzle/**"
+  - 'src/db/**'
+  - 'supabase/**'
+  - 'drizzle.config.ts'
+  - 'drizzle/**'
 ---
 
 # База данных: Supabase, RLS, Drizzle, деньги

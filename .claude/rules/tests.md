@@ -1,10 +1,10 @@
 ---
 paths:
-  - "tests/**"
-  - "**/*.test.ts"
-  - "**/*.test.tsx"
-  - "**/*.spec.ts"
-  - "supabase/tests/**"
+  - 'tests/**'
+  - '**/*.test.ts'
+  - '**/*.test.tsx'
+  - '**/*.spec.ts'
+  - 'supabase/tests/**'
 ---
 
 # Тесты
