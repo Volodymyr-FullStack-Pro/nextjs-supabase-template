@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# тесты и отчёты
+playwright-report/
+test-results/
+coverage/
+
+# Claude Code
+.superpowers/
+.playwright-mcp/
+.claude/settings.local.json
