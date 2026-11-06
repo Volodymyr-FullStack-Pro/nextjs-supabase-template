@@ -13,7 +13,7 @@
 
 ```bash
 npm run dev            # next dev
-npm run lint           # ESLint 10, strict TypeScript (a11y — только 6 правил из eslint-config-next, см. README)
+npm run lint           # next typegen + ESLint 10, strict TypeScript (a11y — только 6 правил из eslint-config-next, см. README)
 npm run typecheck      # next typegen && tsc --noEmit (tsconfig strictest)
 npm test               # Vitest: unit и компоненты (jsdom)
 npm run test:e2e       # Playwright против production-сборки
