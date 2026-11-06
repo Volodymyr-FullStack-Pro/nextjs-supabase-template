@@ -1,0 +1,10 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "src/app/**/{page,layout,error,global-error,not-found,loading,route,template}.{ts,tsx}",
+    "proxy.ts",
+    "tests/**/*.{ts,tsx}"
+  ],
+  "project": ["src/**/*.{ts,tsx}", "proxy.ts", "tests/**/*.{ts,tsx}"],
+  "ignoreDependencies": ["tailwindcss"]
+}
