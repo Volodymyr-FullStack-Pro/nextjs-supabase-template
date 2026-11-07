@@ -4,7 +4,7 @@
 
 ## 2026-11-07 — версии
 
-Node 24 (`.nvmrc`, `engines`, `@types/node` 24): поддерживается Vercel, LTS до апреля 2028; Node 22 убран. TypeScript 6.0 (typescript-eslint поддерживает до 6.0; TypeScript 7 — после поддержки в typescript-eslint). React 19.3.1.
+Node 24 (`.nvmrc`, `engines.node: 24.x`, `@types/node` 24): поддерживается Vercel, LTS до апреля 2028; Node 22 убран. Вместе с Node 24 везде npm 11: правило «lock-файл только через npm 10» больше не нужно, `check-lock.mjs` проверяет npm 11. TypeScript 6.0 (typescript-eslint поддерживает до 6.0; TypeScript 7 — после поддержки в typescript-eslint). React 19.3.1.
 
 ## 2026-11-07 — интерфейс и дизайн-система
 
