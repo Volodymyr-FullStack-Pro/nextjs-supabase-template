@@ -2,6 +2,8 @@
 
 import { useReportWebVitals } from 'next/web-vitals'
 
+import { isProduction } from '@/shared/lib/runtime'
+
 const METRICS = new Set(['CLS', 'FCP', 'INP', 'LCP', 'TTFB'])
 const RATINGS = new Set(['good', 'needs-improvement', 'poor'])
 
@@ -17,7 +19,7 @@ export function WebVitals() {
       rating: metric.rating,
       path: window.location.pathname,
     }
-    if (process.env.NODE_ENV !== 'production') {
+    if (!isProduction) {
       console.debug('[web-vitals]', body.name, body.value.toFixed(0), body.rating)
       return
     }

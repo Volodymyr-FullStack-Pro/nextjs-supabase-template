@@ -403,6 +403,23 @@ const boundaryOnlyTypesConfig = {
   },
 }
 
+// Переменные окружения — только через env.ts (секреты и адреса) и runtime.ts (режим сборки)
+const envAccessConfig = {
+  files: ['src/**/*.{ts,tsx}'],
+  ignores: ['src/shared/infrastructure/**', 'src/shared/lib/runtime.ts'],
+  rules: {
+    'no-restricted-properties': [
+      'error',
+      {
+        object: 'process',
+        property: 'env',
+        message:
+          'переменные окружения — через src/shared/infrastructure/env.ts, режим сборки — isProduction из src/shared/lib/runtime.ts',
+      },
+    ],
+  },
+}
+
 // Доступность разметки: набор strict из jsx-a11y (плагин подключает eslint-config-next), кроме стороннего shadcn
 const a11yConfig = {
   files: ['src/**/*.tsx'],
@@ -479,6 +496,7 @@ export default defineConfig([
   codeStyleTsConfig,
   boundaryOnlyTypesConfig,
   a11yConfig,
+  envAccessConfig,
   vendorUiConfig,
   {
     files: ['**/*.{ts,tsx,mts}'],
