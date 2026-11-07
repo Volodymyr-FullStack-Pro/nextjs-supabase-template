@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+
 import { NotesForm } from '@/modules/notes/ui/notes-form'
 import { NotesList } from '@/modules/notes/ui/notes-list'
 import { NotesSearch } from '@/modules/notes/ui/notes-search'

@@ -1,7 +1,9 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+
 import { authActionClient, fail } from '@/shared/lib/safe-action'
+
 import { CreateNoteInput } from '../domain/note'
 import { notes } from '../server'
 

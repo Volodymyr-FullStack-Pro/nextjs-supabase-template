@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { index, numeric, pgPolicy, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
-import { authUid, authUsers, authenticatedRole } from 'drizzle-orm/supabase'
+import { authenticatedRole, authUid, authUsers } from 'drizzle-orm/supabase'
 
 export const notes = pgTable(
   'notes',
@@ -14,7 +14,7 @@ export const notes = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    index('notes_owner_id_idx').on(table.ownerId),
+    index('notes_owner_id_created_at_idx').on(table.ownerId, table.createdAt.desc()),
     pgPolicy('notes: owner selects', {
       for: 'select',
       to: authenticatedRole,

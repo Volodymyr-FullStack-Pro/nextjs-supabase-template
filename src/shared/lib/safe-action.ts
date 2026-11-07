@@ -1,7 +1,10 @@
 import 'server-only'
+
 import { createSafeActionClient } from 'next-safe-action'
+
+import type { DomainError } from '@/shared/domain/errors'
 import { EnvironmentError } from '@/shared/infrastructure/env'
-import { DomainError } from '@/shared/domain/errors'
+
 import { verifySession } from './session'
 
 class ActionError extends Error {

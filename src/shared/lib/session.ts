@@ -1,6 +1,8 @@
 import 'server-only'
+
 import { cache } from 'react'
 import { redirect } from 'next/navigation'
+
 import { createClient } from '@/shared/infrastructure/supabase/server'
 
 export type Session = { userId: string }

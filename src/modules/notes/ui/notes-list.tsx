@@ -1,8 +1,10 @@
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import type { SearchParams } from 'nuqs/server'
+
 import { verifySession } from '@/shared/lib/session'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
+
 import { notes } from '../server'
 import { loadNotesSearchParams } from './search-params'
 

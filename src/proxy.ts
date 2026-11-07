@@ -1,5 +1,6 @@
+import { type NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
+
 import { env } from '@/shared/infrastructure/env'
 import type { Database } from '@/shared/infrastructure/supabase/types'
 

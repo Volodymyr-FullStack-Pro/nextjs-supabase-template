@@ -40,10 +40,11 @@ npm run db:types       # типы supabase-js из локальной базы �
 - Ответ или решение заказчика из любого канала — строка в `docs/knowledge/requirements.md` в тот же день; задачи и тесты ссылаются на её номера (скил `dev-kit:requirements-register`).
 - После любого решения — строка в `docs/knowledge/decisions.md`; roadmap обновляется в конце задачи.
 - Процесс: эпик из roadmap → `brainstorming` → спецификация в `docs/superpowers/specs/` → `writing-plans` → `executing-plans` (планы не длиннее 12 задач) → `/simplify` → `/code-review` → `/security-review` для auth, денег и миграций → PR.
-- Server Actions — через `authActionClient` / `actionClient` + use case из `server.ts` модуля; формы — `TextField` + react-hook-form + Zod-схема из `domain`; уведомления — sonner; фильтры — в URL (nuqs); компоненты — shadcn (`npx shadcn add <имя>` и `npm run format`; к сторонним компонентам применяются только границы).
+- Server Actions — через `authActionClient` / `actionClient` + use case из `server.ts` модуля; формы — `TextField` + `SubmitButton` + react-hook-form + Zod-схема из `domain` (нормализация текста — в схеме через `normalizeText`); уведомления — sonner; фильтры — в URL (nuqs); компоненты — shadcn (`npx shadcn add <имя>` и `npm run format`; к сторонним компонентам применяются только границы).
 - Правила домена и use cases пишутся с тестом (Vitest на фейках) до кода; имя теста — глагол в третьем лице про намерение (`it('rejects an empty title')`). Комментариев в коде нет, файл ≤ 300 строк: смысл — в именах и тестах (`.claude/rules/code-style.md`).
 - Каждый экран проектируется под бюджет производительности (скил `dev-kit:performance-budget`): оболочка + Suspense, теги кэша, без водопадов, минимум JS. Лимит — граница, не цель: JS не растёт относительно `perf-baseline.json` без осознанного обновления базы в PR.
 - Перед «готово»: `npm run check` (всё, что проверяет CI) и `npm run test:e2e`; при изменениях базы — `supabase test db`; `npm run req:check -- --strict`.
+- Перед изменением базы — скилы `postgres-best-practices:supabase-postgres-best-practices` и `dev-kit:supabase-rls-drizzle` (индексы под запросы, ограничения, идемпотентность).
 - Миграции, `.env*` и lock-файлы Claude правит только с подтверждением (хук плагина). Зависимости меняются с `npx npm@10 install --package-lock-only` (CI и Vercel — npm 10). На коммите lint-staged прогоняет eslint и prettier по изменённым файлам.
 
 ## Плагин dev-kit

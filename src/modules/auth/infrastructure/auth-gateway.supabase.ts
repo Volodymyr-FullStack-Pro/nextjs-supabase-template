@@ -1,5 +1,7 @@
 import 'server-only'
+
 import { createClient } from '@/shared/infrastructure/supabase/server'
+
 import type { AuthGateway } from '../application/auth-gateway'
 
 const HTTP_BAD_REQUEST = 400

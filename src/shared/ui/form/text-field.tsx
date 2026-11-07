@@ -1,7 +1,8 @@
 'use client'
 
-import { useId, type ComponentProps } from 'react'
-import { Controller, type Control, type FieldPathByValue, type FieldValues } from 'react-hook-form'
+import { type ComponentProps, useId } from 'react'
+import { type Control, Controller, type FieldPathByValue, type FieldValues } from 'react-hook-form'
+
 import { Field, FieldError, FieldLabel } from '@/shared/ui/field'
 import { Input } from '@/shared/ui/input'
 

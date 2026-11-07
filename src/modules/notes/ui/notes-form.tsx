@@ -3,10 +3,12 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useHookFormAction } from '@next-safe-action/adapter-react-hook-form/hooks'
 import { toast } from 'sonner'
+
+import { SubmitButton } from '@/shared/ui/form/submit-button'
 import { TextField } from '@/shared/ui/form/text-field'
-import { Button } from '@/shared/ui/button'
-import { addNote } from './actions'
+
 import { CreateNoteInput } from '../domain/note'
+import { addNote } from './actions'
 
 export function NotesForm() {
   const { form, action, handleSubmitWithAction, resetFormAndAction } = useHookFormAction(
@@ -35,9 +37,9 @@ export function NotesForm() {
         placeholder="Заголовок"
         maxLength={200}
       />
-      <Button type="submit" disabled={action.isPending}>
-        {action.isPending ? 'Сохраняю…' : 'Добавить'}
-      </Button>
+      <SubmitButton pending={action.isPending} pendingLabel="Сохраняю…">
+        Добавить
+      </SubmitButton>
     </form>
   )
 }

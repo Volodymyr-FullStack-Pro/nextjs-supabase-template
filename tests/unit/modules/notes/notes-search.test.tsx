@@ -2,6 +2,7 @@
 import { render, screen } from '@testing-library/react'
 import { withNuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { describe, expect, it } from 'vitest'
+
 import { NotesSearch } from '@/modules/notes/ui/notes-search'
 
 describe('NotesSearch', () => {

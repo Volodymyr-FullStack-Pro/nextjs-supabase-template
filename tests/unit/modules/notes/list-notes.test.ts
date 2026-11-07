@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+
 import { makeListNotes } from '@/modules/notes/application/list-notes'
 import { fakeNotesRepository } from '@/modules/notes/infrastructure/notes-repository.fake'
 
@@ -17,6 +18,11 @@ describe('listNotes', () => {
 
   it('filters by a case-insensitive substring of the title', async () => {
     const items = await listNotes()({ q: 'аренда' }, { userId: 'u1' })
+    expect(items.map((note) => note.title)).toEqual(['Аренда офиса'])
+  })
+
+  it('normalizes the search text before filtering', async () => {
+    const items = await listNotes()({ q: '  АРЕНДА\u200B ' }, { userId: 'u1' })
     expect(items.map((note) => note.title)).toEqual(['Аренда офиса'])
   })
 

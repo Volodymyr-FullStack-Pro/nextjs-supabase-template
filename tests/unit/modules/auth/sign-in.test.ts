@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+
 import { makeSignIn } from '@/modules/auth/application/sign-in'
 
 const credentials = { email: 'a@b.c', password: 'secret' }

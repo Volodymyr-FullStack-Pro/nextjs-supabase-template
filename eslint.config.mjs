@@ -6,6 +6,7 @@ import eslintConfigPrettier from 'eslint-config-prettier/flat'
 import boundaries from 'eslint-plugin-boundaries'
 import sonarjs from 'eslint-plugin-sonarjs'
 import unicorn from 'eslint-plugin-unicorn'
+import simpleImportSort from 'eslint-plugin-simple-import-sort'
 
 // Порядок: правила Next.js (core-web-vitals даёт лишь шесть правил jsx-a11y; полный плагин ждёт поддержки ESLint 10)
 // → строгий TypeScript с проверкой типов → Prettier последним, чтобы снять конфликты форматирования.
@@ -201,6 +202,15 @@ const noComments = {
   },
 }
 
+// Порядок импортов (чинится --fix): побочные эффекты (server-only, css) → node: → react, next, пакеты → @/shared, @/modules → ../ → ./
+const IMPORT_GROUPS = [
+  ['^\\u0000'],
+  ['^node:'],
+  ['^react(/|$)', '^next(/|$)', '^@?\\w'],
+  ['^@/shared', '^@/modules', '^@/'],
+  ['^\\.\\.', '^\\./'],
+]
+
 const codeStyleConfig = {
   files: ['src/**/*.{ts,tsx}', 'scripts/**/*.mjs', 'tests/**/*.{ts,tsx}'],
   ignores: [
@@ -208,9 +218,18 @@ const codeStyleConfig = {
     '!src/shared/ui/form/**',
     'src/shared/infrastructure/supabase/types.ts',
   ],
-  plugins: { unicorn, sonarjs, local: { rules: { 'no-comments': noComments } } },
+  plugins: {
+    unicorn,
+    sonarjs,
+    'simple-import-sort': simpleImportSort,
+    local: { rules: { 'no-comments': noComments } },
+  },
   rules: {
     'local/no-comments': 'error',
+    // импорты: один блок на источник, сгруппированы и отсортированы автоматически
+    'simple-import-sort/imports': ['error', { groups: IMPORT_GROUPS }],
+    'simple-import-sort/exports': 'error',
+    'import/no-duplicates': ['error', { 'prefer-inline': true }],
     'max-lines': ['error', { max: 300, skipBlankLines: true, skipComments: true }],
     // простота
     complexity: ['error', 10],
@@ -305,7 +324,36 @@ const codeStyleTsConfig = {
       { selector: 'import', format: null },
     ],
     '@typescript-eslint/prefer-readonly': 'error',
+    '@typescript-eslint/consistent-type-imports': [
+      'error',
+      { prefer: 'type-imports', fixStyle: 'inline-type-imports' },
+    ],
+    '@typescript-eslint/no-import-type-side-effects': 'error',
     '@typescript-eslint/switch-exhaustiveness-check': 'error',
+  },
+}
+
+// unknown и as — только на границе с внешними данными (infrastructure, shared/lib, app/api, proxy): дальше данные уже прошли Zod
+const boundaryOnlyTypesConfig = {
+  files: ['src/**/*.{ts,tsx}'],
+  ignores: [
+    'src/**/infrastructure/**',
+    'src/shared/lib/**',
+    'src/app/api/**',
+    'src/proxy.ts',
+    'src/shared/ui/**',
+    '!src/shared/ui/form/**',
+  ],
+  rules: {
+    'no-restricted-syntax': [
+      'error',
+      {
+        selector: 'TSUnknownKeyword',
+        message:
+          'unknown только на границе с внешними данными (infrastructure, shared/lib, app/api): здесь данные уже прошли Zod',
+      },
+    ],
+    '@typescript-eslint/consistent-type-assertions': ['error', { assertionStyle: 'never' }],
   },
 }
 
@@ -337,6 +385,7 @@ export default defineConfig([
   boundariesConfig,
   codeStyleConfig,
   codeStyleTsConfig,
+  boundaryOnlyTypesConfig,
   vendorUiConfig,
   {
     files: ['**/*.{ts,tsx,mts}'],

@@ -16,4 +16,7 @@ paths:
 - Наружу из репозиториев — модели домена с перечисленными полями, не строки таблиц. `userId` — только из сессии.
 - Пользовательские данные читаются user-scoped клиентом Supabase (RLS применяется); прямое подключение `db()` — только для серверных задач и с явным фильтром по владельцу.
 
+- Заголовки безопасности (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, HSTS) заданы в `next.config.ts` для всех маршрутов, `poweredByHeader` выключен; CSP с nonce подключается через `proxy.ts`, когда появятся сторонние скрипты.
+- Повторы: действие, которое пользователь может повторить, идемпотентно (`clientRequestId` + `unique` в базе, правило в `db.md`); кнопка отправки блокируется на время action (`SubmitButton`).
+
 Подробно: скилы `dev-kit:nextjs-data-security`, `dev-kit:clean-layers`.

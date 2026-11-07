@@ -1,7 +1,9 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+
 import { actionClient, fail } from '@/shared/lib/safe-action'
+
 import { SignInInput } from '../domain/sign-in'
 import { auth } from '../server'
 

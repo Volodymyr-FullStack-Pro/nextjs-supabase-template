@@ -11,7 +11,7 @@ paths:
 - Порт (интерфейс репозитория или шлюза) живёт в `application`, реализация — в `infrastructure` (user-scoped клиент Supabase, RLS применяется), фейк `*.fake.ts` — рядом, для тестов use cases. Наружу из репозитория — модель домена (Zod-схема `parse` на границе), не строка таблицы.
 - Action (`ui/actions.ts`) = контроллер: `authActionClient.inputSchema(Schema).action(…)` → use case → `fail(error)` при ошибке домена → `revalidatePath`/`revalidateTag`. Логики в action нет.
 - Страница: статическая оболочка + `<Suspense>` вокруг всего, что читает сессию, cookies или `searchParams` (Cache Components). Справочные данные — `'use cache'` + `cacheLife` + `cacheTag`; cookies внутри `'use cache'` читать нельзя.
-- Barrel-файлов (`index.ts` с реэкспортом) нет: импорт по точному пути.
+- Barrel-файлов (`index.ts` с реэкспортом) нет: импорт по точному пути. Короткие импорты даёт `server.ts` как единственная точка входа модуля; порядок и группы импортов держит линтер (`simple-import-sort`).
 - Модель и схема входа — в `domain` на Zod; одна схема на форму и action.
 
 Подробно: скил `dev-kit:clean-layers`; производительность — `dev-kit:performance-budget`.

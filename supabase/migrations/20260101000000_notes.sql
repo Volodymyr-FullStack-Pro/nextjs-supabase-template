@@ -7,7 +7,8 @@ create table public.notes (
   created_at timestamptz not null default now()
 );
 
-create index notes_owner_id_idx on public.notes (owner_id);
+-- Индекс под запрос списка: фильтр по владельцу (он же в политике RLS) и сортировка по дате.
+create index notes_owner_id_created_at_idx on public.notes (owner_id, created_at desc);
 
 alter table public.notes enable row level security;
 

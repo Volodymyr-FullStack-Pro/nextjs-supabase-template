@@ -3,11 +3,13 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useHookFormAction } from '@next-safe-action/adapter-react-hook-form/hooks'
 import { toast } from 'sonner'
-import { TextField } from '@/shared/ui/form/text-field'
-import { Button } from '@/shared/ui/button'
+
 import { FieldGroup } from '@/shared/ui/field'
-import { signIn } from './actions'
+import { SubmitButton } from '@/shared/ui/form/submit-button'
+import { TextField } from '@/shared/ui/form/text-field'
+
 import { SignInInput } from '../domain/sign-in'
+import { signIn } from './actions'
 
 export function LoginForm() {
   const { form, action, handleSubmitWithAction } = useHookFormAction(
@@ -41,9 +43,9 @@ export function LoginForm() {
           autoComplete="current-password"
         />
       </FieldGroup>
-      <Button type="submit" disabled={action.isPending}>
-        {action.isPending ? 'Вхожу…' : 'Войти'}
-      </Button>
+      <SubmitButton pending={action.isPending} pendingLabel="Вхожу…">
+        Войти
+      </SubmitButton>
     </form>
   )
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { formatMoney, shareOf, money } from '@/shared/domain/money'
+
+import { formatMoney, money, shareOf } from '@/shared/domain/money'
 
 describe('money helpers', () => {
   it('multiplies a value by a fraction exactly', () => {

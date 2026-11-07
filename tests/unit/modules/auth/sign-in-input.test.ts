@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+
 import { SignInInput } from '@/modules/auth/domain/sign-in'
 
 describe('SignInInput', () => {

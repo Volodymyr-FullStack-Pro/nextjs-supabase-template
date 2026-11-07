@@ -1,7 +1,9 @@
 import 'server-only'
+
 import { createClient } from '@/shared/infrastructure/supabase/server'
+
 import type { NotesRepository } from '../application/notes-repository'
-import { NoteSchema, type Note } from '../domain/note'
+import { type Note, NoteSchema } from '../domain/note'
 
 type NoteRow = { id: string; title: string; created_at: string }
 

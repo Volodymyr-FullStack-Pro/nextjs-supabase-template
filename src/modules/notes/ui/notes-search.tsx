@@ -1,7 +1,9 @@
 'use client'
 
 import { debounce, useQueryState } from 'nuqs'
+
 import { Input } from '@/shared/ui/input'
+
 import { notesSearchParams } from './search-params'
 
 const SEARCH_DEBOUNCE_MS = 300

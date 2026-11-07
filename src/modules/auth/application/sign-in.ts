@@ -1,4 +1,5 @@
 import { err, ok, type Result } from '@/shared/domain/result'
+
 import { InvalidCredentialsError } from '../domain/errors'
 import type { SignInInput } from '../domain/sign-in'
 import type { AuthGateway } from './auth-gateway'
