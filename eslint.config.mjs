@@ -8,7 +8,7 @@ import sonarjs from 'eslint-plugin-sonarjs'
 import unicorn from 'eslint-plugin-unicorn'
 import simpleImportSort from 'eslint-plugin-simple-import-sort'
 
-// Порядок: правила Next.js (core-web-vitals даёт лишь шесть правил jsx-a11y; полный плагин ждёт поддержки ESLint 10)
+// Порядок: правила Next.js (набор strict из jsx-a11y включается ниже, в a11yConfig)
 // → строгий TypeScript с проверкой типов → Prettier последним, чтобы снять конфликты форматирования.
 
 // Архитектурные границы (см. .claude/rules/architecture.md): модули с четырьмя слоями, shared и app.
