@@ -26,6 +26,8 @@ const boundariesConfig = {
     'boundaries/elements': [
       // partialMatch: false — путь от корня, элемент = папка. Порядок важен: первое совпадение побеждает,
       // поэтому глубокие папки идут раньше. server.ts и proxy.ts — элементы-файлы; прочие файлы вне папок — unknown.
+      // mode: 'file' в v7 помечен устаревшим (предупреждение при lint), но замены для элемента-файла нет:
+      // boundaries/files даёт файлам лишь категории без captured. Пересмотреть при переходе на v8.
       {
         type: 'module-domain',
         pattern: 'src/modules/*/domain',
@@ -251,6 +253,9 @@ const codeStyleConfig = {
     'unicorn/throw-new-error': 'error',
     'unicorn/error-message': 'error',
     'unicorn/no-abusive-eslint-disable': 'error',
+    // безопасность: HTML из строки и eval запрещены
+    'react/no-danger': 'error',
+    'no-eval': 'error',
     'sonarjs/no-identical-functions': 'error',
     'sonarjs/no-collapsible-if': 'error',
     'sonarjs/prefer-immediate-return': 'error',
@@ -285,6 +290,14 @@ const codeStyleConfig = {
     ],
     // числа и строки
     'no-magic-numbers': 'off',
+  },
+}
+// JSX многословнее логики: компоненту даём 120 строк вместо 80
+const componentLengthConfig = {
+  files: ['src/**/*.tsx'],
+  ignores: ['src/shared/ui/**', '!src/shared/ui/form/**'],
+  rules: {
+    'max-lines-per-function': ['error', { max: 120, skipBlankLines: true, skipComments: true }],
   },
 }
 const codeStyleTsConfig = {
@@ -384,6 +397,7 @@ export default defineConfig([
   ...tseslint.configs.strictTypeChecked,
   boundariesConfig,
   codeStyleConfig,
+  componentLengthConfig,
   codeStyleTsConfig,
   boundaryOnlyTypesConfig,
   vendorUiConfig,
