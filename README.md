@@ -110,6 +110,8 @@ npm run new:module businesses
 
 На коммите lint-staged прогоняет eslint и prettier по изменённым файлам (simple-git-hooks ставит хук при `npm ci`; без `.git` или без devDependencies установка молча пропускается).
 
+Зависимости и lock-файл: CI и Vercel ставят пакеты npm 10 (Node 22), а локальный npm 11 пишет lock-файл иначе, и `npm ci` в CI падает с «package.json and package-lock.json are not in sync». Поэтому после любого изменения зависимостей: `npx npm@10 install --package-lock-only` и коммит lock-файла.
+
 ## Что где лежит
 
 - `src/app` — только маршруты, layout, `error.tsx`, `global-error.tsx`, `not-found.tsx`.

@@ -44,7 +44,7 @@ npm run db:types       # типы supabase-js из локальной базы �
 - Правила домена и use cases пишутся с тестом (Vitest на фейках) до кода; имя теста — глагол в третьем лице про намерение (`it('rejects an empty title')`).
 - Каждый экран проектируется под бюджет производительности (скил `dev-kit:performance-budget`): оболочка + Suspense, теги кэша, без водопадов, минимум JS.
 - Перед «готово»: `npm run lint && npm run typecheck && npm test && npm run test:e2e`; при изменениях базы — `supabase test db`; `npm run req:check -- --strict`.
-- Миграции, `.env*` и lock-файлы Claude правит только с подтверждением (хук плагина). На коммите lint-staged прогоняет eslint и prettier по изменённым файлам.
+- Миграции, `.env*` и lock-файлы Claude правит только с подтверждением (хук плагина). Зависимости меняются с `npx npm@10 install --package-lock-only` (CI и Vercel — npm 10). На коммите lint-staged прогоняет eslint и prettier по изменённым файлам.
 
 ## Плагин dev-kit
 
