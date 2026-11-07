@@ -1,6 +1,6 @@
 # nextjs-supabase-template
 
-Шаблон проекта с готовой архитектурой, правилами и проверками: Next.js 16 (App Router, Cache Components, React Compiler), Supabase (Auth, Postgres с RLS), Drizzle, строгий TypeScript (`@tsconfig/strictest`), shadcn/ui, next-safe-action + react-hook-form + Zod, nuqs, date-fns, ESLint 10 с проверкой архитектурных границ, Prettier, knip, jscpd, Vitest + Testing Library, Playwright, Lighthouse CI, pgTAP, lint-staged, GitHub Actions и настройки Claude Code с плагином `dev-kit`. С первого коммита весь пайплайн зелёный.
+Шаблон проекта с готовой архитектурой, правилами и проверками: Next.js 16 (App Router, Cache Components, React Compiler), Supabase (Auth, Postgres с RLS), Drizzle, строгий TypeScript (`@tsconfig/strictest`), shadcn/ui, next-safe-action + react-hook-form + Zod, nuqs, Intl-форматы денег и дат с часовым поясом проекта, ESLint 10 с проверкой архитектурных границ, Prettier, knip, jscpd, Vitest + Testing Library, Playwright, Lighthouse CI, pgTAP, lint-staged, GitHub Actions и настройки Claude Code с плагином `dev-kit`. С первого коммита весь пайплайн зелёный.
 
 ## Новый проект из шаблона
 

@@ -10,12 +10,12 @@ import { Toaster } from '@/shared/ui/sonner'
 import { WebVitals } from './web-vitals'
 
 const geistSans = Geist({
-  variable: '--font-geist-sans',
+  variable: '--font-body',
   subsets: ['latin', 'cyrillic'],
 })
 
 const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+  variable: '--font-code',
   subsets: ['latin', 'cyrillic'],
 })
 

@@ -4,13 +4,29 @@ import { expect, test } from '@playwright/test'
 const PUBLIC_PAGES = ['/', '/login']
 const WCAG_AA = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 const COLOR_SCHEMES = ['light', 'dark'] as const
+const TOUCH_TARGET_PX = 44
+const CONTROLS = 'button, input, select, textarea, [role="button"]'
+const DARK_CLASS = /\bdark\b/
 
 for (const path of PUBLIC_PAGES) {
   for (const colorScheme of COLOR_SCHEMES) {
-    test(`${path} meets WCAG 2.2 AA in the ${colorScheme} theme`, async ({ page }) => {
-      await page.emulateMedia({ colorScheme })
+    test(`${path} meets WCAG 2.2 AA in the ${colorScheme} theme`, async ({ page }, testInfo) => {
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
       await page.goto(path)
-      const { violations } = await new AxeBuilder({ page }).withTags(WCAG_AA).analyze()
+      const html = page.locator('html')
+      await (colorScheme === 'dark'
+        ? expect(html).toHaveClass(DARK_CLASS)
+        : expect(html).not.toHaveClass(DARK_CLASS))
+      const { violations, incomplete } = await new AxeBuilder({ page }).withTags(WCAG_AA).analyze()
+      const unchecked = incomplete
+        .filter(({ id }) => id === 'color-contrast')
+        .flatMap(({ nodes }) => nodes.map(({ target }) => target.join(' ')))
+      if (unchecked.length > 0) {
+        testInfo.annotations.push({
+          type: 'контраст не проверен axe (полупрозрачный фон): сверить с design-system.md',
+          description: unchecked.join(', '),
+        })
+      }
       const summary = violations.map(
         ({ id, help, nodes }) => `${id}: ${help} (${String(nodes.length)})`,
       )
@@ -24,5 +40,21 @@ for (const path of PUBLIC_PAGES) {
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     )
     expect(overflow, 'страница шире экрана').toBeLessThanOrEqual(0)
+  })
+
+  test(`${path} has touch targets of at least 44 px on a phone`, async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'размер касания проверяется на телефоне')
+    await page.goto(path)
+    const small = await page.locator(CONTROLS).evaluateAll(
+      (elements, minimum) =>
+        elements
+          .filter((element) => {
+            const box = element.getBoundingClientRect()
+            return box.width > 0 && (box.height < minimum || box.width < minimum)
+          })
+          .map((element) => element.outerHTML.slice(0, 80)),
+      TOUCH_TARGET_PX,
+    )
+    expect(small, 'элементы меньше 44 px').toEqual([])
   })
 }

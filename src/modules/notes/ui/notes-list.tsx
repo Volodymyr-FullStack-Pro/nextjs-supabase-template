@@ -1,7 +1,6 @@
-import { format } from 'date-fns'
-import { ru } from 'date-fns/locale'
 import type { SearchParams } from 'nuqs/server'
 
+import { formatDate } from '@/shared/domain/time'
 import { verifySession } from '@/shared/lib/session'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 
@@ -22,7 +21,7 @@ export async function NotesList({ searchParams }: { searchParams: Promise<Search
               <CardTitle>{note.title}</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground">
-              {format(new Date(note.createdAt), 'd MMMM yyyy', { locale: ru })}
+              {formatDate(note.createdAt)}
             </CardContent>
           </Card>
         </li>
