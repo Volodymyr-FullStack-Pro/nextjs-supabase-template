@@ -48,6 +48,7 @@ coverage/
 
 # Claude Code
 .superpowers/
+docs/_scratch/
 .playwright-mcp/
 .claude/settings.local.json
 
