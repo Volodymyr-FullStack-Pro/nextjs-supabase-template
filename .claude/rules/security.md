@@ -3,7 +3,9 @@ paths:
   - 'src/app/**'
   - 'src/modules/**'
   - 'src/shared/lib/**'
+  - 'src/shared/infrastructure/**'
   - 'src/proxy.ts'
+  - 'next.config.ts'
 ---
 
 # Безопасность данных (Next.js App Router)

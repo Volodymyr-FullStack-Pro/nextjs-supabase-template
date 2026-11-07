@@ -74,7 +74,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_COMMENTS: 'false' # токен PR от Dependabot только на чтение
-          # Для репозиториев организации нужен бесплатный ключ: GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }} # для репозитория организации обязателен (бесплатный ключ gitleaks.io), для личного — пустой
 
   semgrep:
     name: Semgrep
