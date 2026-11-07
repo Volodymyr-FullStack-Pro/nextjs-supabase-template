@@ -98,6 +98,7 @@
     ],
     "*.{md,json,css,yml,yaml}": [
       "prettier --write"
-    ]
+    ],
+    "package-lock.json": "node scripts/check-lock.mjs"
   }
 }
