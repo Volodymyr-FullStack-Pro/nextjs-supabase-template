@@ -15,7 +15,9 @@ paths:
 - Фильтры, период, выбранный объект — в URL через nuqs (`useQueryState` с `shallow: false` и `limitUrlUpdates: debounce(...)` для серверных перечитываний; loader на сервере). Глобального стора нет, пока нет доказанной нужды.
 - Без водопадов: независимые запросы — `Promise.all`; в клиент передаются только нужные поля.
 - Даты — date-fns с локалью `ru`; суммы — `formatMoney` из `src/shared/domain/money.ts`.
-- Тема — класс `dark` (next-themes); цвета только через токены из `src/app/globals.css`, никаких инлайновых цветов.
-- Доступность: семантические теги, `FieldLabel` у каждого поля, `aria-invalid` и `FieldError`, фокус и клавиатура работают.
+- Дизайн-система — `docs/design/design-system.md` (выбор заказчика, роли цветов, шрифт, радиусы, состояния); значения живут токенами в `src/app/globals.css`, тема — класс `dark` (next-themes). Цвет значением в коде (hex, rgb, hsl, oklch) — ошибка линтера; новый цвет — сначала роль в дизайн-системе и токен. Акцент — только главное действие.
+- У экрана с данными есть состояния загрузки (скелетон), пусто, ошибки, нет прав; у кнопки — фокус, занята, недоступна.
+- Доступность WCAG 2.2 AA: семантические теги, `FieldLabel` у каждого поля, `aria-invalid` и `FieldError`, видимый фокус, клавиатура, смысл не только цветом, касание ≥ 44 px на телефоне. Автопроверка — `tests/e2e/ui-quality.spec.ts` (axe в светлой и тёмной теме, без горизонтальной прокрутки); новую страницу добавить в его список.
+- Каждый экран проверяется на телефоне 390 px (iPhone Safari) и компьютере 1440 px (Chrome): e2e идёт в обоих проектах Playwright, визуальная проверка перед остановкой задачи — тоже.
 
-Подробно: скилы `vercel-react-best-practices`, `vercel-composition-patterns`, `web-design-guidelines`, `dev-kit:performance-budget`.
+Подробно: скилы `dev-kit:design-system`, `frontend-design`, `web-design-guidelines`, `vercel-react-best-practices`, `vercel-composition-patterns`, `dev-kit:performance-budget`.

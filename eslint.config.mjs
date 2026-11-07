@@ -358,6 +358,17 @@ const codeStyleTsConfig = {
   },
 }
 
+// Цвета — только токены дизайн-системы (src/app/globals.css, docs/design/design-system.md): hex и rgb/hsl/oklch в коде — ошибка
+const COLOR_MESSAGE = 'цвет только токеном дизайн-системы (globals.css), не значением в коде'
+const HEX_COLOR = '/#[0-9a-fA-F]{3,8}(?![0-9a-zA-Z])/'
+const FUNCTION_COLOR = '/(?:rgba?|hsla?|oklch)\\(/'
+const COLOR_LITERAL_RULES = [
+  { selector: `Literal[value=${HEX_COLOR}]`, message: COLOR_MESSAGE },
+  { selector: `TemplateElement[value.raw=${HEX_COLOR}]`, message: COLOR_MESSAGE },
+  { selector: `Literal[value=${FUNCTION_COLOR}]`, message: COLOR_MESSAGE },
+  { selector: `TemplateElement[value.raw=${FUNCTION_COLOR}]`, message: COLOR_MESSAGE },
+]
+
 // unknown и as — только на границе с внешними данными (infrastructure, shared/lib, app/api, proxy): дальше данные уже прошли Zod
 const boundaryOnlyTypesConfig = {
   files: ['src/**/*.{ts,tsx}'],
@@ -377,6 +388,7 @@ const boundaryOnlyTypesConfig = {
         message:
           'unknown только на границе с внешними данными (infrastructure, shared/lib, app/api): здесь данные уже прошли Zod',
       },
+      ...COLOR_LITERAL_RULES,
     ],
     '@typescript-eslint/consistent-type-assertions': ['error', { assertionStyle: 'never' }],
   },

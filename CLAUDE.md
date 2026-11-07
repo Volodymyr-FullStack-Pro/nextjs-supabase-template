@@ -8,6 +8,7 @@
 - [docs/knowledge/requirements.md](docs/knowledge/requirements.md) — реестр требований заказчика: каждый ответ и решение, статус, раздел спецификации.
 - [docs/knowledge/decisions.md](docs/knowledge/decisions.md) — журнал решений; новое решение — строка D-NNN.
 - [docs/knowledge/open-questions.md](docs/knowledge/open-questions.md) — что ещё не решено.
+- [docs/design/design-system.md](docs/design/design-system.md) — дизайн-система, выбранная заказчиком: цвета, шрифт, состояния, доступность.
 - [docs/roadmap.md](docs/roadmap.md) — «Сейчас» и спринты с блоками; блок — папка `docs/blocks/<B01-имя>/` (`README.md` и `tasks.md`).
 
 ## Структура
