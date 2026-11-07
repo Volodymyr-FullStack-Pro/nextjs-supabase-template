@@ -13,7 +13,7 @@
 
 ## Структура
 
-`src/app` — только маршруты и Suspense. `src/modules/<домен>/{domain,application,infrastructure,ui}` + `server.ts` — домены. `src/shared/{domain,infrastructure,lib,ui}` — общее. Зависимости только внутрь (линтер границ). Новый модуль: `npm run new:module <имя>`.
+`src/app` — только маршруты и Suspense. `src/modules/<домен>/{domain,application,infrastructure,ui}` + `server.ts` — домены. `src/shared/{domain,infrastructure,lib,ui}` — общее. Зависимости только внутрь (линтер границ). Новый модуль: `npm run new:module <модуль> <запись>`.
 
 ## Команды
 
@@ -27,7 +27,7 @@ npm run perf           # Lighthouse по бюджету (после build); npm 
 npm run knip           # мёртвый код и зависимости
 npm run jscpd          # дубли
 npm run req:check      # реестр требований заказчика: номера, статусы, непокрытые требования
-npm run new:module X   # каркас модуля
+npm run new:module businesses business   # каркас модуля: имя модуля и одной записи
 npm run build
 supabase start         # локальный Supabase; supabase test db — pgTAP; supabase db advisors --local — проверки
 npm run db:generate    # SQL из src/shared/infrastructure/db/schema.ts в drizzle/ (для сверки; миграции — в supabase/migrations)

@@ -14,7 +14,7 @@ supabase start               # локальный Supabase (нужен Supabase 
 npm run dev
 ```
 
-Затем: заменить `<Проект>` в `CLAUDE.md` и `docs/knowledge/`, записать первое решение в `docs/knowledge/decisions.md`, завести первый модуль `npm run new:module <имя>`, при работе с ClickUp переименовать `.claude/rules/clickup.md.example` в `clickup.md`.
+Затем: заменить `<Проект>` в `CLAUDE.md` и `docs/knowledge/`, записать первое решение в `docs/knowledge/decisions.md`, завести первый модуль `npm run new:module <модуль> <запись>`, при работе с ClickUp переименовать `.claude/rules/clickup.md.example` в `clickup.md`.
 
 Безопасность: в Supabase выключить саморегистрацию (Authentication → «Allow new users to sign up» = off; пользователи заводятся приглашением), а если приложение закрыто Cloudflare Access — проверять его JWT в `proxy.ts` или закрыть `*.vercel.app`, иначе периметр обходится (`.claude/rules/security.md`). В репозитории включить оповещения Dependabot и автоматические security-PR (`gh api -X PUT repos/<org>/<проект>/vulnerability-alerts` и `.../automated-security-fixes`), защитить `main` (PR и зелёный CI обязательны). Версия Supabase CLI в `.github/workflows/db.yml` закреплена и должна совпадать с `supabase --version` на машинах разработчиков: обновлять обе вместе.
 
@@ -63,7 +63,7 @@ src/proxy.ts                     обновление сессии и редир
 ### Новый модуль
 
 ```bash
-npm run new:module businesses
+npm run new:module businesses business
 ```
 
 Создаёт `src/modules/businesses/{domain,application,infrastructure,ui}`, `server.ts`, фейк репозитория, тесты домена и use case и страницу `src/app/businesses/page.tsx`. Всё проходит `npm run check` сразу; дальше описываете модель в `domain`, use cases в `application`, запросы в `infrastructure`. Action и форму генератор не создаёт: образец — `src/modules/notes/ui/actions.ts` и `notes-form.tsx`.
@@ -118,7 +118,7 @@ npm run new:module businesses
 | `npm run knip`                                     | неиспользуемые файлы, экспорты, зависимости                                                                     |
 | `npm run jscpd`                                    | дубли кода (порог 0 %)                                                                                          |
 | `npm run req:check`                                | реестр требований заказчика: повторы номеров, статусы, требования без ссылки                                    |
-| `npm run new:module <имя>`                         | каркас модуля по архитектуре                                                                                    |
+| `npm run new:module <модуль> <запись>`             | каркас модуля по архитектуре                                                                                    |
 | `npm run db:generate`                              | SQL из схемы Drizzle в `drizzle/` (папка в .gitignore) для сверки с `supabase/migrations`                       |
 | `npm run db:types`                                 | типы supabase-js из локальной базы → `src/shared/infrastructure/supabase/types.ts`                              |
 | `npm run db:studio`                                | Drizzle Studio                                                                                                  |

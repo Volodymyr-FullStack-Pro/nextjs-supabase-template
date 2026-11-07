@@ -16,7 +16,7 @@
 1. Два проекта Supabase: staging и production; в production включить PITR и выключить саморегистрацию.
 2. Vercel: Settings → Environments → Production → Branch Tracking — ветка `production`; домен staging назначить на ветку `main`; переменные окружения задать отдельно для Preview и Production.
 3. GitHub: защитить `main` и `production` (только PR, зелёный CI); Environment `production` с обязательным подтверждением.
-4. Sentry подключить до первого выпуска в production.
+4. Sentry подключить до первого выпуска в production. Логи — одна строка JSON на событие (`{ type, …, durationMs }`) через `console.info` / `console.error`, без персональных данных, сумм и токенов: так их читают Vercel и поиск по логам.
 
 ## Миграции
 
