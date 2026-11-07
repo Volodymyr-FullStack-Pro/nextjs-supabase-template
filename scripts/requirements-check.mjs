@@ -13,7 +13,7 @@ const SKIP_DIRECTORIES = new Set([
   'playwright-report',
   'test-results',
 ])
-const DEFAULT_SCAN = ['docs/roadmap.md', 'docs/superpowers/plans', 'tests', 'src']
+const DEFAULT_SCAN = ['docs/roadmap.md', 'docs/blocks', 'tests', 'src']
 
 const args = process.argv.slice(2)
 const flag = (name) => args.includes(name)

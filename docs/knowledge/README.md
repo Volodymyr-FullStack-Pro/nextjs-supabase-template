@@ -6,7 +6,7 @@
 - [decisions.md](decisions.md) — индекс решений (одна строка на решение); крупные решения — ADR в [decisions/](decisions/) с контекстом, альтернативами и последствиями.
 - Архитектура и правила кода — README репозитория (раздел «Архитектура») и `.claude/rules/`.
 - [open-questions.md](open-questions.md) — что ещё не решено и где это спрашивается.
-- [../roadmap.md](../roadmap.md) — спринты и эпики.
+- [../roadmap.md](../roadmap.md) — где мы сейчас, спринты и блоки; блоки — [../blocks/](../blocks/); понятия — [../glossary.md](../glossary.md).
 
 ## Статус на <дата>
 
@@ -25,7 +25,7 @@
 | `src/shared`                            | domain (деньги, Result), infrastructure, lib, ui   |
 | `supabase/migrations`, `supabase/tests` | SQL-миграции (источник правды) и pgTAP             |
 | `tests/unit`, `tests/e2e`               | Vitest и Playwright                                |
-| `docs/superpowers`                      | спецификации и планы                               |
+| `docs/roadmap.md`, `docs/blocks`        | поставка: спринты, блоки, задачи                   |
 
 ## Люди
 

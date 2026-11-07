@@ -135,7 +135,7 @@ npm run new:module businesses
 - `tests/unit` (зеркалит `src`), `tests/e2e`.
 - `scripts/` — `new-module.mjs` (каркас модуля), `requirements-check.mjs` (реестр требований), `bundle-budget.mjs` (бюджет JS), `check-lock.mjs` (lock-файл для npm 10).
 - `.claude/` — `settings.json` (маркетплейс `claude-kit`, плагин `dev-kit`, запреты), `rules/` (архитектура, безопасность, база, интерфейс, тесты, документация).
-- `docs/knowledge` — статус, реестр требований заказчика (`requirements.md`), индекс решений (`decisions.md`) и ADR крупных решений (`decisions/D-NNN-*.md`), открытые вопросы; `docs/roadmap.md`; `docs/superpowers` — спецификации и планы.
+- `docs/knowledge` — статус, реестр требований заказчика (`requirements.md`), индекс решений (`decisions.md`) и ADR крупных решений (`decisions/D-NNN-*.md`), открытые вопросы; `docs/roadmap.md` и `docs/blocks/` — поставка: спринты, блоки, задачи; `docs/glossary.md` — понятия.
 - `.github/workflows` — `ci.yml` (lint, typecheck, тесты, knip, jscpd, build, e2e, Lighthouse, gitleaks, Semgrep), `db.yml` (advisors + pgTAP при изменениях базы).
 
 ## Работа с Claude Code
@@ -143,7 +143,7 @@ npm run new:module businesses
 Полное руководство по системе разработки (новая машина, новый проект, путь задачи, сессии и чистый контекст, на что смотреть, как улучшать) — [claude-kit/docs/GUIDE.md](https://github.com/Volodymyr-FullStack-Pro/claude-kit/blob/main/docs/GUIDE.md).
 
 - В `.claude/settings.json` записаны маркетплейс `Volodymyr-FullStack-Pro/claude-kit` и плагин `dev-kit@claude-kit`: после доверия папке Claude Code предложит его установить. Скилы плагина: `clean-layers` (архитектура), `code-style`, `performance-budget`, `nextjs-data-security`, `supabase-rls-drizzle`, `money-decimal`, `test-layers`, `review-checklist`, `requirements-register`, `clickup-card`; команды `/dev-kit:handoff`, `/dev-kit:resume`; хуки форматирования, проверки типов и защиты `.env`/миграций.
-- Правила проекта — `.claude/rules/*.md` (подключаются по путям файлов), процесс — `CLAUDE.md`: эпик из roadmap → `brainstorming` → спецификация → `writing-plans` → `executing-plans` → `/simplify` → `/code-review` → `/security-review` для auth, денег и миграций → PR.
+- Правила проекта — `.claude/rules/*.md` (подключаются по путям файлов), процесс — `CLAUDE.md`: блок из roadmap → `README.md` и `tasks.md` блока (крупному — `spec.md`) → задача за задачей с разбором изменений `/dev-kit:explain` и вашим «ок» → `/dev-kit:task-done` → `/simplify` → `/code-review` → `/security-review` для auth, денег и миграций → PR.
 - Ответы и решения заказчика — в реестр `docs/knowledge/requirements.md` в тот же день; задачи и тесты ссылаются на его номера; `npm run req:check` следит за трассировкой.
 
 ## Что добавлять по мере надобности
