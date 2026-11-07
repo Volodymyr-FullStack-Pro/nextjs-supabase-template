@@ -178,10 +178,36 @@ const boundariesConfig = {
 
 // Стиль кода (см. .claude/rules/code-style.md): понятные имена, без магических чисел, простые функции.
 // Что можно проверить машиной — проверяет линтер; принципы DRY/KISS/YAGNI — в правилах и ревью.
+
+// Код объясняет себя сам: комментарии запрещены, кроме директив инструментов (eslint, vitest, ts).
+const DIRECTIVE = /^(eslint-|@vitest-environment|@ts-expect-error|@ts-ignore|@jsx|global\s|@type\s)/
+const noComments = {
+  meta: {
+    type: 'suggestion',
+    docs: { description: 'Смысл выражается именами и структурой, а не комментариями' },
+    messages: { comment: 'Комментарий: вынесите смысл в имя функции, переменной или в тест' },
+    schema: [],
+  },
+  create(context) {
+    return {
+      Program() {
+        for (const comment of context.sourceCode.getAllComments()) {
+          if (comment.type === 'Shebang' || comment.type === 'Hashbang') continue
+          if (DIRECTIVE.test(comment.value.trim())) continue
+          context.report({ loc: comment.loc, messageId: 'comment' })
+        }
+      },
+    }
+  },
+}
+
 const codeStyleConfig = {
-  files: ['src/**/*.{ts,tsx}', 'scripts/**/*.mjs'],
-  plugins: { unicorn, sonarjs },
+  files: ['src/**/*.{ts,tsx}', 'scripts/**/*.mjs', 'tests/**/*.{ts,tsx}'],
+  ignores: ['src/shared/ui/*.tsx'], // компоненты shadcn — сторонний код, не правим
+  plugins: { unicorn, sonarjs, local: { rules: { 'no-comments': noComments } } },
   rules: {
+    'local/no-comments': 'error',
+    'max-lines': ['error', { max: 200, skipBlankLines: true, skipComments: true }],
     // простота
     complexity: ['error', 10],
     'max-depth': ['error', 3],

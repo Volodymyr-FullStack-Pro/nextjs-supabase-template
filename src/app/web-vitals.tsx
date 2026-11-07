@@ -5,16 +5,11 @@ import { useReportWebVitals } from 'next/web-vitals'
 const METRICS = new Set(['CLS', 'FCP', 'INP', 'LCP', 'TTFB'])
 const RATINGS = new Set(['good', 'needs-improvement', 'poor'])
 
-/** Next типизирует метрику как any; описываем то, что реально присылает web-vitals. */
 type ReportedMetric = { id: string; name: string; value: number; rating?: string }
 
-/**
- * Собирает Web Vitals реальных пользователей: в dev — в консоль, в проде — beacon на /api/vitals.
- * Без zod на клиенте (это +30 КБ на каждый маршрут): проверка схемой — на сервере.
- */
 export function WebVitals() {
   useReportWebVitals((metric: ReportedMetric) => {
-    if (!METRICS.has(metric.name) || !metric.rating || !RATINGS.has(metric.rating)) return // служебные метрики Next.js не шлём
+    if (!METRICS.has(metric.name) || !metric.rating || !RATINGS.has(metric.rating)) return
     const body = {
       id: metric.id,
       name: metric.name,

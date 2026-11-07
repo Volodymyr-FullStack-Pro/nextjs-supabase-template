@@ -3,15 +3,11 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { env } from '@/shared/infrastructure/env'
 import type { Database } from '@/shared/infrastructure/supabase/types'
 
-const PUBLIC_PATHS = ['/', '/login', '/api/vitals'] // метрики шлют и неавторизованные посетители
+const PUBLIC_PATHS = ['/', '/login', '/api/vitals']
 
-/**
- * Обновляет сессию Supabase в cookie и уводит неавторизованных со служебных страниц на /login.
- * Это не единственная защита: права проверяет каждый use case и каждый Server Action (authActionClient).
- */
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request })
-  if (!env.hasSupabase()) return response // шаблон без настроенного Supabase: публичные страницы работают
+  if (!env.hasSupabase()) return response
 
   const supabase = createServerClient<Database>(env.supabaseUrl(), env.supabasePublishableKey(), {
     cookies: {
@@ -36,7 +32,7 @@ export async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     const redirect = NextResponse.redirect(url)
-    for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie) // обновлённая сессия не теряется
+    for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie)
     return redirect
   }
   return response

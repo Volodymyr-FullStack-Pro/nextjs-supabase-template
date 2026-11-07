@@ -3,7 +3,6 @@ import type { Note } from '../domain/note'
 
 type StoredNote = Note & { ownerId: string }
 
-/** In-memory репозиторий для тестов use cases: та же семантика, что у Supabase-реализации (владелец, поиск без `*`, новые сверху), без базы. */
 export function fakeNotesRepository(seed: StoredNote[] = []) {
   const rows: StoredNote[] = [...seed]
   const repository: NotesRepository = {

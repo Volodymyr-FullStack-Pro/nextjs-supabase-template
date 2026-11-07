@@ -1,6 +1,5 @@
 import Link from 'next/link'
 
-/** Публичная страница: без запросов к Supabase, работает и в клоне без .env.local. */
 export default function Home() {
   return (
     <main className="mx-auto flex max-w-xl flex-col gap-6 p-6">

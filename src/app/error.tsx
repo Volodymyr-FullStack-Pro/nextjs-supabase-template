@@ -2,7 +2,6 @@
 
 import { Button } from '@/shared/ui/button'
 
-/** Неожиданные ошибки сегмента. Ожидаемые (валидация, нет прав) приходят из actions в result, не сюда. */
 export default function ErrorPage({
   reset,
 }: {

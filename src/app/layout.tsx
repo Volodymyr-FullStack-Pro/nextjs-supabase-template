@@ -21,7 +21,6 @@ export const metadata: Metadata = {
   description: 'Стартовый проект: Next.js 16, Supabase, Drizzle, строгий TypeScript',
 }
 
-/** Тема через класс (next-themes, см. @custom-variant dark в globals.css), состояние URL (nuqs), уведомления (sonner). */
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html

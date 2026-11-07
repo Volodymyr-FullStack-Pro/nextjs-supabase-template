@@ -5,16 +5,10 @@ import { NoteSchema, type Note } from '../domain/note'
 
 type NoteRow = { id: string; title: string; created_at: string }
 
-/** Строка таблицы → модель домена; проверка схемой ловит расхождение базы и кода на границе. */
 function toNote(row: NoteRow): Note {
   return NoteSchema.parse({ id: row.id, title: row.title, createdAt: row.created_at })
 }
 
-/**
- * Репозиторий на user-scoped клиенте Supabase: RLS ограничивает строки владельцем, фильтр по owner_id
- * дублирует это явно (защита в глубину и понятный план запроса).
- * Поиск: `%`, `_`, `\` экранируются, `*` убирается (PostgREST превращает его в `%`).
- */
 export const supabaseNotesRepository: NotesRepository = {
   async listForUser(userId, filter) {
     const supabase = await createClient()

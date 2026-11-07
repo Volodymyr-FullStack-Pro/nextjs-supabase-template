@@ -1,19 +1,15 @@
 import Decimal from 'decimal.js'
 
-// Деньги: в базе numeric как строка, в расчётах Decimal, number — только для графиков.
 Decimal.set({ precision: 28, rounding: Decimal.ROUND_HALF_EVEN })
 
 export const money = (value: string | Decimal): Decimal => new Decimal(value)
 
-/** Знаков после запятой у денежных сумм (numeric(18, 2) в базе). */
 const MONEY_SCALE = 2
 
-/** Доля инвестора в оценке: valuation × share, два знака после запятой. */
 export function investorShare(valuation: string, share: string): string {
   return money(valuation).times(share).toFixed(MONEY_SCALE)
 }
 
-/** `€4 218 400` для EUR, `1 250 USD` для остальных; минус — U+2212; разделитель тысяч — обычный пробел. */
 export function formatMoney(amount: string, currency = 'EUR'): string {
   const rounded = money(amount).toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN)
   const digits = rounded

@@ -1,7 +1,4 @@
 #!/usr/bin/env node
-// Проверка реестра требований заказчика (docs/knowledge/requirements.md):
-// номера уникальны, статусы из списка, принятые требования упомянуты в roadmap, планах, тестах или коде.
-// Запуск: npm run req:check [-- --register <файл>] [--scan <путь>...] [--strict]
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -25,7 +22,7 @@ const values = (name) => {
   for (const [index, argument] of args.entries()) {
     if (argument !== name) continue
     for (let next = index + 1; next < args.length && !args[next].startsWith('--'); next += 1) {
-      out.push(args[next]) // все значения до следующего флага
+      out.push(args[next])
     }
   }
   return out
@@ -41,7 +38,7 @@ for (const line of readFileSync(register, 'utf8').split('\n')) {
   const cells = line.split('|').map((cell) => cell.trim())
   const headerIndex = cells.findIndex((cell) => cell.startsWith('Статус'))
   if (headerIndex >= 0) {
-    statusIndex = headerIndex // колонка «Статус» берётся из заголовка таблицы; таблиц может быть несколько
+    statusIndex = headerIndex
     continue
   }
   const id = cells[1]

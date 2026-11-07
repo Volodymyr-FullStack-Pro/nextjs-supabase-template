@@ -8,7 +8,6 @@ import { Button } from '@/shared/ui/button'
 import { addNote } from './actions'
 import { CreateNoteInput } from '../domain/note'
 
-/** Форма: react-hook-form + Zod на клиенте, тот же Zod в action; ошибки сервера — в toast, ошибки полей — под полем. */
 export function NotesForm() {
   const { form, action, handleSubmitWithAction, resetFormAndAction } = useHookFormAction(
     addNote,

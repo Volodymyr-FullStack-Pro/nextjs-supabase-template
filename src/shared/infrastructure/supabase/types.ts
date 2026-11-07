@@ -1,4 +1,3 @@
-// Типы схемы для supabase-js. В проекте генерировать: `npm run db:types` (supabase gen types из локальной базы + prettier).
 export type Database = {
   public: {
     Tables: {

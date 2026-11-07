@@ -6,7 +6,6 @@ import { notesSearchParams } from './search-params'
 
 const SEARCH_DEBOUNCE_MS = 300
 
-/** Фильтр живёт в URL (nuqs): ссылку можно скинуть; shallow: false — сервер перечитывает список, debounce бережёт базу. */
 export function NotesSearch() {
   const [search, setSearch] = useQueryState(
     'q',

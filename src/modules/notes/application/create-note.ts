@@ -5,7 +5,6 @@ import type { NotesRepository } from './notes-repository'
 
 export type CreateNoteError = RuleViolationError
 
-/** Use case: правило домена → запись через порт. Владелец берётся из контекста, не из формы. */
 export function makeCreateNote({ notes }: { notes: NotesRepository }) {
   return async (
     input: CreateNoteInput,

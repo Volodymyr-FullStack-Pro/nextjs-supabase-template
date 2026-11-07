@@ -1,7 +1,4 @@
 #!/usr/bin/env node
-// Каркас нового модуля по архитектуре шаблона: domain / application / infrastructure / ui + server.ts,
-// фейк репозитория, тесты домена и use case, тонкая страница. Запуск: npm run new:module <имя-в-kebab-case>
-// Ничего не перезаписывает: если модуль, страница или тесты с таким именем уже есть — отказывается.
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -19,7 +16,6 @@ const moduleRoot = join('src', 'modules', name)
 const pageRoot = join('src', 'app', name)
 const testsRoot = join('tests', 'unit', 'modules', name)
 
-/** Сегмент маршрута с таким именем в src/app, в том числе внутри групп (auth) — иначе Next не соберётся. */
 const routeSegmentExists = (directory) => {
   for (const entry of readdirSync(directory)) {
     const full = join(directory, entry)
@@ -40,13 +36,11 @@ if (taken.length > 0 || routeSegmentExists('src/app')) {
 const files = {
   [`${moduleRoot}/domain/${name}.ts`]: `import { z } from 'zod'
 
-/** Модель домена «${name}»: что система знает об объекте. Не строка таблицы. */
 export const ${Pascal}Schema = z.object({ id: z.string(), name: z.string().min(1) })
 export type ${Pascal} = z.infer<typeof ${Pascal}Schema>
 `,
   [`${moduleRoot}/application/${name}-repository.ts`]: `import type { ${Pascal} } from '../domain/${name}'
 
-/** Порт хранилища: реализуется в infrastructure (Supabase) и в фейке для тестов. */
 export interface ${Pascal}Repository {
   listForUser(userId: string): Promise<${Pascal}[]>
 }
@@ -54,7 +48,6 @@ export interface ${Pascal}Repository {
   [`${moduleRoot}/application/list-${name}.ts`]: `import type { ${Pascal} } from '../domain/${name}'
 import type { ${Pascal}Repository } from './${name}-repository'
 
-/** Use case: без ожидаемых ошибок возвращает значение; с ошибками домена — Result из shared/domain/result. */
 export function makeList${Pascal}({ repository }: { repository: ${Pascal}Repository }) {
   return (ctx: { userId: string }): Promise<${Pascal}[]> => repository.listForUser(ctx.userId)
 }
@@ -62,7 +55,6 @@ export function makeList${Pascal}({ repository }: { repository: ${Pascal}Reposit
   [`${moduleRoot}/infrastructure/${name}-repository.supabase.ts`]: `import 'server-only'
 import type { ${Pascal}Repository } from '../application/${name}-repository'
 
-/** Реализация на user-scoped клиенте Supabase (RLS). Заполните запрос к таблице «${name}» и перевод строк в модель. */
 export const supabase${Pascal}Repository: ${Pascal}Repository = {
   listForUser: () =>
     Promise.reject(new Error('${Pascal}Repository.listForUser: реализуйте запрос к таблице ${name}')),
@@ -73,7 +65,6 @@ import type { ${Pascal} } from '../domain/${name}'
 
 type Stored = ${Pascal} & { ownerId: string }
 
-/** In-memory реализация порта для тестов use cases; повторяет семантику реальной (фильтр по владельцу). */
 export function fake${Pascal}Repository(seed: Stored[] = []) {
   const rows: Stored[] = [...seed]
   const repository: ${Pascal}Repository = {
@@ -87,7 +78,6 @@ export function fake${Pascal}Repository(seed: Stored[] = []) {
 import { makeList${Pascal} } from './application/list-${name}'
 import { supabase${Pascal}Repository } from './infrastructure/${name}-repository.supabase'
 
-/** Точка сборки модуля: use cases с реальными репозиториями. */
 export const ${camel} = {
   list: makeList${Pascal}({ repository: supabase${Pascal}Repository }),
 }
@@ -95,7 +85,6 @@ export const ${camel} = {
   [`${moduleRoot}/ui/${name}-list.tsx`]: `import { verifySession } from '@/shared/lib/session'
 import { ${camel} } from '../server'
 
-/** Динамическая часть страницы (сессия + база): страница оборачивает её в Suspense. */
 export async function ${Pascal}List() {
   const session = await verifySession()
   const items = await ${camel}.list({ userId: session.userId })

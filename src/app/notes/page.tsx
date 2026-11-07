@@ -4,10 +4,6 @@ import { NotesList } from '@/modules/notes/ui/notes-list'
 import { NotesSearch } from '@/modules/notes/ui/notes-search'
 import { NotesTips } from '@/modules/notes/ui/notes-tips'
 
-/**
- * Тонкий маршрут: только композиция. Статическая оболочка (заголовок, подсказки, форма) отдаётся сразу,
- * части, зависящие от пользователя и URL, стримятся внутри Suspense. Права проверяет proxy и каждый action.
- */
 export default function NotesPage({ searchParams }: PageProps<'/notes'>) {
   return (
     <main className="mx-auto flex max-w-xl flex-col gap-6 p-6">

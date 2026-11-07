@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-// Защита от lock-файла, который CI и Vercel (npm 10) не примут: локальный npm 11 пишет его иначе.
-// Запускается lint-staged на коммите package-lock.json; вручную: node scripts/check-lock.mjs [lock-файл]
 import { execFileSync } from 'node:child_process'
 import { cpSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'

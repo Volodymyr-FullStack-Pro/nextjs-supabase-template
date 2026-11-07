@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { notes } from '../server'
 import { loadNotesSearchParams } from './search-params'
 
-/** Динамическая часть страницы: читает сессию и базу, поэтому страница оборачивает её в Suspense (Cache Components). */
 export async function NotesList({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const session = await verifySession()
   const { q: search } = await loadNotesSearchParams(searchParams)

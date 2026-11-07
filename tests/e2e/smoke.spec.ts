@@ -13,8 +13,6 @@ test('login page opens without Supabase configured', async ({ page }) => {
 })
 
 test('proxy is part of the production build', () => {
-  // webServer собирает проект перед тестами. Next.js 16 записывает proxy (runtime nodejs) в
-  // functions-config-manifest.json как "/_middleware"; без src/proxy.ts там пусто и редиректов нет.
   const manifest = JSON.parse(
     readFileSync('.next/server/functions-config-manifest.json', 'utf8'),
   ) as { functions: Record<string, { matchers: { originalSource: string }[] }> }
@@ -24,7 +22,6 @@ test('proxy is part of the production build', () => {
 })
 
 test('serves the home page shell quickly', async ({ page }) => {
-  // Статическая оболочка (Cache Components) должна отдаваться почти мгновенно; бюджет полный — в lighthouserc.cjs.
   await page.goto('/')
   const ttfb = await page.evaluate(
     () =>

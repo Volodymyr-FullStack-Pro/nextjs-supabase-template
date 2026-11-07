@@ -1,15 +1,10 @@
 #!/usr/bin/env node
-// Бюджет JavaScript на маршрут: сумма gzip-размеров скриптов из предрендеренного HTML каждой страницы
-// (.next/server/app/*.html), без nomodule-полифиллов и без префетча ссылок (в отличие от Lighthouse).
-// Два порога: лимит (граница) и база perf-baseline.json (храповик: рост относительно базы — тоже ошибка,
-// пока базу не обновили осознанно). Лимит — не цель: цель — не ухудшать, а улучшать.
-// Запуск после next build: npm run budget [-- --limit 300] [--update-baseline]
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { gzipSync } from 'node:zlib'
 
 const DEFAULT_LIMIT_KB = 300
-const TOLERANCE_KB = 2 // шум минификации; всё, что больше, — рост
+const TOLERANCE_KB = 2
 const BYTES_IN_KB = 1024
 const APP_DIRECTORY = '.next/server/app'
 const ROUTES_MANIFEST = '.next/server/app-paths-manifest.json'
@@ -50,7 +45,6 @@ const walk = (directory, prefix = '') => {
 }
 walk(APP_DIRECTORY)
 
-/** Теги <script src> страницы без nomodule (полифилл для старых браузеров современные не грузят). */
 const scriptUrls = (html) => {
   const tags = html.match(/<script\b[^>]*\bsrc="\/_next\/static\/[^"]+\.js"[^>]*>/g) ?? []
   const urls = tags
@@ -86,7 +80,6 @@ for (const { route, file } of routes.sort((left, right) => left.route.localeComp
   )
 }
 
-// Маршруты без предрендеренного HTML (полностью динамические) в отчёт не попадают — о них предупреждаем.
 if (existsSync(ROUTES_MANIFEST)) {
   const measured = new Set(routes.map(({ route }) => route))
   const pages = Object.keys(JSON.parse(readFileSync(ROUTES_MANIFEST, 'utf8')))

@@ -5,7 +5,6 @@ const MAX_PATH_LENGTH = 500
 const METRICS = ['CLS', 'FCP', 'INP', 'LCP', 'TTFB'] as const
 const RATINGS = ['good', 'needs-improvement', 'poor'] as const
 
-/** Схема для сервера (/api/vitals): проверка входа от браузера. */
 export const WebVitalSchema = z.object({
   id: z.string().max(MAX_ID_LENGTH),
   name: z.enum(METRICS),
