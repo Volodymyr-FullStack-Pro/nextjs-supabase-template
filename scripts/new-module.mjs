@@ -53,6 +53,7 @@ export function makeList${Pascal}({ repository }: { repository: ${Pascal}Reposit
 }
 `,
   [`${moduleRoot}/infrastructure/${name}-repository.supabase.ts`]: `import 'server-only'
+
 import type { ${Pascal}Repository } from '../application/${name}-repository'
 
 export const supabase${Pascal}Repository: ${Pascal}Repository = {
@@ -75,6 +76,7 @@ export function fake${Pascal}Repository(seed: Stored[] = []) {
 }
 `,
   [`${moduleRoot}/server.ts`]: `import 'server-only'
+
 import { makeList${Pascal} } from './application/list-${name}'
 import { supabase${Pascal}Repository } from './infrastructure/${name}-repository.supabase'
 
@@ -83,6 +85,7 @@ export const ${camel} = {
 }
 `,
   [`${moduleRoot}/ui/${name}-list.tsx`]: `import { verifySession } from '@/shared/lib/session'
+
 import { ${camel} } from '../server'
 
 export async function ${Pascal}List() {
@@ -99,6 +102,7 @@ export async function ${Pascal}List() {
 }
 `,
   [`${pageRoot}/page.tsx`]: `import { Suspense } from 'react'
+
 import { ${Pascal}List } from '@/modules/${name}/ui/${name}-list'
 
 export default function ${Pascal}Page() {
@@ -113,6 +117,7 @@ export default function ${Pascal}Page() {
 }
 `,
   [`${testsRoot}/${name}.test.ts`]: `import { describe, expect, it } from 'vitest'
+
 import { ${Pascal}Schema } from '@/modules/${name}/domain/${name}'
 
 describe('${Pascal}Schema', () => {
@@ -126,6 +131,7 @@ describe('${Pascal}Schema', () => {
 })
 `,
   [`${testsRoot}/list-${name}.test.ts`]: `import { describe, expect, it } from 'vitest'
+
 import { makeList${Pascal} } from '@/modules/${name}/application/list-${name}'
 import { fake${Pascal}Repository } from '@/modules/${name}/infrastructure/${name}-repository.fake'
 
