@@ -42,7 +42,7 @@ npm run db:types       # типы supabase-js из локальной базы �
 - Путь задачи — скил `dev-kit:delivery`. Claude проходит шаги сам: ветка блока → тест → код → `/simplify` → `/code-review` (`/security-review` для auth, денег, миграций) → `npm run check` → `npm run test:e2e` → визуальная проверка через Playwright MCP → `/dev-kit:explain` → **стоп до «ок» человека** → на «ок» сам `/dev-kit:task-done` (закрывает и подзадачу ClickUp). Следующая задача — по слову человека.
 - **Готово:** `npm run check` и `npm run test:e2e` зелёные; при изменениях базы — `supabase test db`.
 - Процесс улучшается по ходу: правило, хук, скил или проверка, которые мешают или не приносят пользы, не обходятся молча — Claude называет это в отчёте и предлагает изменение; принятое — строка D-NNN и правка шаблона или плагина `dev-kit`.
-- Миграции, `.env*` и lock-файлы Claude правит только с подтверждением (хук плагина). Зависимости — `npx npm@10 install --package-lock-only` (CI и Vercel — npm 10).
+- Миграции, `.env*` и lock-файлы Claude правит только с подтверждением (хук плагина). Node 24 и npm 11 везде — локально, в CI и на Vercel; lock-файл пишет обычный `npm install`, на коммите его проверяет `scripts/check-lock.mjs`.
 
 ## Плагин dev-kit
 

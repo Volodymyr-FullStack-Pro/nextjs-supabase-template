@@ -4,7 +4,7 @@ import { cpSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-const CI_NPM = 'npm@10'
+const CI_NPM = 'npm@11'
 const lockFile = process.argv[2] ?? 'package-lock.json'
 const workDir = mkdtempSync(join(tmpdir(), 'lock-check-'))
 try {

@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
+import { APP_LOCALE, APP_TIME_ZONE } from './src/shared/domain/time'
+
 const baseURL = process.env['PLAYWRIGHT_BASE_URL'] ?? 'http://localhost:3000'
 const isCI = Boolean(process.env['CI'])
 
@@ -14,7 +16,8 @@ export default defineConfig({
   reporter: isCI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL,
-    locale: 'ru-RU',
+    locale: APP_LOCALE,
+    timezoneId: APP_TIME_ZONE,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },

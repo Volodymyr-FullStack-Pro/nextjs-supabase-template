@@ -258,14 +258,14 @@ const codeStyleConfig = {
     'react/no-danger': 'error',
     'no-eval': 'error',
     'no-await-in-loop': 'error',
-    'no-empty': ['error', { allowEmptyCatch: true }], // пустой catch — только cookie setAll серверного клиента Supabase
+    'no-empty': ['error', { allowEmptyCatch: false }],
     'sonarjs/no-identical-functions': 'error',
     'sonarjs/no-collapsible-if': 'error',
     'sonarjs/prefer-immediate-return': 'error',
     'sonarjs/no-redundant-boolean': 'error',
     'sonarjs/no-inverted-boolean-check': 'error',
     // имена
-    'id-length': ['error', { min: 2, exceptions: ['_', 'z'], properties: 'never' }], // ключи данных (q в URL) не считаем
+    'id-length': ['error', { min: 2, exceptions: ['_', 'z', 't'], properties: 'never' }], // ключи данных (q в URL) не считаем
     'unicorn/filename-case': ['error', { case: 'kebabCase' }],
     'unicorn/name-replacements': [
       'error',
@@ -349,6 +349,8 @@ const codeStyleTsConfig = {
       { selector: 'import', format: null },
     ],
     '@typescript-eslint/prefer-readonly': 'error',
+    '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
+    '@typescript-eslint/no-confusing-void-expression': ['error', { ignoreArrowShorthand: true }],
     '@typescript-eslint/consistent-type-imports': [
       'error',
       { prefer: 'type-imports', fixStyle: 'inline-type-imports' },
@@ -394,6 +396,47 @@ const boundaryOnlyTypesConfig = {
   },
 }
 
+// Доступность разметки: набор strict из jsx-a11y (плагин подключает eslint-config-next), кроме стороннего shadcn
+const a11yConfig = {
+  files: ['src/**/*.tsx'],
+  ignores: ['src/shared/ui/**', '!src/shared/ui/form/**'],
+  rules: Object.fromEntries(
+    [
+      'alt-text',
+      'anchor-has-content',
+      'anchor-is-valid',
+      'aria-activedescendant-has-tabindex',
+      'aria-props',
+      'aria-proptypes',
+      'aria-role',
+      'aria-unsupported-elements',
+      'autocomplete-valid',
+      'click-events-have-key-events',
+      'heading-has-content',
+      'html-has-lang',
+      'iframe-has-title',
+      'img-redundant-alt',
+      'interactive-supports-focus',
+      'label-has-associated-control',
+      'media-has-caption',
+      'mouse-events-have-key-events',
+      'no-access-key',
+      'no-autofocus',
+      'no-distracting-elements',
+      'no-interactive-element-to-noninteractive-role',
+      'no-noninteractive-element-interactions',
+      'no-noninteractive-element-to-interactive-role',
+      'no-noninteractive-tabindex',
+      'no-redundant-roles',
+      'no-static-element-interactions',
+      'role-has-required-aria-props',
+      'role-supports-aria-props',
+      'scope',
+      'tabindex-no-positive',
+    ].map((rule) => [`jsx-a11y/${rule}`, 'error']),
+  ),
+}
+
 // Компоненты shadcn (npx shadcn add) — сторонний код: границы проверяем, строгие типовые и стилевые правила — нет.
 const vendorUiConfig = {
   files: ['src/shared/ui/**/*.{ts,tsx}'],
@@ -428,6 +471,7 @@ export default defineConfig([
   testsConfig,
   codeStyleTsConfig,
   boundaryOnlyTypesConfig,
+  a11yConfig,
   vendorUiConfig,
   {
     files: ['**/*.{ts,tsx,mts}'],
@@ -437,7 +481,7 @@ export default defineConfig([
   },
   {
     // Конфиги и тесты — без типо-зависимых правил: они вне основного tsconfig-проекта.
-    files: ['**/*.{js,mjs,cjs}', '*.config.{ts,mts}', 'tests/**'],
+    files: ['**/*.{js,mjs,cjs}', '*.config.{ts,mts}'],
     ...tseslint.configs.disableTypeChecked,
   },
   eslintConfigPrettier,

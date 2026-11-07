@@ -17,6 +17,7 @@ export async function createClient() {
       setAll(cookiesToSet) {
         try {
           for (const { name, value, options } of cookiesToSet) cookieStore.set(name, value, options)
+          // eslint-disable-next-line no-empty -- Next не даёт писать cookies из серверного компонента; proxy.ts обновит сессию
         } catch {}
       },
     },

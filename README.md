@@ -1,13 +1,13 @@
 # nextjs-supabase-template
 
-Шаблон проекта с готовой архитектурой, правилами и проверками: Next.js 16 (App Router, Cache Components, React Compiler), Supabase (Auth, Postgres с RLS), Drizzle, строгий TypeScript (`@tsconfig/strictest`), shadcn/ui, next-safe-action + react-hook-form + Zod, nuqs, date-fns, ESLint 10 с проверкой архитектурных границ, Prettier, knip, jscpd, Vitest + Testing Library, Playwright, Lighthouse CI, pgTAP, lint-staged, GitHub Actions и настройки Claude Code с плагином `dev-kit`. С первого коммита весь пайплайн зелёный.
+Шаблон проекта с готовой архитектурой, правилами и проверками: Next.js 16 (App Router, Cache Components, React Compiler), Supabase (Auth, Postgres с RLS), Drizzle, строгий TypeScript (`@tsconfig/strictest`), shadcn/ui, next-safe-action + react-hook-form + Zod, nuqs, Intl-форматы денег и дат с часовым поясом проекта, ESLint 10 с проверкой архитектурных границ, Prettier, knip, jscpd, Vitest + Testing Library, Playwright, Lighthouse CI, pgTAP, lint-staged, GitHub Actions и настройки Claude Code с плагином `dev-kit`. С первого коммита весь пайплайн зелёный.
 
 ## Новый проект из шаблона
 
 ```bash
 gh repo create <org>/<проект> --template Volodymyr-FullStack-Pro/nextjs-supabase-template --private --clone
 cd <проект>
-nvm use                      # Node 22 из .nvmrc
+nvm use                      # Node 24 из .nvmrc
 npm ci                       # ставит зависимости и git-хуки
 cp .env.example .env.local   # заполнить из Supabase → Project Settings → API
 supabase start               # локальный Supabase (нужен Supabase CLI); supabase status → ключи в .env.local
@@ -126,7 +126,7 @@ npm run new:module businesses
 
 На коммите lint-staged прогоняет eslint и prettier по изменённым файлам (simple-git-hooks ставит хук при `npm ci`; без `.git` или без devDependencies установка молча пропускается).
 
-Зависимости и lock-файл: CI и Vercel ставят пакеты npm 10 (Node 22), а локальный npm 11 пишет lock-файл иначе, и `npm ci` в CI падает с «package.json and package-lock.json are not in sync». Поэтому после любого изменения зависимостей: `npx npm@10 install --package-lock-only` и коммит lock-файла. На коммите lint-staged проверяет lock-файл сухим прогоном `npm@10 ci` (`scripts/check-lock.mjs`) и не даст закоммитить несовместимый.
+Зависимости и lock-файл: Node 24 и встроенный в него npm 11 — локально, в CI (`.nvmrc`) и на Vercel (`engines.node: 24.x`); lock-файл пишет обычный `npm install`. На коммите lint-staged проверяет его сухим прогоном `npm@11 ci` (`scripts/check-lock.mjs`), чтобы CI не упал на рассинхронизации.
 
 ## Что где лежит
 
@@ -135,7 +135,7 @@ npm run new:module businesses
 - `src/shared/ui` — shadcn/ui: добавлять `npx shadcn@latest add <имя>` и сразу `npm run format`; к этим файлам применяются только границы и базовые правила Next; типозависимые и стилевые правила, `no-non-null-assertion`, `no-explicit-any` выключены (сторонний код); локальные правки: `field.tsx`, `sonner.tsx`, `card.tsx`. Свой код здесь — `form/text-field.tsx`, к нему правила применяются.
 - `supabase/migrations` — источник правды для базы; `supabase/tests` — pgTAP; `supabase/config.toml` — локальный стек.
 - `tests/unit` (зеркалит `src`), `tests/e2e`.
-- `scripts/` — `new-module.mjs` (каркас модуля), `requirements-check.mjs` (реестр требований), `bundle-budget.mjs` (бюджет JS), `check-lock.mjs` (lock-файл для npm 10).
+- `scripts/` — `new-module.mjs` (каркас модуля), `requirements-check.mjs` (реестр требований), `bundle-budget.mjs` (бюджет JS), `check-lock.mjs` (lock-файл для npm 11, как в CI и на Vercel).
 - `.claude/` — `settings.json` (маркетплейс `claude-kit`, плагин `dev-kit`, запреты), `rules/` (архитектура, безопасность, база, интерфейс, тесты, документация).
 - `docs/knowledge` — статус, реестр требований заказчика (`requirements.md`), индекс решений (`decisions.md`) и ADR крупных решений (`decisions/D-NNN-*.md`), открытые вопросы; `docs/roadmap.md` и `docs/blocks/` — поставка: спринты, блоки, задачи; `docs/glossary.md` — понятия.
 - `.github/workflows` — `ci.yml` (lint, typecheck, тесты, knip, jscpd, build, e2e, Lighthouse, gitleaks, Semgrep), `db.yml` (advisors + pgTAP при изменениях базы).
