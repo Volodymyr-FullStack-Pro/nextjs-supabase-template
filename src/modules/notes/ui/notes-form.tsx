@@ -28,7 +28,7 @@ export function NotesForm() {
   )
 
   return (
-    <form onSubmit={(e) => void handleSubmitWithAction(e)} className="flex flex-col gap-4">
+    <form onSubmit={(event) => void handleSubmitWithAction(event)} className="flex flex-col gap-4">
       <TextField
         control={form.control}
         name="title"

@@ -12,7 +12,7 @@ if (!name || !/^[a-z][a-z0-9-]*$/.test(name)) {
   )
   process.exit(1)
 }
-const Pascal = name.replace(/(^|-)([a-z0-9])/g, (_, __, c) => c.toUpperCase())
+const Pascal = name.replace(/(^|-)([a-z0-9])/g, (_, __, letter) => letter.toUpperCase())
 const camel = Pascal[0].toLowerCase() + Pascal.slice(1)
 const root = join('src', 'modules', name)
 if (existsSync(root)) {
@@ -38,8 +38,8 @@ export interface ${Pascal}Repository {
 import type { ${Pascal}Repository } from './${name}-repository'
 
 /** Use case: без ожидаемых ошибок возвращает значение; с ошибками домена — Result из shared/domain/result. */
-export function makeList${Pascal}({ repo }: { repo: ${Pascal}Repository }) {
-  return (ctx: { userId: string }): Promise<${Pascal}[]> => repo.listForUser(ctx.userId)
+export function makeList${Pascal}({ repository }: { repository: Repository }) {
+  return (ctx: { userId: string }): Promise<${Pascal}[]> => repository.listForUser(ctx.userId)
 }
 `,
   [`${root}/infrastructure/${name}-repository.supabase.ts`]: `import 'server-only'
@@ -59,11 +59,11 @@ type Stored = ${Pascal} & { ownerId: string }
 /** In-memory реализация порта для тестов use cases. */
 export function fake${Pascal}Repository(seed: Stored[] = []) {
   const rows: Stored[] = [...seed]
-  const repo: ${Pascal}Repository = {
+  const repository: Repository = {
     listForUser: (userId) =>
       Promise.resolve(rows.filter((row) => row.ownerId === userId).map(({ id, name }) => ({ id, name }))),
   }
-  return { repo, rows }
+  return { repository, rows }
 }
 `,
   [`${root}/server.ts`]: `import 'server-only'
@@ -72,7 +72,7 @@ import { supabase${Pascal}Repository } from './infrastructure/${name}-repository
 
 /** Точка сборки модуля: use cases с реальными репозиториями. */
 export const ${camel} = {
-  list: makeList${Pascal}({ repo: supabase${Pascal}Repository }),
+  list: makeList({ repository: supabaseRepository }),
 }
 `,
   [`${root}/ui/${name}-list.tsx`]: `import { verifySession } from '@/shared/lib/session'
@@ -112,11 +112,11 @@ import { fake${Pascal}Repository } from '@/modules/${name}/infrastructure/${name
 
 describe('list${Pascal}', () => {
   it('lists only the items of the current user', async () => {
-    const { repo } = fake${Pascal}Repository([
+    const { repository } = fakeRepository([
       { id: '1', name: 'Мой', ownerId: 'u1' },
       { id: '2', name: 'Чужой', ownerId: 'u2' },
     ])
-    const items = await makeList${Pascal}({ repo })({ userId: 'u1' })
+    const items = await makeList({ repository })({ userId: 'u1' })
     expect(items.map((item) => item.name)).toEqual(['Мой'])
   })
 })

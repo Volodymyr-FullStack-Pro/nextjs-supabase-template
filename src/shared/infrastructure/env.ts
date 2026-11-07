@@ -1,12 +1,13 @@
 // Переменные окружения читаются лениво: сборка и публичные страницы работают без них,
 // ошибка возникает только там, где значение действительно нужно.
 /** Ошибка конфигурации: безопасно показать пользователю шаблона (имя переменной — не секрет). */
-export class EnvError extends Error {
-  override readonly name = 'EnvError'
+export class EnvironmentError extends Error {
+  override readonly name = 'EnvironmentError'
 }
 
 function required(name: string, value: string | undefined): string {
-  if (!value) throw new EnvError(`Не задана переменная окружения ${name} (см. .env.example)`)
+  if (!value)
+    throw new EnvironmentError(`Не задана переменная окружения ${name} (см. .env.example)`)
   return value
 }
 

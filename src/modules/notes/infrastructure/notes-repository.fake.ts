@@ -6,12 +6,15 @@ type StoredNote = Note & { ownerId: string }
 /** In-memory репозиторий для тестов use cases: та же семантика, что у Supabase-реализации, без базы. */
 export function fakeNotesRepository(seed: StoredNote[] = []) {
   const rows: StoredNote[] = [...seed]
-  const repo: NotesRepository = {
+  const repository: NotesRepository = {
     listForUser: (userId, filter) => {
-      const q = filter.q?.toLowerCase()
+      const query = filter.q?.toLowerCase()
       return Promise.resolve(
         rows
-          .filter((note) => note.ownerId === userId && (!q || note.title.toLowerCase().includes(q)))
+          .filter(
+            (note) =>
+              note.ownerId === userId && (!query || note.title.toLowerCase().includes(query)),
+          )
           .map(({ id, title, createdAt }) => ({ id, title, createdAt })),
       )
     },
@@ -26,5 +29,5 @@ export function fakeNotesRepository(seed: StoredNote[] = []) {
       return Promise.resolve({ id: note.id, title: note.title, createdAt: note.createdAt })
     },
   }
-  return { repo, rows }
+  return { repository, rows }
 }

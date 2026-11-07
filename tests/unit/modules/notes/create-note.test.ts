@@ -4,8 +4,8 @@ import { fakeNotesRepository } from '@/modules/notes/infrastructure/notes-reposi
 
 describe('createNote', () => {
   it('stores the normalized title for the current user', async () => {
-    const { repo, rows } = fakeNotesRepository()
-    const createNote = makeCreateNote({ notes: repo })
+    const { repository, rows } = fakeNotesRepository()
+    const createNote = makeCreateNote({ notes: repository })
 
     const result = await createNote({ title: '  Аренда   офиса ' }, { userId: 'u1' })
 
@@ -14,8 +14,8 @@ describe('createNote', () => {
   })
 
   it('rejects a title that is empty after normalization', async () => {
-    const { repo, rows } = fakeNotesRepository()
-    const createNote = makeCreateNote({ notes: repo })
+    const { repository, rows } = fakeNotesRepository()
+    const createNote = makeCreateNote({ notes: repository })
 
     const result = await createNote({ title: '   ' }, { userId: 'u1' })
 

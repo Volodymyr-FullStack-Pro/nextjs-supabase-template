@@ -23,8 +23,8 @@ export const supabaseNotesRepository: NotesRepository = {
       .select('id, title, created_at')
       .eq('owner_id', userId)
       .order('created_at', { ascending: false })
-    const q = filter.q?.replace(/\*/g, '').replace(/[%_\\]/g, '\\$&')
-    if (q) query = query.ilike('title', `%${q}%`)
+    const search = filter.q?.replace(/\*/g, '').replace(/[%_\\]/g, '\\$&')
+    if (search) query = query.ilike('title', `%${search}%`)
     const { data, error } = await query
     if (error) throw new Error(`notes.list: ${error.message}`)
     return data.map(toNote)

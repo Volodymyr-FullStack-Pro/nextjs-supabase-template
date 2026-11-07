@@ -16,28 +16,28 @@ export const notes = pgTable(
     amount: numeric('amount', { precision: 18, scale: 2 }).notNull().default('0'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    index('notes_owner_id_idx').on(t.ownerId), // колонка политики — с индексом
+  (table) => [
+    index('notes_owner_id_idx').on(table.ownerId), // колонка политики — с индексом
     pgPolicy('notes: owner selects', {
       for: 'select',
       to: authenticatedRole,
-      using: sql`${authUid} = ${t.ownerId}`,
+      using: sql`${authUid} = ${table.ownerId}`,
     }),
     pgPolicy('notes: owner inserts', {
       for: 'insert',
       to: authenticatedRole,
-      withCheck: sql`${authUid} = ${t.ownerId}`,
+      withCheck: sql`${authUid} = ${table.ownerId}`,
     }),
     pgPolicy('notes: owner updates', {
       for: 'update',
       to: authenticatedRole,
-      using: sql`${authUid} = ${t.ownerId}`,
-      withCheck: sql`${authUid} = ${t.ownerId}`,
+      using: sql`${authUid} = ${table.ownerId}`,
+      withCheck: sql`${authUid} = ${table.ownerId}`,
     }),
     pgPolicy('notes: owner deletes', {
       for: 'delete',
       to: authenticatedRole,
-      using: sql`${authUid} = ${t.ownerId}`,
+      using: sql`${authUid} = ${table.ownerId}`,
     }),
   ],
 ).enableRLS()

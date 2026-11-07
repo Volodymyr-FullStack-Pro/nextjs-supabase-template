@@ -5,9 +5,12 @@ Decimal.set({ precision: 28, rounding: Decimal.ROUND_HALF_EVEN })
 
 export const money = (value: string | Decimal): Decimal => new Decimal(value)
 
-/** Доля инвестора в оценке: valuation × share, две знака после запятой. */
+/** Знаков после запятой у денежных сумм (numeric(18, 2) в базе). */
+const MONEY_SCALE = 2
+
+/** Доля инвестора в оценке: valuation × share, два знака после запятой. */
 export function investorShare(valuation: string, share: string): string {
-  return money(valuation).times(share).toFixed(2)
+  return money(valuation).times(share).toFixed(MONEY_SCALE)
 }
 
 /** `€4 218 400` для EUR, `1 250 USD` для остальных; минус — U+2212; разделитель тысяч — обычный пробел. */

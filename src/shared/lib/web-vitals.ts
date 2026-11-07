@@ -1,12 +1,15 @@
 import { z } from 'zod'
 
+const MAX_ID_LENGTH = 100
+const MAX_PATH_LENGTH = 500
+
 /** Метрика реального пользователя (RUM): что браузер измерил на странице. */
 export const WebVitalSchema = z.object({
-  id: z.string().max(100),
+  id: z.string().max(MAX_ID_LENGTH),
   name: z.enum(['CLS', 'FCP', 'INP', 'LCP', 'TTFB']),
   value: z.number().min(0),
   rating: z.enum(['good', 'needs-improvement', 'poor']),
-  path: z.string().max(500),
+  path: z.string().max(MAX_PATH_LENGTH),
 })
 /**
  * Отправка Web Vitals из браузера: в dev — в консоль, в проде — beacon на /api/vitals

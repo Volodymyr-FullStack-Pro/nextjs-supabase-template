@@ -4,6 +4,8 @@ import nextTs from 'eslint-config-next/typescript'
 import tseslint from 'typescript-eslint'
 import eslintConfigPrettier from 'eslint-config-prettier/flat'
 import boundaries from 'eslint-plugin-boundaries'
+import sonarjs from 'eslint-plugin-sonarjs'
+import unicorn from 'eslint-plugin-unicorn'
 
 // Порядок: правила Next.js (core-web-vitals даёт лишь шесть правил jsx-a11y; полный плагин ждёт поддержки ESLint 10)
 // → строгий TypeScript с проверкой типов → Prettier последним, чтобы снять конфликты форматирования.
@@ -173,6 +175,104 @@ const boundariesConfig = {
   },
 }
 
+// Стиль кода (см. .claude/rules/code-style.md): понятные имена, без магических чисел, простые функции.
+// Что можно проверить машиной — проверяет линтер; принципы DRY/KISS/YAGNI — в правилах и ревью.
+const codeStyleConfig = {
+  files: ['src/**/*.{ts,tsx}', 'scripts/**/*.mjs'],
+  plugins: { unicorn, sonarjs },
+  rules: {
+    // простота
+    complexity: ['error', 10],
+    'max-depth': ['error', 3],
+    'max-lines-per-function': ['error', { max: 80, skipBlankLines: true, skipComments: true }],
+    'sonarjs/cognitive-complexity': ['error', 15],
+    'no-nested-ternary': 'error',
+    'no-else-return': ['error', { allowElseIf: false }],
+    'no-param-reassign': 'error',
+    eqeqeq: ['error', 'always'],
+    'unicorn/consistent-function-scoping': 'error',
+    'unicorn/no-negated-condition': 'error',
+    'unicorn/explicit-length-check': 'error',
+    'unicorn/prefer-array-some': 'error',
+    'unicorn/prefer-includes': 'error',
+    'unicorn/prefer-string-slice': 'error',
+    'unicorn/no-for-each': 'error',
+    'unicorn/prefer-node-protocol': 'error',
+    'unicorn/throw-new-error': 'error',
+    'unicorn/error-message': 'error',
+    'unicorn/no-abusive-eslint-disable': 'error',
+    'sonarjs/no-identical-functions': 'error',
+    'sonarjs/no-collapsible-if': 'error',
+    'sonarjs/prefer-immediate-return': 'error',
+    'sonarjs/no-redundant-boolean': 'error',
+    'sonarjs/no-inverted-boolean-check': 'error',
+    // имена
+    'id-length': ['error', { min: 2, exceptions: ['_', 'z'], properties: 'never' }], // ключи данных (q в URL) не считаем
+    'unicorn/filename-case': ['error', { case: 'kebabCase' }],
+    'unicorn/name-replacements': [
+      'error',
+      {
+        checkFilenames: false,
+        // идиомы Next/React и Result оставляем; остальные сокращения раскрываются
+        replacements: {
+          params: false,
+          props: false,
+          ref: false,
+          env: false,
+          ctx: false,
+          db: false,
+          args: false,
+          dir: false,
+          src: false,
+          dev: false,
+          prod: false,
+          lib: false,
+          config: false,
+          utils: false,
+          err: false,
+        },
+      },
+    ],
+    // числа и строки
+    'no-magic-numbers': 'off',
+  },
+}
+const codeStyleTsConfig = {
+  files: ['src/**/*.{ts,tsx}'],
+  rules: {
+    '@typescript-eslint/max-params': ['error', { max: 3 }],
+    '@typescript-eslint/no-magic-numbers': [
+      'error',
+      {
+        ignore: [0, 1, -1],
+        ignoreArrayIndexes: true,
+        ignoreEnums: true,
+        ignoreTypeIndexes: true,
+        ignoreReadonlyClassProperties: true,
+        enforceConst: true,
+      },
+    ],
+    '@typescript-eslint/naming-convention': [
+      'error',
+      { selector: 'default', format: ['camelCase'], leadingUnderscore: 'allow' },
+      {
+        selector: 'variable',
+        format: ['camelCase', 'PascalCase', 'UPPER_CASE'],
+        leadingUnderscore: 'allow',
+      },
+      { selector: 'function', format: ['camelCase', 'PascalCase'] },
+      { selector: 'parameter', format: ['camelCase', 'PascalCase'], leadingUnderscore: 'allow' },
+      { selector: 'typeLike', format: ['PascalCase'] },
+      { selector: 'interface', format: ['PascalCase'], custom: { regex: '^I[A-Z]', match: false } },
+      { selector: 'enumMember', format: ['PascalCase'] },
+      { selector: ['objectLiteralProperty', 'typeProperty', 'classProperty'], format: null },
+      { selector: 'import', format: null },
+    ],
+    '@typescript-eslint/prefer-readonly': 'error',
+    '@typescript-eslint/switch-exhaustiveness-check': 'error',
+  },
+}
+
 export default defineConfig([
   globalIgnores([
     '.next/**',
@@ -188,6 +288,8 @@ export default defineConfig([
   ...nextTs,
   ...tseslint.configs.strictTypeChecked,
   boundariesConfig,
+  codeStyleConfig,
+  codeStyleTsConfig,
   {
     files: ['**/*.{ts,tsx,mts}'],
     languageOptions: {

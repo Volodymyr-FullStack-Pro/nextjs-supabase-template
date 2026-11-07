@@ -24,7 +24,7 @@ export function LoginForm() {
   )
 
   return (
-    <form onSubmit={(e) => void handleSubmitWithAction(e)} className="flex flex-col gap-6">
+    <form onSubmit={(event) => void handleSubmitWithAction(event)} className="flex flex-col gap-6">
       <FieldGroup>
         <TextField
           control={form.control}

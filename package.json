@@ -72,6 +72,8 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.5",
     "eslint-plugin-boundaries": "^7.4.2",
+    "eslint-plugin-sonarjs": "^4.2.2",
+    "eslint-plugin-unicorn": "^79.0.0",
     "jscpd": "^5.4.2",
     "jsdom": "^31.0.0",
     "knip": "^6.44.1",

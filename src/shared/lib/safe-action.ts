@@ -1,6 +1,6 @@
 import 'server-only'
 import { createSafeActionClient } from 'next-safe-action'
-import { EnvError } from '@/shared/infrastructure/env'
+import { EnvironmentError } from '@/shared/infrastructure/env'
 import { DomainError } from '@/shared/domain/errors'
 import { verifySession } from './session'
 
@@ -18,7 +18,7 @@ export function fail(error: DomainError): never {
 export const actionClient = createSafeActionClient({
   handleServerError(error) {
     console.error(error) // в проекте сюда же — Sentry.captureException(error)
-    if (error instanceof ActionError || error instanceof EnvError) return error.message
+    if (error instanceof ActionError || error instanceof EnvironmentError) return error.message
     return 'Что-то пошло не так. Попробуйте ещё раз.'
   },
 })

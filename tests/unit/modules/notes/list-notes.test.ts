@@ -10,13 +10,13 @@ const seed = [
 
 describe('listNotes', () => {
   it('lists only the notes of the current user', async () => {
-    const listNotes = makeListNotes({ notes: fakeNotesRepository(seed).repo })
+    const listNotes = makeListNotes({ notes: fakeNotesRepository(seed).repository })
     const items = await listNotes({}, { userId: 'u1' })
     expect(items.map((n) => n.id)).toEqual(['n1', 'n2'])
   })
 
   it('filters by a case-insensitive substring of the title', async () => {
-    const listNotes = makeListNotes({ notes: fakeNotesRepository(seed).repo })
+    const listNotes = makeListNotes({ notes: fakeNotesRepository(seed).repository })
     const items = await listNotes({ q: 'аренда' }, { userId: 'u1' })
     expect(items.map((n) => n.title)).toEqual(['Аренда офиса'])
   })

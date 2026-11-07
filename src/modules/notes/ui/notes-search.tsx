@@ -4,19 +4,24 @@ import { debounce, useQueryState } from 'nuqs'
 import { Input } from '@/shared/ui/input'
 import { notesSearchParams } from './search-params'
 
+const SEARCH_DEBOUNCE_MS = 300
+
 /** Фильтр живёт в URL (nuqs): ссылку можно скинуть; shallow: false — сервер перечитывает список, debounce бережёт базу. */
 export function NotesSearch() {
-  const [q, setQ] = useQueryState(
+  const [search, setSearch] = useQueryState(
     'q',
-    notesSearchParams.q.withOptions({ shallow: false, limitUrlUpdates: debounce(300) }),
+    notesSearchParams.q.withOptions({
+      shallow: false,
+      limitUrlUpdates: debounce(SEARCH_DEBOUNCE_MS),
+    }),
   )
   return (
     <Input
       type="search"
       aria-label="Поиск по заметкам"
       placeholder="Поиск"
-      value={q}
-      onChange={(event) => void setQ(event.target.value === '' ? null : event.target.value)}
+      value={search}
+      onChange={(event) => void setSearch(event.target.value === '' ? null : event.target.value)}
     />
   )
 }
