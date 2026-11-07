@@ -1,18 +1,17 @@
 {
+  "extraKnownMarketplaces": {
+    "claude-kit": {
+      "source": { "source": "github", "repo": "Volodymyr-FullStack-Pro/claude-kit" }
+    }
+  },
+  "enabledPlugins": {
+    "dev-kit@claude-kit": true
+  },
   "permissions": {
     "deny": [
       "mcp__clickup__clickup_delete_task",
       "mcp__clickup__clickup_delete_comment",
       "mcp__clickup__clickup_delete_chat_message"
     ]
-  },
-  "enabledPlugins": {},
-  "extraKnownMarketplaces": {
-    "claude-kit": {
-      "source": {
-        "source": "github",
-        "repo": "Volodymyr-FullStack-Pro/claude-kit"
-      }
-    }
   }
 }
