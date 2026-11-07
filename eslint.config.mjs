@@ -351,6 +351,13 @@ const codeStyleTsConfig = {
     '@typescript-eslint/prefer-readonly': 'error',
     '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
     '@typescript-eslint/no-confusing-void-expression': ['error', { ignoreArrowShorthand: true }],
+    // React: async-обработчик в onClick — норма; остальные проверки промисов (forEach, условия) остаются
+    '@typescript-eslint/no-misused-promises': [
+      'error',
+      { checksVoidReturn: { attributes: false } },
+    ],
+    // Next требует async у 'use cache', Server Actions и серверных компонентов даже без await
+    '@typescript-eslint/require-await': 'off',
     '@typescript-eslint/consistent-type-imports': [
       'error',
       { prefer: 'type-imports', fixStyle: 'inline-type-imports' },
