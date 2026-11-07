@@ -76,6 +76,8 @@ npm run new:module businesses
 
 **Типы, ввод, повторы.** `any` запрещён; `unknown` и `as` линтер допускает только там, где данные приходят извне (`infrastructure`, `shared/lib`, `app/api`, `proxy.ts`) и тут же проходят Zod. Текст пользователя нормализуется один раз в Zod-схеме `domain` (`normalizeText` из `src/shared/domain/text.ts`: NFC, без невидимых символов, схлопнутые пробелы), поиск — `normalizeSearch` в use case. Импорты сортирует и группирует линтер (`simple-import-sort`, `import/no-duplicates`, `consistent-type-imports`); barrel-файлов нет — короткие импорты даёт `server.ts` модуля. Формы отправляются через `SubmitButton` (блокировка, `aria-busy` и спиннер на время action); операции, которые пользователь может повторить, идемпотентны (`client_request_id`), индексы строятся под запросы списков — правила в `.claude/rules/db.md`. Базовые заголовки безопасности — в `next.config.ts`.
 
+**Дизайн и качество интерфейса.** Выбор заказчика записывается в `docs/design/design-system.md`, значения — токенами в `src/app/globals.css`; цвет значением в коде ловит линтер. E2E идёт на компьютере (Chrome 1440×900) и на iPhone (Safari); `tests/e2e/ui-quality.spec.ts` проверяет доступность WCAG 2.2 AA (axe) в светлой и тёмной теме и отсутствие горизонтальной прокрутки. Порядок «варианты дизайна заказчику → выбор → код» — скил `dev-kit:design-system`.
+
 ## Производительность
 
 Бюджет на маршрут: TTFB ≤ 200 мс с кэшем, LCP ≤ 1,5 с, TBT ≤ 200 мс, CLS ≤ 0,1, Lighthouse Performance ≥ 90, JavaScript начальной загрузки ≤ 300 КБ gzip. Проверки:
