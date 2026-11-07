@@ -98,7 +98,7 @@ npm run new:module businesses
 | политики RLS            | pgTAP (`supabase test db`)                                        | свои строки видны, чужие нет                                      |
 | внешние HTTP            | MSW (добавляется с первым внешним API)                            | ответы записаны, сеть не мокается на уровне функций               |
 
-Имена тестов: начинаются с глагола в третьем лице и описывают намерение, не реализацию: `it('rejects an empty title')`, `it('lists only the notes of the current user')`. Без `should`, `tests`, `must`; контекст — в названии файла; один тест — одно поведение; в тестах правил домена номер требования из реестра — в имени теста (`(AC-27)`).
+Имена тестов: начинаются с глагола в третьем лице и описывают намерение, не реализацию: `it('rejects an empty title')`, `it('lists only the notes of the current user')`. Без `should`, `tests`, `must`; контекст — в названии файла; один тест — одно поведение; в тестах правил домена номер требования из реестра — в имени теста (`(B03-AC-02)`).
 
 ## Команды
 
@@ -142,8 +142,8 @@ npm run new:module businesses
 
 Полное руководство по системе разработки (новая машина, новый проект, путь задачи, сессии и чистый контекст, на что смотреть, как улучшать) — [claude-kit/docs/GUIDE.md](https://github.com/Volodymyr-FullStack-Pro/claude-kit/blob/main/docs/GUIDE.md).
 
-- В `.claude/settings.json` записаны маркетплейс `Volodymyr-FullStack-Pro/claude-kit` и плагин `dev-kit@claude-kit`: после доверия папке Claude Code предложит его установить. Скилы плагина: `clean-layers` (архитектура), `code-style`, `performance-budget`, `nextjs-data-security`, `supabase-rls-drizzle`, `money-decimal`, `test-layers`, `review-checklist`, `requirements-register`, `clickup-card`; команды `/dev-kit:handoff`, `/dev-kit:resume`; хуки форматирования, проверки типов и защиты `.env`/миграций.
-- Правила проекта — `.claude/rules/*.md` (подключаются по путям файлов), процесс — `CLAUDE.md`: блок из roadmap → `README.md` и `tasks.md` блока (крупному — `spec.md`) → задача за задачей с разбором изменений `/dev-kit:explain` и вашим «ок» → `/dev-kit:task-done` → `/simplify` → `/code-review` → `/security-review` для auth, денег и миграций → PR.
+- В `.claude/settings.json` записаны маркетплейс `claude-kit` и плагин `dev-kit@claude-kit`: после доверия папке Claude Code предложит его установить. Состав плагина — README плагина.
+- Правила проекта — `.claude/rules/*.md` (подключаются по путям файлов); путь задачи — `CLAUDE.md` и скил `dev-kit:delivery`; выпуск — [docs/release.md](docs/release.md).
 - Ответы и решения заказчика — в реестр `docs/knowledge/requirements.md` в тот же день; задачи и тесты ссылаются на его номера; `npm run req:check` следит за трассировкой.
 
 ## Что добавлять по мере надобности

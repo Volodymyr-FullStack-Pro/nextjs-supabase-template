@@ -2,8 +2,8 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
-const STATUSES = ['открыт', 'получен', 'в ТЗ', 'в работе', 'сделан', 'отклонён', 'заменён']
-const DONE_STATUSES = ['в ТЗ', 'в работе', 'сделан']
+const STATUSES = ['открыт', 'получен', 'в ТЗ', 'сделан', 'отклонён', 'заменён']
+const DONE_STATUSES = ['в ТЗ', 'сделан']
 const ID_PATTERN = /^[A-Z]{1,2}-?\d{1,4}$/
 const SKIP_DIRECTORIES = new Set([
   'node_modules',

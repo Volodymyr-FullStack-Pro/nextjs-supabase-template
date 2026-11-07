@@ -27,6 +27,7 @@ jobs:
       - run: npm audit --omit=dev --audit-level=high # production-зависимости без известных уязвимостей; dev — через Dependabot
       - run: npm run lint
       - run: npm run typecheck
+      - run: npm run req:check
       - run: npm run test:coverage
       - run: npm run knip
       - run: npm run jscpd
