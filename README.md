@@ -7,7 +7,7 @@
 ```bash
 gh repo create <org>/<проект> --template Volodymyr-FullStack-Pro/nextjs-supabase-template --private --clone
 cd <проект>
-nvm use                      # Node 22 из .nvmrc
+nvm use                      # Node 24 из .nvmrc
 npm ci                       # ставит зависимости и git-хуки
 cp .env.example .env.local   # заполнить из Supabase → Project Settings → API
 supabase start               # локальный Supabase (нужен Supabase CLI); supabase status → ключи в .env.local
