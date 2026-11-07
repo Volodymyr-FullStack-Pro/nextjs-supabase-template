@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 import { normalizeText } from '@/shared/domain/text'
 
-const NOTE_TITLE_MAX = 200
+export const NOTE_TITLE_MAX = 200
 
 export const NoteSchema = z.object({ id: z.string(), title: z.string(), createdAt: z.string() })
 export type Note = z.infer<typeof NoteSchema>

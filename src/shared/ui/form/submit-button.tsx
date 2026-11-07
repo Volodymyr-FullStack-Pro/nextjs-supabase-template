@@ -10,7 +10,7 @@ type SubmitButtonProps = Omit<ComponentProps<typeof Button>, 'type' | 'disabled'
 
 export function SubmitButton({ pending, pendingLabel, children, ...props }: SubmitButtonProps) {
   return (
-    <Button type="submit" disabled={pending} aria-busy={pending} {...props}>
+    <Button type="submit" disabled={pending} focusableWhenDisabled aria-busy={pending} {...props}>
       {pending ? <LoaderCircleIcon className="animate-spin" aria-hidden /> : null}
       {pending ? (pendingLabel ?? children) : children}
     </Button>

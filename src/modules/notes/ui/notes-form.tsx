@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { SubmitButton } from '@/shared/ui/form/submit-button'
 import { TextField } from '@/shared/ui/form/text-field'
 
-import { CreateNoteInput } from '../domain/note'
+import { CreateNoteInput, NOTE_TITLE_MAX } from '../domain/note'
 import { addNote } from './actions'
 
 export function NotesForm() {
@@ -35,7 +35,7 @@ export function NotesForm() {
         name="title"
         label="Новая заметка"
         placeholder="Заголовок"
-        maxLength={200}
+        maxLength={NOTE_TITLE_MAX}
       />
       <SubmitButton pending={action.isPending} pendingLabel="Сохраняю…">
         Добавить

@@ -1,14 +1,23 @@
 import { describe, expect, it } from 'vitest'
 
-import { hasLettersOrDigits, normalizeSearch, normalizeText } from '@/shared/domain/text'
+import {
+  hasLettersOrDigits,
+  normalizeMultiline,
+  normalizeSearch,
+  normalizeText,
+} from '@/shared/domain/text'
 
 describe('normalizeText', () => {
   it('collapses inner whitespace and trims the ends', () => {
     expect(normalizeText('  Аренда \n\t офиса ')).toBe('Аренда офиса')
   })
 
-  it('removes invisible and control characters', () => {
-    expect(normalizeText('Аренда​ офиса\u0007')).toBe('Аренда офиса')
+  it('removes zero-width, soft-hyphen and control characters', () => {
+    expect(normalizeText('Аренда​ ­офиса\u0007')).toBe('Аренда офиса')
+  })
+
+  it('keeps joiners that glue emoji and scripts together', () => {
+    expect(normalizeText('👨‍👩‍👧 می‌خواهم')).toBe('👨‍👩‍👧 می‌خواهم')
   })
 
   it('unifies composed and decomposed letters', () => {
@@ -17,6 +26,14 @@ describe('normalizeText', () => {
 
   it('turns whitespace-only text into an empty string', () => {
     expect(normalizeText(' \n\t ')).toBe('')
+  })
+})
+
+describe('normalizeMultiline', () => {
+  it('keeps paragraphs but collapses spaces and extra blank lines', () => {
+    expect(normalizeMultiline('  Первый   абзац \r\n\r\n\r\n\r\nВторой\tабзац  \n')).toBe(
+      'Первый абзац\n\nВторой абзац',
+    )
   })
 })
 

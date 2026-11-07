@@ -1,6 +1,17 @@
 import { sql } from 'drizzle-orm'
-import { index, numeric, pgPolicy, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
+import {
+  check,
+  index,
+  numeric,
+  pgPolicy,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from 'drizzle-orm/pg-core'
 import { authenticatedRole, authUid, authUsers } from 'drizzle-orm/supabase'
+
+const NOTE_TITLE_MAX = 200
 
 export const notes = pgTable(
   'notes',
@@ -15,6 +26,7 @@ export const notes = pgTable(
   },
   (table) => [
     index('notes_owner_id_created_at_idx').on(table.ownerId, table.createdAt.desc()),
+    check('notes_title_length', sql`char_length(${table.title}) <= ${NOTE_TITLE_MAX}`),
     pgPolicy('notes: owner selects', {
       for: 'select',
       to: authenticatedRole,

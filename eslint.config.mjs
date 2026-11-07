@@ -183,7 +183,8 @@ const boundariesConfig = {
 // Что можно проверить машиной — проверяет линтер; принципы DRY/KISS/YAGNI — в правилах и ревью.
 
 // Код объясняет себя сам: комментарии запрещены, кроме директив инструментов (eslint, vitest, ts).
-const DIRECTIVE = /^(eslint-|@vitest-environment|@ts-expect-error|@ts-ignore|@jsx|global\s|@type\s)/
+const DIRECTIVE =
+  /^(eslint-|@vitest-environment|@ts-expect-error|@ts-ignore|@ts-check|@ts-nocheck|@jsx|global\s|@type\s|prettier-ignore|v8 ignore|c8 ignore)/
 const noComments = {
   meta: {
     type: 'suggestion',
@@ -256,6 +257,8 @@ const codeStyleConfig = {
     // безопасность: HTML из строки и eval запрещены
     'react/no-danger': 'error',
     'no-eval': 'error',
+    'no-await-in-loop': 'error',
+    'no-empty': ['error', { allowEmptyCatch: true }], // пустой catch — только cookie setAll серверного клиента Supabase
     'sonarjs/no-identical-functions': 'error',
     'sonarjs/no-collapsible-if': 'error',
     'sonarjs/prefer-immediate-return': 'error',
@@ -300,6 +303,14 @@ const componentLengthConfig = {
     'max-lines-per-function': ['error', { max: 120, skipBlankLines: true, skipComments: true }],
   },
 }
+// Тесты: describe с десятком кейсов длиннее 80 строк — норма; вспомогательные функции внутри describe тоже
+const testsConfig = {
+  files: ['tests/**/*.{ts,tsx}'],
+  rules: {
+    'max-lines-per-function': 'off',
+    'unicorn/consistent-function-scoping': 'off',
+  },
+}
 const codeStyleTsConfig = {
   files: ['src/**/*.{ts,tsx}'],
   ignores: [
@@ -328,6 +339,7 @@ const codeStyleTsConfig = {
         format: ['camelCase', 'PascalCase', 'UPPER_CASE'],
         leadingUnderscore: 'allow',
       },
+      { selector: 'variable', modifiers: ['destructured'], format: null }, // колонки snake_case из строк базы
       { selector: 'function', format: ['camelCase', 'PascalCase'] },
       { selector: 'parameter', format: ['camelCase', 'PascalCase'], leadingUnderscore: 'allow' },
       { selector: 'typeLike', format: ['PascalCase'] },
@@ -378,6 +390,9 @@ const vendorUiConfig = {
   rules: {
     ...tseslint.configs.disableTypeChecked.rules,
     'react-hooks/set-state-in-effect': 'off',
+    '@typescript-eslint/no-non-null-assertion': 'off',
+    '@typescript-eslint/no-explicit-any': 'off',
+    '@typescript-eslint/no-empty-object-type': 'off',
   },
 }
 
@@ -398,6 +413,7 @@ export default defineConfig([
   boundariesConfig,
   codeStyleConfig,
   componentLengthConfig,
+  testsConfig,
   codeStyleTsConfig,
   boundaryOnlyTypesConfig,
   vendorUiConfig,
