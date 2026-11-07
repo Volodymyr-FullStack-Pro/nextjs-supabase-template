@@ -351,6 +351,13 @@ const codeStyleTsConfig = {
     '@typescript-eslint/prefer-readonly': 'error',
     '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
     '@typescript-eslint/no-confusing-void-expression': ['error', { ignoreArrowShorthand: true }],
+    // React: async-обработчик в onClick — норма; остальные проверки промисов (forEach, условия) остаются
+    '@typescript-eslint/no-misused-promises': [
+      'error',
+      { checksVoidReturn: { attributes: false } },
+    ],
+    // Next требует async у 'use cache', Server Actions и серверных компонентов даже без await
+    '@typescript-eslint/require-await': 'off',
     '@typescript-eslint/consistent-type-imports': [
       'error',
       { prefer: 'type-imports', fixStyle: 'inline-type-imports' },
@@ -393,6 +400,23 @@ const boundaryOnlyTypesConfig = {
       ...COLOR_LITERAL_RULES,
     ],
     '@typescript-eslint/consistent-type-assertions': ['error', { assertionStyle: 'never' }],
+  },
+}
+
+// Переменные окружения — только через env.ts (секреты и адреса) и runtime.ts (режим сборки)
+const envAccessConfig = {
+  files: ['src/**/*.{ts,tsx}'],
+  ignores: ['src/shared/infrastructure/**', 'src/shared/lib/runtime.ts'],
+  rules: {
+    'no-restricted-properties': [
+      'error',
+      {
+        object: 'process',
+        property: 'env',
+        message:
+          'переменные окружения — через src/shared/infrastructure/env.ts, режим сборки — isProduction из src/shared/lib/runtime.ts',
+      },
+    ],
   },
 }
 
@@ -472,6 +496,7 @@ export default defineConfig([
   codeStyleTsConfig,
   boundaryOnlyTypesConfig,
   a11yConfig,
+  envAccessConfig,
   vendorUiConfig,
   {
     files: ['**/*.{ts,tsx,mts}'],

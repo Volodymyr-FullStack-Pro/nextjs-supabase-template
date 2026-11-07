@@ -5,6 +5,7 @@ import { env } from '@/shared/infrastructure/env'
 import type { Database } from '@/shared/infrastructure/supabase/types'
 
 const PUBLIC_PATHS = ['/', '/login', '/api/vitals']
+const PUBLIC_PREFIXES = ['/api/cron/', '/api/webhooks/']
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request })
@@ -26,7 +27,8 @@ export async function proxy(request: NextRequest) {
 
   const { data } = await supabase.auth.getClaims()
   const { pathname } = request.nextUrl
-  const isPublic = PUBLIC_PATHS.includes(pathname)
+  const isPublic =
+    PUBLIC_PATHS.includes(pathname) || PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))
   if (!data?.claims && !isPublic) {
     if (pathname.startsWith('/api/'))
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 })

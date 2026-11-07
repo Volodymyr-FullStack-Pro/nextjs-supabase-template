@@ -3,14 +3,24 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
+const KEBAB = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/
 const name = process.argv[2]
-if (!name || !/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/.test(name)) {
+const entity = process.argv[3] ?? name
+if (!name || !KEBAB.test(name) || !KEBAB.test(entity)) {
   console.error(
-    'Использование: npm run new:module <имя>  (строчные буквы, цифры, дефис; например, businesses)',
+    'Использование: npm run new:module <модуль> <запись>  (строчные буквы, цифры, дефис; например, businesses business)',
   )
   process.exit(1)
 }
-const Pascal = name.replaceAll(/(^|-)([a-z0-9])/g, (_, __, letter) => letter.toUpperCase())
+const toPascal = (kebab) =>
+  kebab.replaceAll(/(^|-)([a-z0-9])/g, (_, __, letter) => letter.toUpperCase())
+const Pascal = toPascal(name)
+const Entity = toPascal(entity)
+if (entity === name) {
+  console.warn(
+    `Имя одной записи не задано — тип будет ${Entity}. Для «${name}» обычно нужно единственное число: npm run new:module ${name} <запись>`,
+  )
+}
 const camel = Pascal[0].toLowerCase() + Pascal.slice(1)
 const moduleRoot = join('src', 'modules', name)
 const pageRoot = join('src', 'app', name)
@@ -34,22 +44,22 @@ if (taken.length > 0 || routeSegmentExists('src/app')) {
 }
 
 const files = {
-  [`${moduleRoot}/domain/${name}.ts`]: `import { z } from 'zod'
+  [`${moduleRoot}/domain/${entity}.ts`]: `import { z } from 'zod'
 
-export const ${Pascal}Schema = z.object({ id: z.string(), name: z.string().min(1) })
-export type ${Pascal} = z.infer<typeof ${Pascal}Schema>
+export const ${Entity}Schema = z.object({ id: z.string(), name: z.string().min(1) })
+export type ${Entity} = z.infer<typeof ${Entity}Schema>
 `,
-  [`${moduleRoot}/application/${name}-repository.ts`]: `import type { ${Pascal} } from '../domain/${name}'
+  [`${moduleRoot}/application/${name}-repository.ts`]: `import type { ${Entity} } from '../domain/${entity}'
 
 export interface ${Pascal}Repository {
-  listForUser(userId: string): Promise<${Pascal}[]>
+  listForUser(userId: string): Promise<${Entity}[]>
 }
 `,
-  [`${moduleRoot}/application/list-${name}.ts`]: `import type { ${Pascal} } from '../domain/${name}'
+  [`${moduleRoot}/application/list-${name}.ts`]: `import type { ${Entity} } from '../domain/${entity}'
 import type { ${Pascal}Repository } from './${name}-repository'
 
 export function makeList${Pascal}({ repository }: { repository: ${Pascal}Repository }) {
-  return (ctx: { userId: string }): Promise<${Pascal}[]> => repository.listForUser(ctx.userId)
+  return (ctx: { userId: string }): Promise<${Entity}[]> => repository.listForUser(ctx.userId)
 }
 `,
   [`${moduleRoot}/infrastructure/${name}-repository.supabase.ts`]: `import 'server-only'
@@ -62,9 +72,9 @@ export const supabase${Pascal}Repository: ${Pascal}Repository = {
 }
 `,
   [`${moduleRoot}/infrastructure/${name}-repository.fake.ts`]: `import type { ${Pascal}Repository } from '../application/${name}-repository'
-import type { ${Pascal} } from '../domain/${name}'
+import type { ${Entity} } from '../domain/${entity}'
 
-type Stored = ${Pascal} & { ownerId: string }
+type Stored = ${Entity} & { ownerId: string }
 
 export function fake${Pascal}Repository(seed: Stored[] = []) {
   const rows: Stored[] = [...seed]
@@ -116,17 +126,17 @@ export default function ${Pascal}Page() {
   )
 }
 `,
-  [`${testsRoot}/${name}.test.ts`]: `import { describe, expect, it } from 'vitest'
+  [`${testsRoot}/${entity}.test.ts`]: `import { describe, expect, it } from 'vitest'
 
-import { ${Pascal}Schema } from '@/modules/${name}/domain/${name}'
+import { ${Entity}Schema } from '@/modules/${name}/domain/${entity}'
 
-describe('${Pascal}Schema', () => {
+describe('${Entity}Schema', () => {
   it('accepts an object with an id and a name', () => {
-    expect(${Pascal}Schema.safeParse({ id: '1', name: 'Первый' }).success).toBe(true)
+    expect(${Entity}Schema.safeParse({ id: '1', name: 'Первый' }).success).toBe(true)
   })
 
   it('rejects an empty name', () => {
-    expect(${Pascal}Schema.safeParse({ id: '1', name: '' }).success).toBe(false)
+    expect(${Entity}Schema.safeParse({ id: '1', name: '' }).success).toBe(false)
   })
 })
 `,

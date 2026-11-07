@@ -2,7 +2,6 @@ import { cacheLife, cacheTag } from 'next/cache'
 
 import { NOTE_TITLE_MAX } from '../domain/note'
 
-// eslint-disable-next-line @typescript-eslint/require-await -- 'use cache' требует async-функцию
 export async function NotesTips() {
   'use cache'
   cacheLife('days')

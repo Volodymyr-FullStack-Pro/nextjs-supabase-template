@@ -7,14 +7,14 @@
 ```bash
 gh repo create <org>/<проект> --template Volodymyr-FullStack-Pro/nextjs-supabase-template --private --clone
 cd <проект>
-nvm use                      # Node 24 из .nvmrc
+fnm use                      # Node 24 из .nvmrc (или nvm use)
 npm ci                       # ставит зависимости и git-хуки
 cp .env.example .env.local   # заполнить из Supabase → Project Settings → API
 supabase start               # локальный Supabase (нужен Supabase CLI); supabase status → ключи в .env.local
 npm run dev
 ```
 
-Затем: заменить `<Проект>` в `CLAUDE.md` и `docs/knowledge/`, записать первое решение в `docs/knowledge/decisions.md`, завести первый модуль `npm run new:module <имя>`, при работе с ClickUp переименовать `.claude/rules/clickup.md.example` в `clickup.md`.
+Затем: заменить `<Проект>` в `CLAUDE.md` и `docs/knowledge/`, записать первое решение в `docs/knowledge/decisions.md`, завести первый модуль `npm run new:module <модуль> <запись>`, при работе с ClickUp переименовать `.claude/rules/clickup.md.example` в `clickup.md`.
 
 Безопасность: в Supabase выключить саморегистрацию (Authentication → «Allow new users to sign up» = off; пользователи заводятся приглашением), а если приложение закрыто Cloudflare Access — проверять его JWT в `proxy.ts` или закрыть `*.vercel.app`, иначе периметр обходится (`.claude/rules/security.md`). В репозитории включить оповещения Dependabot и автоматические security-PR (`gh api -X PUT repos/<org>/<проект>/vulnerability-alerts` и `.../automated-security-fixes`), защитить `main` (PR и зелёный CI обязательны). Версия Supabase CLI в `.github/workflows/db.yml` закреплена и должна совпадать с `supabase --version` на машинах разработчиков: обновлять обе вместе.
 
@@ -63,12 +63,28 @@ src/proxy.ts                     обновление сессии и редир
 ### Новый модуль
 
 ```bash
-npm run new:module businesses
+npm run new:module businesses business
 ```
 
 Создаёт `src/modules/businesses/{domain,application,infrastructure,ui}`, `server.ts`, фейк репозитория, тесты домена и use case и страницу `src/app/businesses/page.tsx`. Всё проходит `npm run check` сразу; дальше описываете модель в `domain`, use cases в `application`, запросы в `infrastructure`. Action и форму генератор не создаёт: образец — `src/modules/notes/ui/actions.ts` и `notes-form.tsx`.
 
 **Модули и чужие данные.** Из `ui` и `app` чужой модуль доступен через его `server.ts` (use cases) и `domain` (типы). Внутри `application` и `infrastructure` чужие use cases не вызываются: агрегирующий модуль (например, портфель, которому нужны бизнесы и инвестиции) описывает свой порт и реализует его своим репозиторием поверх таблиц или представления в базе. Так модули остаются независимыми, а агрегаты считаются там, где данные.
+
+### Под разные проекты
+
+Слои и границы одинаковы в любом проекте; меняется только то, что проект добавляет.
+
+| Проект                                         | Что делать                                                                                                               |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Внутренняя бизнес-система (учёт, CRM, кабинет) | модуль на каждую предметную область; правила — в `domain`, права — RLS и use cases                                       |
+| SaaS для многих компаний                       | модуль `organizations`, колонка `organization_id` и RLS по членству, организация — в контексте use case рядом с `userId` |
+| Публичный сайт или лендинг                     | страницы в `src/app` с группой `(marketing)`, модули — только там, где есть данные; адрес с языком — `src/app/[locale]`  |
+| API для мобильного приложения                  | Route Handlers в `src/app/api/...` вызывают те же use cases из `server.ts`                                               |
+| Другая база или внешний сервис                 | новая реализация порта в `infrastructure` модуля; `domain`, `application` и `ui` не меняются                             |
+| Другой способ входа                            | `src/shared/lib/session.ts` и `src/proxy.ts`; use cases получают `userId` как раньше                                     |
+| Фоновые задачи, расписание, уведомления        | `src/app/api/cron/*` и `after()`; долгие — очередь, когда понадобится                                                    |
+
+Модуль — это предметная область целиком (данные, правила, сценарии, экраны), а не одно действие: ближе к модулю Angular или NestJS и к ограниченному контексту DDD, чем к фиче Feature-Sliced Design. Генератор `npm run new:module` — как `ng generate`: одинаковый каркас с тестами.
 
 ## Чистый код
 
@@ -118,7 +134,7 @@ npm run new:module businesses
 | `npm run knip`                                     | неиспользуемые файлы, экспорты, зависимости                                                                     |
 | `npm run jscpd`                                    | дубли кода (порог 0 %)                                                                                          |
 | `npm run req:check`                                | реестр требований заказчика: повторы номеров, статусы, требования без ссылки                                    |
-| `npm run new:module <имя>`                         | каркас модуля по архитектуре                                                                                    |
+| `npm run new:module <модуль> <запись>`             | каркас модуля по архитектуре                                                                                    |
 | `npm run db:generate`                              | SQL из схемы Drizzle в `drizzle/` (папка в .gitignore) для сверки с `supabase/migrations`                       |
 | `npm run db:types`                                 | типы supabase-js из локальной базы → `src/shared/infrastructure/supabase/types.ts`                              |
 | `npm run db:studio`                                | Drizzle Studio                                                                                                  |
