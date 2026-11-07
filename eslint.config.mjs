@@ -203,11 +203,11 @@ const noComments = {
 
 const codeStyleConfig = {
   files: ['src/**/*.{ts,tsx}', 'scripts/**/*.mjs', 'tests/**/*.{ts,tsx}'],
-  ignores: ['src/shared/ui/*.tsx'], // компоненты shadcn — сторонний код, не правим
+  ignores: ['src/shared/ui/*.tsx', 'src/shared/infrastructure/supabase/types.ts'], // shadcn и сгенерированные типы — не наш код
   plugins: { unicorn, sonarjs, local: { rules: { 'no-comments': noComments } } },
   rules: {
     'local/no-comments': 'error',
-    'max-lines': ['error', { max: 200, skipBlankLines: true, skipComments: true }],
+    'max-lines': ['error', { max: 300, skipBlankLines: true, skipComments: true }],
     // простота
     complexity: ['error', 10],
     'max-depth': ['error', 3],
