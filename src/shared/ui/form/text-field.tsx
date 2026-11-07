@@ -7,7 +7,6 @@ import { Input } from '@/shared/ui/input'
 
 type TextFieldProps<T extends FieldValues> = {
   control: Control<T>
-  /** Только обязательные строковые поля схемы (string); для string | undefined — свой компонент или z.string().default(''). */
   name: FieldPathByValue<T, string>
   label: string
 } & Omit<
@@ -15,7 +14,6 @@ type TextFieldProps<T extends FieldValues> = {
   'name' | 'id' | 'value' | 'onChange' | 'onBlur' | 'ref' | 'aria-invalid' | 'aria-describedby'
 >
 
-/** Текстовое поле формы на react-hook-form: подпись, ввод и ошибка валидации в одном месте; id уникален на странице. */
 export function TextField<T extends FieldValues>({
   control,
   name,
