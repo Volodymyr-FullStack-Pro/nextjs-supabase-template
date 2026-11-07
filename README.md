@@ -126,7 +126,7 @@ npm run new:module businesses
 - `tests/unit` (зеркалит `src`), `tests/e2e`.
 - `scripts/` — `new-module.mjs`, `requirements-check.mjs`.
 - `.claude/` — `settings.json` (маркетплейс `claude-kit`, плагин `dev-kit`, запреты), `rules/` (архитектура, безопасность, база, интерфейс, тесты, документация).
-- `docs/knowledge` — статус, реестр требований заказчика (`requirements.md`), решения, открытые вопросы; `docs/roadmap.md`; `docs/superpowers` — спецификации и планы.
+- `docs/knowledge` — статус, реестр требований заказчика (`requirements.md`), индекс решений (`decisions.md`) и ADR крупных решений (`decisions/D-NNN-*.md`), открытые вопросы; `docs/roadmap.md`; `docs/superpowers` — спецификации и планы.
 - `.github/workflows` — `ci.yml` (lint, typecheck, тесты, knip, jscpd, build, e2e, Lighthouse, gitleaks, Semgrep), `db.yml` (advisors + pgTAP при изменениях базы).
 
 ## Работа с Claude Code
