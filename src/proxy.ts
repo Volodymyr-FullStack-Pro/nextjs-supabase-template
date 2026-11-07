@@ -3,11 +3,11 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { env } from '@/shared/infrastructure/env'
 import type { Database } from '@/shared/infrastructure/supabase/types'
 
-const PUBLIC_PATHS = ['/', '/login']
+const PUBLIC_PATHS = ['/', '/login', '/api/vitals'] // метрики шлют и неавторизованные посетители
 
 /**
  * Обновляет сессию Supabase в cookie и уводит неавторизованных со служебных страниц на /login.
- * Это не единственная защита: права проверяются в DAL (src/data) и в каждом Server Action.
+ * Это не единственная защита: права проверяет каждый use case и каждый Server Action (authActionClient).
  */
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request })
@@ -31,6 +31,8 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const isPublic = PUBLIC_PATHS.includes(pathname)
   if (!data?.claims && !isPublic) {
+    if (pathname.startsWith('/api/'))
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     const redirect = NextResponse.redirect(url)

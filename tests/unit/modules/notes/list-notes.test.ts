@@ -7,17 +7,21 @@ const seed = [
   { id: 'n2', title: 'Зарплаты', createdAt: '2026-01-02T00:00:00.000Z', ownerId: 'u1' },
   { id: 'n3', title: 'Аренда склада', createdAt: '2026-01-03T00:00:00.000Z', ownerId: 'u2' },
 ]
+const listNotes = () => makeListNotes({ notes: fakeNotesRepository(seed).repository })
 
 describe('listNotes', () => {
-  it('lists only the notes of the current user', async () => {
-    const listNotes = makeListNotes({ notes: fakeNotesRepository(seed).repository })
-    const items = await listNotes({}, { userId: 'u1' })
-    expect(items.map((n) => n.id)).toEqual(['n1', 'n2'])
+  it('lists only the notes of the current user, newest first', async () => {
+    const items = await listNotes()({}, { userId: 'u1' })
+    expect(items.map((note) => note.id)).toEqual(['n2', 'n1'])
   })
 
   it('filters by a case-insensitive substring of the title', async () => {
-    const listNotes = makeListNotes({ notes: fakeNotesRepository(seed).repository })
-    const items = await listNotes({ q: 'аренда' }, { userId: 'u1' })
-    expect(items.map((n) => n.title)).toEqual(['Аренда офиса'])
+    const items = await listNotes()({ q: 'аренда' }, { userId: 'u1' })
+    expect(items.map((note) => note.title)).toEqual(['Аренда офиса'])
+  })
+
+  it('ignores the asterisk wildcard in the search text', async () => {
+    const items = await listNotes()({ q: '*' }, { userId: 'u1' })
+    expect(items).toHaveLength(2)
   })
 })

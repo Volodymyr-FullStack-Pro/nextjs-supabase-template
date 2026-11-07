@@ -4,13 +4,13 @@ on:
   pull_request:
     paths:
       - 'supabase/**'
-      - 'src/db/**'
+      - 'src/shared/infrastructure/db/**'
       - '.github/workflows/db.yml'
   push:
     branches: [main]
     paths:
       - 'supabase/**'
-      - 'src/db/**'
+      - 'src/shared/infrastructure/db/**'
 
 permissions:
   contents: read

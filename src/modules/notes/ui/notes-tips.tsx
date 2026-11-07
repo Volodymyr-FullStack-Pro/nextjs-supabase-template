@@ -2,7 +2,7 @@ import { cacheLife, cacheTag } from 'next/cache'
 
 /**
  * Пример кэшируемого компонента ('use cache'): попадает в статическую оболочку страницы и живёт сутки.
- * Так кэшируются справочники и редко меняющиеся данные; инвалидация — revalidateTag('notes-tips') в action.
+ * Так кэшируются справочники и редко меняющиеся данные; инвалидация — updateTag('notes-tips') в action (или revalidateTag('notes-tips', 'max')).
  * Данные пользователя (cookies, сессия) внутри 'use cache' читать нельзя — их место в компонентах под Suspense.
  */
 // eslint-disable-next-line @typescript-eslint/require-await -- 'use cache' требует async-функцию

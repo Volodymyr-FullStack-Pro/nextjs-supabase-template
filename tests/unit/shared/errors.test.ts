@@ -9,11 +9,14 @@ import {
 import { err, ok } from '@/shared/domain/result'
 
 describe('domain errors', () => {
-  it('carry a stable code and a human message', () => {
+  it('carry a stable code with a human message', () => {
     expect(new NotFoundError('Заметка не найдена')).toMatchObject({
       code: 'NOT_FOUND',
       message: 'Заметка не найдена',
     })
+  })
+
+  it('distinguish forbidden and conflict by code', () => {
     expect(new ForbiddenError('Нет доступа').code).toBe('FORBIDDEN')
     expect(new ConflictError('Уже существует').code).toBe('CONFLICT')
   })
@@ -26,8 +29,11 @@ describe('domain errors', () => {
 })
 
 describe('Result', () => {
-  it('wraps values and errors without throwing', () => {
+  it('wraps a value as ok', () => {
     expect(ok(1)).toEqual({ ok: true, value: 1 })
+  })
+
+  it('wraps an error as not ok', () => {
     expect(err('nope')).toEqual({ ok: false, error: 'nope' })
   })
 })

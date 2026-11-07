@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // Каркас нового модуля по архитектуре шаблона: domain / application / infrastructure / ui + server.ts,
-// фейк репозитория, тест use case и тонкая страница. Запуск: npm run new:module <имя-в-kebab-case>
-// После генерации: описать модель в domain, реализовать репозиторий в infrastructure, добавить use cases.
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+// фейк репозитория, тесты домена и use case, тонкая страница. Запуск: npm run new:module <имя-в-kebab-case>
+// Ничего не перезаписывает: если модуль, страница или тесты с таким именем уже есть — отказывается.
+import { execFileSync } from 'node:child_process'
+import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 
 const name = process.argv[2]
 if (!name || !/^[a-z][a-z0-9-]*$/.test(name)) {
@@ -12,37 +13,53 @@ if (!name || !/^[a-z][a-z0-9-]*$/.test(name)) {
   )
   process.exit(1)
 }
-const Pascal = name.replace(/(^|-)([a-z0-9])/g, (_, __, letter) => letter.toUpperCase())
+const Pascal = name.replaceAll(/(^|-)([a-z0-9])/g, (_, __, letter) => letter.toUpperCase())
 const camel = Pascal[0].toLowerCase() + Pascal.slice(1)
-const root = join('src', 'modules', name)
-if (existsSync(root)) {
-  console.error(`Модуль ${name} уже есть: ${root}`)
+const moduleRoot = join('src', 'modules', name)
+const pageRoot = join('src', 'app', name)
+const testsRoot = join('tests', 'unit', 'modules', name)
+
+/** Сегмент маршрута с таким именем в src/app, в том числе внутри групп (auth) — иначе Next не соберётся. */
+const routeSegmentExists = (directory) => {
+  for (const entry of readdirSync(directory)) {
+    const full = join(directory, entry)
+    if (!statSync(full).isDirectory()) continue
+    if (entry === name) return true
+    if (entry.startsWith('(') && routeSegmentExists(full)) return true
+  }
+  return false
+}
+const taken = [moduleRoot, pageRoot, testsRoot].filter((path) => existsSync(path))
+if (taken.length > 0 || routeSegmentExists('src/app')) {
+  console.error(
+    `Имя «${name}» уже занято: ${taken.join(', ') || `маршрут /${name} в src/app`}. Выберите другое.`,
+  )
   process.exit(1)
 }
 
 const files = {
-  [`${root}/domain/${name}.ts`]: `import { z } from 'zod'
+  [`${moduleRoot}/domain/${name}.ts`]: `import { z } from 'zod'
 
 /** Модель домена «${name}»: что система знает об объекте. Не строка таблицы. */
-export const ${Pascal}Schema = z.object({ id: z.string(), name: z.string() })
+export const ${Pascal}Schema = z.object({ id: z.string(), name: z.string().min(1) })
 export type ${Pascal} = z.infer<typeof ${Pascal}Schema>
 `,
-  [`${root}/application/${name}-repository.ts`]: `import type { ${Pascal} } from '../domain/${name}'
+  [`${moduleRoot}/application/${name}-repository.ts`]: `import type { ${Pascal} } from '../domain/${name}'
 
 /** Порт хранилища: реализуется в infrastructure (Supabase) и в фейке для тестов. */
 export interface ${Pascal}Repository {
   listForUser(userId: string): Promise<${Pascal}[]>
 }
 `,
-  [`${root}/application/list-${name}.ts`]: `import type { ${Pascal} } from '../domain/${name}'
+  [`${moduleRoot}/application/list-${name}.ts`]: `import type { ${Pascal} } from '../domain/${name}'
 import type { ${Pascal}Repository } from './${name}-repository'
 
 /** Use case: без ожидаемых ошибок возвращает значение; с ошибками домена — Result из shared/domain/result. */
-export function makeList${Pascal}({ repository }: { repository: Repository }) {
+export function makeList${Pascal}({ repository }: { repository: ${Pascal}Repository }) {
   return (ctx: { userId: string }): Promise<${Pascal}[]> => repository.listForUser(ctx.userId)
 }
 `,
-  [`${root}/infrastructure/${name}-repository.supabase.ts`]: `import 'server-only'
+  [`${moduleRoot}/infrastructure/${name}-repository.supabase.ts`]: `import 'server-only'
 import type { ${Pascal}Repository } from '../application/${name}-repository'
 
 /** Реализация на user-scoped клиенте Supabase (RLS). Заполните запрос к таблице «${name}» и перевод строк в модель. */
@@ -51,31 +68,31 @@ export const supabase${Pascal}Repository: ${Pascal}Repository = {
     Promise.reject(new Error('${Pascal}Repository.listForUser: реализуйте запрос к таблице ${name}')),
 }
 `,
-  [`${root}/infrastructure/${name}-repository.fake.ts`]: `import type { ${Pascal}Repository } from '../application/${name}-repository'
+  [`${moduleRoot}/infrastructure/${name}-repository.fake.ts`]: `import type { ${Pascal}Repository } from '../application/${name}-repository'
 import type { ${Pascal} } from '../domain/${name}'
 
 type Stored = ${Pascal} & { ownerId: string }
 
-/** In-memory реализация порта для тестов use cases. */
+/** In-memory реализация порта для тестов use cases; повторяет семантику реальной (фильтр по владельцу). */
 export function fake${Pascal}Repository(seed: Stored[] = []) {
   const rows: Stored[] = [...seed]
-  const repository: Repository = {
+  const repository: ${Pascal}Repository = {
     listForUser: (userId) =>
       Promise.resolve(rows.filter((row) => row.ownerId === userId).map(({ id, name }) => ({ id, name }))),
   }
   return { repository, rows }
 }
 `,
-  [`${root}/server.ts`]: `import 'server-only'
+  [`${moduleRoot}/server.ts`]: `import 'server-only'
 import { makeList${Pascal} } from './application/list-${name}'
 import { supabase${Pascal}Repository } from './infrastructure/${name}-repository.supabase'
 
 /** Точка сборки модуля: use cases с реальными репозиториями. */
 export const ${camel} = {
-  list: makeList({ repository: supabaseRepository }),
+  list: makeList${Pascal}({ repository: supabase${Pascal}Repository }),
 }
 `,
-  [`${root}/ui/${name}-list.tsx`]: `import { verifySession } from '@/shared/lib/session'
+  [`${moduleRoot}/ui/${name}-list.tsx`]: `import { verifySession } from '@/shared/lib/session'
 import { ${camel} } from '../server'
 
 /** Динамическая часть страницы (сессия + база): страница оборачивает её в Suspense. */
@@ -92,7 +109,7 @@ export async function ${Pascal}List() {
   )
 }
 `,
-  [`src/app/${name}/page.tsx`]: `import { Suspense } from 'react'
+  [`${pageRoot}/page.tsx`]: `import { Suspense } from 'react'
 import { ${Pascal}List } from '@/modules/${name}/ui/${name}-list'
 
 export default function ${Pascal}Page() {
@@ -106,28 +123,45 @@ export default function ${Pascal}Page() {
   )
 }
 `,
-  [`tests/unit/modules/${name}/list-${name}.test.ts`]: `import { describe, expect, it } from 'vitest'
+  [`${testsRoot}/${name}.test.ts`]: `import { describe, expect, it } from 'vitest'
+import { ${Pascal}Schema } from '@/modules/${name}/domain/${name}'
+
+describe('${Pascal}Schema', () => {
+  it('accepts an object with an id and a name', () => {
+    expect(${Pascal}Schema.safeParse({ id: '1', name: 'Первый' }).success).toBe(true)
+  })
+
+  it('rejects an empty name', () => {
+    expect(${Pascal}Schema.safeParse({ id: '1', name: '' }).success).toBe(false)
+  })
+})
+`,
+  [`${testsRoot}/list-${name}.test.ts`]: `import { describe, expect, it } from 'vitest'
 import { makeList${Pascal} } from '@/modules/${name}/application/list-${name}'
 import { fake${Pascal}Repository } from '@/modules/${name}/infrastructure/${name}-repository.fake'
 
 describe('list${Pascal}', () => {
   it('lists only the items of the current user', async () => {
-    const { repository } = fakeRepository([
+    const { repository } = fake${Pascal}Repository([
       { id: '1', name: 'Мой', ownerId: 'u1' },
       { id: '2', name: 'Чужой', ownerId: 'u2' },
     ])
-    const items = await makeList({ repository })({ userId: 'u1' })
+    const items = await makeList${Pascal}({ repository })({ userId: 'u1' })
     expect(items.map((item) => item.name)).toEqual(['Мой'])
   })
 })
 `,
 }
 
+const written = Object.keys(files)
 for (const [path, content] of Object.entries(files)) {
-  mkdirSync(join(path, '..'), { recursive: true })
+  mkdirSync(dirname(path), { recursive: true })
   writeFileSync(path, content)
   console.log(`  + ${path}`)
 }
+execFileSync('npx', ['prettier', '--write', '--log-level', 'warn', ...written], {
+  stdio: 'inherit',
+})
 console.log(
   `\nМодуль ${name} создан. Дальше: npm run lint && npm run typecheck && npm test, затем domain → use cases → репозиторий.`,
 )

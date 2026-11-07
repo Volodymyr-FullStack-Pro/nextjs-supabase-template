@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Бюджет JavaScript на маршрут: сумма gzip-размеров скриптов из предрендеренного HTML каждой страницы
-// (.next/server/app/*.html). Считает только начальную загрузку, без префетча ссылок (в отличие от Lighthouse).
+// (.next/server/app/*.html), без nomodule-полифиллов и без префетча ссылок (в отличие от Lighthouse).
 // Два порога: лимит (граница) и база perf-baseline.json (храповик: рост относительно базы — тоже ошибка,
 // пока базу не обновили осознанно). Лимит — не цель: цель — не ухудшать, а улучшать.
 // Запуск после next build: npm run budget [-- --limit 300] [--update-baseline]
@@ -12,11 +12,17 @@ const DEFAULT_LIMIT_KB = 300
 const TOLERANCE_KB = 2 // шум минификации; всё, что больше, — рост
 const BYTES_IN_KB = 1024
 const APP_DIRECTORY = '.next/server/app'
+const ROUTES_MANIFEST = '.next/server/app-paths-manifest.json'
 const BASELINE_FILE = 'perf-baseline.json'
 
 const args = process.argv.slice(2)
-const limitKb = Number(args[args.indexOf('--limit') + 1] || DEFAULT_LIMIT_KB)
+const limitFlag = args.indexOf('--limit')
+const limitKb = limitFlag >= 0 ? Number(args[limitFlag + 1]) : DEFAULT_LIMIT_KB
 const updateBaseline = args.includes('--update-baseline')
+if (!Number.isFinite(limitKb) || limitKb <= 0) {
+  console.error('Неверный лимит: npm run budget -- --limit <КБ>')
+  process.exit(1)
+}
 if (!existsSync(APP_DIRECTORY)) {
   console.error('Нет сборки: сначала npm run build')
   process.exit(1)
@@ -44,6 +50,15 @@ const walk = (directory, prefix = '') => {
 }
 walk(APP_DIRECTORY)
 
+/** Теги <script src> страницы без nomodule (полифилл для старых браузеров современные не грузят). */
+const scriptUrls = (html) => {
+  const tags = html.match(/<script\b[^>]*\bsrc="\/_next\/static\/[^"]+\.js"[^>]*>/g) ?? []
+  const urls = tags
+    .filter((tag) => !/\bnomodule\b/.test(tag))
+    .map((tag) => /src="([^"]+)"/.exec(tag)?.[1])
+    .filter(Boolean)
+  return [...new Set(urls)]
+}
 const statusFor = (total, delta) => {
   if (total > limitKb) return '✘ лимит'
   if (delta === null) return '✓'
@@ -51,11 +66,6 @@ const statusFor = (total, delta) => {
   if (delta < -TOLERANCE_KB) return '✓ лучше'
   return '✓'
 }
-const scriptUrls = (html) => [
-  ...new Set(
-    [...html.matchAll(/<script[^>]+src="(\/_next\/static\/[^"]+\.js)"/g)].map((match) => match[1]),
-  ),
-]
 
 const baseline = existsSync(BASELINE_FILE) ? JSON.parse(readFileSync(BASELINE_FILE, 'utf8')) : {}
 const current = {}
@@ -74,6 +84,17 @@ for (const { route, file } of routes.sort((left, right) => left.route.localeComp
   console.log(
     `  ${statusFor(total, delta).padEnd(8)} ${route.padEnd(22)} ${String(total).padStart(4)} КБ  (${String(scripts.length)} скриптов, ${deltaText})`,
   )
+}
+
+// Маршруты без предрендеренного HTML (полностью динамические) в отчёт не попадают — о них предупреждаем.
+if (existsSync(ROUTES_MANIFEST)) {
+  const measured = new Set(routes.map(({ route }) => route))
+  const pages = Object.keys(JSON.parse(readFileSync(ROUTES_MANIFEST, 'utf8')))
+    .filter((key) => key.endsWith('/page'))
+    .map((key) => key.replace(/\/page$/, '').replaceAll(/\/\([^)]+\)/g, '') || '/')
+  const skipped = pages.filter((route) => !measured.has(route))
+  if (skipped.length > 0)
+    console.log(`  (без HTML, не измерены: ${skipped.join(', ')} — добавьте статическую оболочку)`)
 }
 
 if (updateBaseline) {

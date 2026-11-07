@@ -16,14 +16,15 @@ const sameModule = (type) => ({
   element: { type, captured: { module: '{{from.element.captured.module}}' } },
 })
 const types = (...list) => ({ element: { type: list } })
+const PURE_CORE = types('module-domain', 'module-application', 'shared-domain')
 const boundariesConfig = {
   files: ['src/**/*.{ts,tsx}'],
   plugins: { boundaries },
   settings: {
     'boundaries/include': ['src/**/*'],
     'boundaries/elements': [
-      // partialMatch: false — путь от корня, элемент = папка. Порядок важен: сначала самые глубокие папки,
-      // корень модуля (server.ts) и корень src (proxy.ts) — последними.
+      // partialMatch: false — путь от корня, элемент = папка. Порядок важен: первое совпадение побеждает,
+      // поэтому глубокие папки идут раньше. server.ts и proxy.ts — элементы-файлы; прочие файлы вне папок — unknown.
       {
         type: 'module-domain',
         pattern: 'src/modules/*/domain',
@@ -43,14 +44,19 @@ const boundariesConfig = {
         capture: ['module'],
       },
       { type: 'module-ui', pattern: 'src/modules/*/ui', partialMatch: false, capture: ['module'] },
-      { type: 'module-root', pattern: 'src/modules/*', partialMatch: false, capture: ['module'] }, // server.ts
+      {
+        type: 'module-root',
+        pattern: 'src/modules/*/server.ts',
+        mode: 'file',
+        capture: ['module'],
+      },
       { type: 'app', pattern: 'src/app', partialMatch: false },
       { type: 'types', pattern: 'src/types', partialMatch: false },
       { type: 'shared-domain', pattern: 'src/shared/domain', partialMatch: false },
       { type: 'shared-infrastructure', pattern: 'src/shared/infrastructure', partialMatch: false },
       { type: 'shared-lib', pattern: 'src/shared/lib', partialMatch: false },
       { type: 'shared-ui', pattern: 'src/shared/ui', partialMatch: false },
-      { type: 'root', pattern: 'src', partialMatch: false }, // src/proxy.ts
+      { type: 'root', pattern: 'src/proxy.ts', mode: 'file' },
     ],
     'import/resolver': { typescript: { alwaysTryTypes: true, project: './tsconfig.json' } },
   },
@@ -62,9 +68,9 @@ const boundariesConfig = {
       {
         default: 'disallow',
         checkAllOrigins: true,
+        // Последняя совпавшая политика побеждает: сначала общие разрешения, потом исключения.
         policies: [
-          // Пакеты npm и модули Node разрешены всем; исключение для чистого ядра — последней политикой
-          // (последняя совпавшая политика побеждает)
+          // Пакеты npm и модули Node разрешены всем...
           {
             from: { element: { type: '*' } },
             allow: { to: { module: { origin: ['external', 'core'] } } },
@@ -119,6 +125,7 @@ const boundariesConfig = {
             from: types('app'),
             allow: {
               to: types(
+                'app',
                 'module-ui',
                 'module-root',
                 'module-domain',
@@ -145,29 +152,23 @@ const boundariesConfig = {
             from: types('shared-ui'),
             allow: { to: types('shared-ui', 'shared-lib', 'shared-domain') },
           },
+          // ...кроме чистого ядра: ему можно только пакеты без I/O и фреймворка (allowlist)
           {
-            // Чистое ядро не зависит от фреймворков и инфраструктуры
-            from: types('module-domain', 'module-application', 'shared-domain'),
-            disallow: {
+            from: PURE_CORE,
+            disallow: { to: { module: { origin: ['external', 'core'] } } },
+            message:
+              'Домен и application не импортируют фреймворки и инфраструктуру ({{to.module.source}})',
+          },
+          {
+            from: PURE_CORE,
+            allow: {
               to: {
                 module: {
-                  origin: ['external', 'core'],
-                  source: [
-                    'react',
-                    'react-dom',
-                    'next',
-                    'next/*',
-                    '@supabase/*',
-                    'drizzle-orm',
-                    'drizzle-orm/*',
-                    'postgres',
-                    'server-only',
-                  ],
+                  origin: 'external',
+                  source: ['zod', 'decimal.js', 'date-fns', 'date-fns/*'],
                 },
               },
             },
-            message:
-              'Домен и application не импортируют фреймворки и инфраструктуру ({{to.module.source}})',
           },
         ],
       },

@@ -5,7 +5,7 @@ import { DomainError } from '@/shared/domain/errors'
 import { verifySession } from './session'
 
 /** Ошибка, текст которой можно показать пользователю. Всё остальное наружу уходит общей фразой. */
-export class ActionError extends Error {
+class ActionError extends Error {
   override readonly name = 'ActionError'
 }
 
@@ -18,7 +18,10 @@ export function fail(error: DomainError): never {
 export const actionClient = createSafeActionClient({
   handleServerError(error) {
     console.error(error) // в проекте сюда же — Sentry.captureException(error)
-    if (error instanceof ActionError || error instanceof EnvironmentError) return error.message
+    if (error instanceof ActionError) return error.message
+    // имя недостающей переменной полезно разработчику, но в проде наружу не уходит
+    if (error instanceof EnvironmentError && process.env.NODE_ENV !== 'production')
+      return error.message
     return 'Что-то пошло не так. Попробуйте ещё раз.'
   },
 })

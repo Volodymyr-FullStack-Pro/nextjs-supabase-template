@@ -6,7 +6,7 @@ module.exports = {
       startServerCommand: 'npm run start',
       startServerReadyPattern: 'Ready',
       url: ['http://localhost:3000/', 'http://localhost:3000/login'],
-      numberOfRuns: 1,
+      numberOfRuns: 3, // медиана трёх прогонов: на общих раннерах один прогон шумит
       settings: { preset: 'desktop' },
     },
     assert: {

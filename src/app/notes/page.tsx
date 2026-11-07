@@ -14,7 +14,7 @@ export default function NotesPage({ searchParams }: PageProps<'/notes'>) {
       <h1 className="text-2xl font-semibold">Заметки</h1>
       <NotesTips />
       <NotesForm />
-      <Suspense fallback={null}>
+      <Suspense fallback={<div className="h-8" aria-hidden />}>
         <NotesSearch />
       </Suspense>
       <Suspense fallback={<p className="text-sm text-muted-foreground">Загружаю…</p>}>
