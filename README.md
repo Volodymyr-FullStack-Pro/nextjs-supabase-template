@@ -98,24 +98,25 @@ npm run new:module businesses
 
 ## Команды
 
-| Команда                                            | Что делает                                                                                        |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `npm run dev` / `build` / `start`                  | Next.js                                                                                           |
-| `npm run lint`, `lint:fix`                         | `next typegen` + ESLint 10: правила Next.js, `strictTypeChecked`, архитектурные границы, Prettier |
-| `npm run typecheck`                                | `next typegen && tsc --noEmit`                                                                    |
-| `npm run format`, `format:check`                   | Prettier                                                                                          |
-| `npm test`, `test:coverage`                        | Vitest: ядро и компоненты; 100 % на `src/**/domain/**`                                            |
-| `npm run test:e2e`                                 | Playwright против `next build && next start`                                                      |
-| `npm run perf`                                     | Lighthouse по бюджету из `lighthouserc.cjs` (после `npm run build`)                               |
-| `npm run analyze`                                  | сборка с анализатором бандла                                                                      |
-| `npm run knip`                                     | неиспользуемые файлы, экспорты, зависимости                                                       |
-| `npm run jscpd`                                    | дубли кода (порог 0 %)                                                                            |
-| `npm run req:check`                                | реестр требований заказчика: повторы номеров, статусы, требования без ссылки                      |
-| `npm run new:module <имя>`                         | каркас модуля по архитектуре                                                                      |
-| `npm run db:generate`                              | SQL из схемы Drizzle в `drizzle/` для сверки с `supabase/migrations`                              |
-| `npm run db:types`                                 | типы supabase-js из локальной базы → `src/shared/infrastructure/supabase/types.ts`                |
-| `npm run db:studio`                                | Drizzle Studio                                                                                    |
-| `supabase test db`, `supabase db advisors --local` | pgTAP и проверки безопасности и производительности базы                                           |
+| Команда                                            | Что делает                                                                                                      |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `npm run dev` / `build` / `start`                  | Next.js                                                                                                         |
+| `npm run check`                                    | всё, что проверяет CI, одной командой: lint, typecheck, test:coverage, knip, jscpd, format:check, build, budget |
+| `npm run lint`, `lint:fix`                         | `next typegen` + ESLint 10: правила Next.js, `strictTypeChecked`, архитектурные границы, стиль кода, Prettier   |
+| `npm run typecheck`                                | `next typegen && tsc --noEmit`                                                                                  |
+| `npm run format`, `format:check`                   | Prettier                                                                                                        |
+| `npm test`, `test:coverage`                        | Vitest: ядро и компоненты; 100 % на `src/**/domain/**`                                                          |
+| `npm run test:e2e`                                 | Playwright против `next build && next start`                                                                    |
+| `npm run perf`                                     | Lighthouse по бюджету из `lighthouserc.cjs` (после `npm run build`)                                             |
+| `npm run analyze`                                  | сборка с анализатором бандла                                                                                    |
+| `npm run knip`                                     | неиспользуемые файлы, экспорты, зависимости                                                                     |
+| `npm run jscpd`                                    | дубли кода (порог 0 %)                                                                                          |
+| `npm run req:check`                                | реестр требований заказчика: повторы номеров, статусы, требования без ссылки                                    |
+| `npm run new:module <имя>`                         | каркас модуля по архитектуре                                                                                    |
+| `npm run db:generate`                              | SQL из схемы Drizzle в `drizzle/` (папка в .gitignore) для сверки с `supabase/migrations`                       |
+| `npm run db:types`                                 | типы supabase-js из локальной базы → `src/shared/infrastructure/supabase/types.ts`                              |
+| `npm run db:studio`                                | Drizzle Studio                                                                                                  |
+| `supabase test db`, `supabase db advisors --local` | pgTAP и проверки безопасности и производительности базы                                                         |
 
 На коммите lint-staged прогоняет eslint и prettier по изменённым файлам (simple-git-hooks ставит хук при `npm ci`; без `.git` или без devDependencies установка молча пропускается).
 
