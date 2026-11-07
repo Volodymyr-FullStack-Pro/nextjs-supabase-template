@@ -2,12 +2,13 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": [
     "src/app/**/{page,layout,error,global-error,not-found,loading,route,template}.{ts,tsx}",
-    "src/components/ui/**/*.tsx",
-    "src/db/index.ts",
-    "src/lib/supabase/client.ts",
+    "src/shared/ui/**/*.tsx",
+    "src/shared/infrastructure/db/index.ts",
+    "src/shared/infrastructure/supabase/client.ts",
     "tests/**/*.{ts,tsx}"
   ],
   "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"],
   "ignoreDependencies": ["tailwindcss", "shadcn", "tw-animate-css"],
-  "ignoreBinaries": ["supabase"]
+  "ignoreBinaries": ["supabase"],
+  "ignoreExportsUsedInFile": true
 }

@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "analyze": "ANALYZE=true next build",
+    "budget": "node scripts/bundle-budget.mjs",
     "start": "next start",
     "lint": "next typegen && eslint .",
     "lint:fix": "next typegen && eslint . --fix",
@@ -23,6 +25,8 @@
     "db:studio": "drizzle-kit studio",
     "db:types": "supabase gen types typescript --local --schema public > src/lib/supabase/types.ts && prettier --write src/lib/supabase/types.ts",
     "test:e2e": "playwright test",
+    "perf": "lhci autorun",
+    "new:module": "node scripts/new-module.mjs",
     "prepare": "simple-git-hooks || true"
   },
   "dependencies": {
@@ -50,6 +54,8 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@lhci/cli": "^0.16.0",
+    "@next/bundle-analyzer": "^16.4.5",
     "@playwright/test": "^1.65.0",
     "@tailwindcss/turbopack": "^4",
     "@testing-library/react": "^16.3.3",
@@ -64,6 +70,8 @@
     "eslint": "^10.14.0",
     "eslint-config-next": "16.4.5",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-typescript": "^4.4.5",
+    "eslint-plugin-boundaries": "^7.4.2",
     "jscpd": "^5.4.2",
     "jsdom": "^31.0.0",
     "knip": "^6.44.1",

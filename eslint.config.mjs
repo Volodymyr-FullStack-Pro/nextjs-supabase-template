@@ -3,9 +3,176 @@ import nextVitals from 'eslint-config-next/core-web-vitals'
 import nextTs from 'eslint-config-next/typescript'
 import tseslint from 'typescript-eslint'
 import eslintConfigPrettier from 'eslint-config-prettier/flat'
+import boundaries from 'eslint-plugin-boundaries'
 
 // Порядок: правила Next.js (core-web-vitals даёт лишь шесть правил jsx-a11y; полный плагин ждёт поддержки ESLint 10)
 // → строгий TypeScript с проверкой типов → Prettier последним, чтобы снять конфликты форматирования.
+
+// Архитектурные границы (см. .claude/rules/architecture.md): модули с четырьмя слоями, shared и app.
+// Внутри модуля слой видит только свои слои ниже; другой модуль доступен лишь через server.ts и domain.
+const sameModule = (type) => ({
+  element: { type, captured: { module: '{{from.element.captured.module}}' } },
+})
+const types = (...list) => ({ element: { type: list } })
+const boundariesConfig = {
+  files: ['src/**/*.{ts,tsx}'],
+  plugins: { boundaries },
+  settings: {
+    'boundaries/include': ['src/**/*'],
+    'boundaries/elements': [
+      // partialMatch: false — путь от корня, элемент = папка. Порядок важен: сначала самые глубокие папки,
+      // корень модуля (server.ts) и корень src (proxy.ts) — последними.
+      {
+        type: 'module-domain',
+        pattern: 'src/modules/*/domain',
+        partialMatch: false,
+        capture: ['module'],
+      },
+      {
+        type: 'module-application',
+        pattern: 'src/modules/*/application',
+        partialMatch: false,
+        capture: ['module'],
+      },
+      {
+        type: 'module-infrastructure',
+        pattern: 'src/modules/*/infrastructure',
+        partialMatch: false,
+        capture: ['module'],
+      },
+      { type: 'module-ui', pattern: 'src/modules/*/ui', partialMatch: false, capture: ['module'] },
+      { type: 'module-root', pattern: 'src/modules/*', partialMatch: false, capture: ['module'] }, // server.ts
+      { type: 'app', pattern: 'src/app', partialMatch: false },
+      { type: 'types', pattern: 'src/types', partialMatch: false },
+      { type: 'shared-domain', pattern: 'src/shared/domain', partialMatch: false },
+      { type: 'shared-infrastructure', pattern: 'src/shared/infrastructure', partialMatch: false },
+      { type: 'shared-lib', pattern: 'src/shared/lib', partialMatch: false },
+      { type: 'shared-ui', pattern: 'src/shared/ui', partialMatch: false },
+      { type: 'root', pattern: 'src', partialMatch: false }, // src/proxy.ts
+    ],
+    'import/resolver': { typescript: { alwaysTryTypes: true, project: './tsconfig.json' } },
+  },
+  rules: {
+    'boundaries/no-unknown-files': 'error',
+    'boundaries/no-unknown-dependencies': 'error',
+    'boundaries/dependencies': [
+      'error',
+      {
+        default: 'disallow',
+        checkAllOrigins: true,
+        policies: [
+          // Пакеты npm и модули Node разрешены всем; исключение для чистого ядра — последней политикой
+          // (последняя совпавшая политика побеждает)
+          {
+            from: { element: { type: '*' } },
+            allow: { to: { module: { origin: ['external', 'core'] } } },
+          },
+          {
+            from: types('module-domain'),
+            allow: { to: [sameModule('module-domain'), types('shared-domain')] },
+          },
+          {
+            from: types('module-application'),
+            allow: {
+              to: [
+                sameModule('module-application'),
+                sameModule('module-domain'),
+                types('shared-domain'),
+              ],
+            },
+          },
+          {
+            from: types('module-infrastructure'),
+            allow: {
+              to: [
+                sameModule('module-infrastructure'),
+                sameModule('module-application'),
+                sameModule('module-domain'),
+                types('shared-domain', 'shared-infrastructure'),
+              ],
+            },
+          },
+          {
+            from: types('module-root'),
+            allow: {
+              to: [
+                sameModule('module-application'),
+                sameModule('module-infrastructure'),
+                sameModule('module-domain'),
+                types('shared-domain', 'shared-infrastructure', 'shared-lib'),
+              ],
+            },
+          },
+          {
+            // ui своего модуля: server.ts, domain, ui; чужие модули — только их server.ts и domain
+            from: types('module-ui'),
+            allow: {
+              to: [
+                sameModule('module-ui'),
+                types('module-root', 'module-domain', 'shared-domain', 'shared-ui', 'shared-lib'),
+              ],
+            },
+          },
+          {
+            from: types('app'),
+            allow: {
+              to: types(
+                'module-ui',
+                'module-root',
+                'module-domain',
+                'shared-ui',
+                'shared-lib',
+                'shared-domain',
+              ),
+            },
+          },
+          {
+            from: types('root'),
+            allow: { to: types('shared-infrastructure', 'shared-lib', 'shared-domain') },
+          },
+          { from: types('shared-domain'), allow: { to: types('shared-domain') } },
+          {
+            from: types('shared-infrastructure'),
+            allow: { to: types('shared-infrastructure', 'shared-domain') },
+          },
+          {
+            from: types('shared-lib'),
+            allow: { to: types('shared-lib', 'shared-infrastructure', 'shared-domain') },
+          },
+          {
+            from: types('shared-ui'),
+            allow: { to: types('shared-ui', 'shared-lib', 'shared-domain') },
+          },
+          {
+            // Чистое ядро не зависит от фреймворков и инфраструктуры
+            from: types('module-domain', 'module-application', 'shared-domain'),
+            disallow: {
+              to: {
+                module: {
+                  origin: ['external', 'core'],
+                  source: [
+                    'react',
+                    'react-dom',
+                    'next',
+                    'next/*',
+                    '@supabase/*',
+                    'drizzle-orm',
+                    'drizzle-orm/*',
+                    'postgres',
+                    'server-only',
+                  ],
+                },
+              },
+            },
+            message:
+              'Домен и application не импортируют фреймворки и инфраструктуру ({{to.module.source}})',
+          },
+        ],
+      },
+    ],
+  },
+}
+
 export default defineConfig([
   globalIgnores([
     '.next/**',
@@ -20,6 +187,7 @@ export default defineConfig([
   ...nextVitals,
   ...nextTs,
   ...tseslint.configs.strictTypeChecked,
+  boundariesConfig,
   {
     files: ['**/*.{ts,tsx,mts}'],
     languageOptions: {

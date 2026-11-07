@@ -9,9 +9,14 @@ export default defineConfig({
     include: ['tests/unit/**/*.test.{ts,tsx}', 'src/**/*.test.{ts,tsx}'],
     coverage: {
       provider: 'v8',
-      include: ['src/lib/**', 'src/data/**', 'src/features/**'],
+      include: [
+        'src/modules/**/domain/**',
+        'src/modules/**/application/**',
+        'src/shared/domain/**',
+      ],
       thresholds: {
-        'src/lib/money.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        // Чистое ядро покрывается полностью: это правила денег и бизнеса, их проверяют только тесты.
+        'src/**/domain/**/*.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
       },
     },
   },

@@ -22,3 +22,13 @@ test('proxy is part of the production build', () => {
   expect(proxy, 'src/proxy.ts не попал в сборку').toBeDefined()
   expect(proxy?.matchers[0]?.originalSource).toContain('_next/static')
 })
+
+test('serves the home page shell quickly', async ({ page }) => {
+  // Статическая оболочка (Cache Components) должна отдаваться почти мгновенно; бюджет полный — в lighthouserc.cjs.
+  await page.goto('/')
+  const ttfb = await page.evaluate(
+    () =>
+      (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming).responseStart,
+  )
+  expect(ttfb).toBeLessThan(1000)
+})

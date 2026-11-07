@@ -1,8 +1,12 @@
+import bundleAnalyzer from '@next/bundle-analyzer'
 import type { NextConfig } from 'next'
 
+const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env['ANALYZE'] === 'true' })
+
 const nextConfig: NextConfig = {
-  /* config options here */
   reactCompiler: true,
+  // Cache Components: статическая оболочка + стриминг динамики под Suspense; 'use cache' для справочных данных.
+  cacheComponents: true,
   typedRoutes: true, // href в Link и redirect проверяются по сгенерированным типам маршрутов
   turbopack: {
     rules: {
@@ -14,4 +18,4 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default nextConfig
+export default withBundleAnalyzer(nextConfig)

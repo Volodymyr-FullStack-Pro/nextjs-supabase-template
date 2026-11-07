@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { env } from '@/lib/env'
-import type { Database } from '@/lib/supabase/types'
+import { env } from '@/shared/infrastructure/env'
+import type { Database } from '@/shared/infrastructure/supabase/types'
 
 const PUBLIC_PATHS = ['/', '/login']
 

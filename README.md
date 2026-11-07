@@ -1,6 +1,6 @@
 # nextjs-supabase-template
 
-Шаблон проекта: Next.js 16 (App Router, `src/`), Supabase (Auth, Postgres с RLS), Drizzle, строгий TypeScript (`@tsconfig/strictest`), shadcn/ui (Base UI, lucide-react, sonner, next-themes), next-safe-action + react-hook-form + Zod, nuqs, date-fns, ESLint 10, Prettier, knip, jscpd, Vitest + Testing Library, Playwright, pgTAP, lint-staged на коммите, GitHub Actions и настройки Claude Code с плагином `dev-kit`. С первого коммита `lint`, `typecheck`, `test`, `test:e2e` и `build` зелёные.
+Шаблон проекта с готовой архитектурой, правилами и проверками: Next.js 16 (App Router, Cache Components, React Compiler), Supabase (Auth, Postgres с RLS), Drizzle, строгий TypeScript (`@tsconfig/strictest`), shadcn/ui, next-safe-action + react-hook-form + Zod, nuqs, date-fns, ESLint 10 с проверкой архитектурных границ, Prettier, knip, jscpd, Vitest + Testing Library, Playwright, Lighthouse CI, pgTAP, lint-staged, GitHub Actions и настройки Claude Code с плагином `dev-kit`. С первого коммита весь пайплайн зелёный.
 
 ## Новый проект из шаблона
 
@@ -8,60 +8,125 @@
 gh repo create <org>/<проект> --template Volodymyr-FullStack-Pro/nextjs-supabase-template --private --clone
 cd <проект>
 nvm use                      # Node 22 из .nvmrc
-npm ci
+npm ci                       # ставит зависимости и git-хуки
 cp .env.example .env.local   # заполнить из Supabase → Project Settings → API
 supabase start               # локальный Supabase (нужен Supabase CLI); supabase status → ключи в .env.local
 npm run dev
 ```
 
-Затем: заменить `<Проект>` в `CLAUDE.md` и `docs/knowledge/`, записать первое решение в `docs/knowledge/decisions.md`, при работе с ClickUp — переименовать `.claude/rules/clickup.md.example` в `clickup.md` и заполнить.
+Затем: заменить `<Проект>` в `CLAUDE.md` и `docs/knowledge/`, записать первое решение в `docs/knowledge/decisions.md`, завести первый модуль `npm run new:module <имя>`, при работе с ClickUp переименовать `.claude/rules/clickup.md.example` в `clickup.md`.
+
+## Архитектура: модули и четыре слоя
+
+Код разложен по доменам (модулям), внутри модуля — по слоям. Правило одно: зависимости направлены внутрь, к чистому ядру; фреймворки и база — снаружи и заменяемы. Нарушение правила — ошибка `npm run lint`, а не замечание на ревью.
+
+```
+src/app/                         тонкие page/layout: только композиция и Suspense, никакой логики
+src/modules/<домен>/
+  domain/                        модели (Zod), чистые правила, ошибки домена. Без React, Next, Supabase, Drizzle
+  application/                   use cases и интерфейсы репозиториев (порты)
+  infrastructure/                реализации портов: Supabase/Drizzle, внешние API; *.fake.ts — для тестов
+  ui/                            actions (next-safe-action → use case), формы, компоненты, search-params
+  server.ts                      точка сборки: use cases с реальными репозиториями (единственный «DI»)
+src/shared/
+  domain/                        деньги (decimal.js), Result, ошибки домена
+  infrastructure/                клиенты Supabase, схема Drizzle и прямое подключение, env
+  lib/                           safe-action (actionClient, authActionClient, fail), session
+  ui/                            shadcn/ui, form/TextField, sonner
+src/proxy.ts                     обновление сессии и редиректы (не единственная защита)
+```
+
+| Слой             | Что в нём                 | Может импортировать                                                                                                           |
+| ---------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `domain`         | модели, правила, ошибки   | свой `domain`, `shared/domain`, пакеты без I/O (zod, decimal.js)                                                              |
+| `application`    | use cases, порты          | свой `domain` и `application`, `shared/domain`                                                                                |
+| `infrastructure` | репозитории, шлюзы, фейки | свой `application` и `domain`, `shared/domain`, `shared/infrastructure`                                                       |
+| `server.ts`      | сборка                    | свой `application`, `infrastructure`, `domain`, `shared/*` кроме `ui`                                                         |
+| `ui`             | actions, компоненты       | свой `server.ts`, `domain`, `ui`; `shared/ui`, `shared/lib`, `shared/domain`; чужие модули — только их `server.ts` и `domain` |
+| `app`            | маршруты                  | `modules/*/ui`, `modules/*/server.ts`, `modules/*/domain`, `shared/ui`, `shared/lib`, `shared/domain`                         |
+
+`domain` и `application` не могут импортировать `react`, `next`, `@supabase/*`, `drizzle-orm`, `server-only` — это проверяет `eslint-plugin-boundaries` (конфигурация в `eslint.config.mjs`). Barrel-файлы (`index.ts` с реэкспортом) не используются: импорт по точному пути, это быстрее собирается и лучше анализируется.
+
+**Зачем так.** Правила денег и бизнеса живут в чистых функциях и проверяются тестами без базы и браузера; замена Supabase, Vercel или UI-библиотеки не трогает ядро; у каждой вещи одно место, и Claude Code не выбирает, «куда положить»; модуль можно вынести в пакет или другой сервис без переписывания.
+
+### Как проходит запрос
+
+1. **Чтение.** `page.tsx` рендерит статическую оболочку и оборачивает динамику в `<Suspense>`. Серверный компонент из `ui/` берёт сессию (`verifySession`) и вызывает use case из `server.ts`; use case ходит в порт, порт реализован на user-scoped клиенте Supabase (RLS применяется). Наружу уходит модель домена, не строка таблицы.
+2. **Запись.** Форма (`useHookFormAction` + Zod-схема из `domain`) вызывает action из `ui/actions.ts`. `authActionClient` проверяет сессию в middleware и валидирует вход той же схемой; action вызывает use case, получает `Result`, при ошибке домена делает `fail(error)` (текст уходит пользователю), затем `revalidatePath`/`revalidateTag`.
+3. **Ошибки.** Ожидаемые (`NotFoundError`, `ForbiddenError`, `ConflictError`, `RuleViolationError`) возвращаются из use case как `Result`. Неожиданные (сеть, база) бросаются и превращаются в общую фразу в `handleServerError`; причина попадает в лог и Sentry.
+4. **Кэш.** Данные пользователя читаются динамически под Suspense. Справочники и редко меняющиеся данные — компоненты и функции с `'use cache'`, `cacheLife`, `cacheTag`; инвалидация — `revalidateTag` в action, который их меняет. Внутри `'use cache'` нельзя читать cookies и сессию.
+
+### Новый модуль
+
+```bash
+npm run new:module businesses
+```
+
+Создаёт `src/modules/businesses/{domain,application,infrastructure,ui}`, `server.ts`, фейк репозитория, тест use case и страницу `src/app/businesses/page.tsx`. Всё проходит lint, typecheck и тесты сразу; дальше описываете модель в `domain`, use cases в `application`, запросы в `infrastructure`.
+
+## Производительность
+
+Бюджет на маршрут: TTFB ≤ 200 мс с кэшем, LCP ≤ 1,5 с, TBT ≤ 200 мс, CLS ≤ 0,1, Lighthouse Performance ≥ 90, JavaScript начальной загрузки ≤ 300 КБ gzip. Проверки:
+
+- **Лаборатория, на каждом PR:** Lighthouse (`lighthouserc.cjs`, `npm run perf`), `npm run budget` (сумма gzip-скриптов из HTML каждой страницы, без префетча), e2e-замер TTFB главной, `npm run analyze` для разбора бандла.
+- **Поле, в проде:** Web Vitals реальных пользователей (`src/app/web-vitals.tsx` → `/api/vitals`): LCP, INP, CLS, FCP, TTFB с оценкой good / needs-improvement / poor. Сейчас пишутся в лог структурированной строкой; в проекте подключить Sentry или аналитику в `src/app/api/vitals/route.ts`.
+
+Точка отсчёта шаблона (Next 16 + React 19): пустая страница ≈ 170 КБ gzip, главная с темой, уведомлениями и nuqs ≈ 207, страница с формой (zod, react-hook-form, Base UI) ≈ 260. Новый экран должен укладываться в бюджет: тяжёлые компоненты через `next/dynamic`, валидация на клиенте — только схемы из `domain`, серверные модули в клиент не импортировать.
+
+Принципы: считать там, где данные (снимки и агрегаты в базе, индексы под фильтры, пагинация на сервере); кэш по умолчанию с точной инвалидацией по тегам; минимум JS в браузере (серверные компоненты, клиентские только листья, тяжёлое через `next/dynamic`, DTO вместо объектов целиком); мгновенный отклик (`useOptimistic`, `useTransition`, префетч, debounce); без водопадов (`Promise.all`, `React.cache` для дедупликации, `after()` для фоновой работы); один регион для приложения и базы.
+
+## Тесты
+
+| Слой                    | Инструмент                                                        | Что проверяем                                                     |
+| ----------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `domain`, `application` | Vitest на фейках из `infrastructure/*.fake.ts`                    | правила и use cases без базы; `src/**/domain/**` — покрытие 100 % |
+| клиентские компоненты   | Vitest + Testing Library в jsdom (`// @vitest-environment jsdom`) | поведение, доступность; URL — `withNuqsTestingAdapter`            |
+| страницы и сценарии     | Playwright против production-сборки                               | серверные компоненты, формы, редиректы, TTFB                      |
+| политики RLS            | pgTAP (`supabase test db`)                                        | свои строки видны, чужие нет                                      |
+| внешние HTTP            | MSW (добавляется с первым внешним API)                            | ответы записаны, сеть не мокается на уровне функций               |
+
+Имена тестов: начинаются с глагола в третьем лице и описывают намерение, не реализацию: `it('rejects an empty title')`, `it('lists only the notes of the current user')`. Без `should`, `tests`, `must`; контекст — в названии файла; один тест — одно поведение; в тестах правил домена — номер требования из реестра (`// AC-27`).
 
 ## Команды
 
-| Команда                           | Что делает                                                                                    |
-| --------------------------------- | --------------------------------------------------------------------------------------------- |
-| `npm run dev` / `build` / `start` | Next.js                                                                                       |
-| `npm run lint`, `lint:fix`        | ESLint 10: правила Next.js, `strictTypeChecked`, Prettier (см. «Доступность»)                 |
-| `npm run typecheck`               | `next typegen && tsc --noEmit` (типы маршрутов, напр. `LayoutProps`)                          |
-| `npm run format`, `format:check`  | Prettier                                                                                      |
-| `npm test`, `test:coverage`       | Vitest: unit и компоненты в jsdom (`tests/unit`, `*.test.ts[x]`); 100 % на `src/lib/money.ts` |
-| `npm run test:e2e`                | Playwright против `next build && next start`                                                  |
-| `npm run knip`                    | неиспользуемые файлы, экспорты, зависимости                                                   |
-| `npm run jscpd`                   | дубли кода (порог 0 %)                                                                        |
-| `npm run req:check`               | реестр требований заказчика: повторы номеров, статусы, требования без ссылки                  |
-| `npm run db:generate`             | SQL из `src/db/schema.ts` в `drizzle/` для сверки с `supabase/migrations`                     |
-| `npm run db:studio`               | Drizzle Studio                                                                                |
-| `npm run db:types`                | типы supabase-js из локальной базы → `src/lib/supabase/types.ts`                              |
-| `supabase test db`                | pgTAP-тесты RLS из `supabase/tests`                                                           |
-| `supabase db advisors --local`    | проверки безопасности и производительности базы                                               |
+| Команда                                            | Что делает                                                                                        |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `npm run dev` / `build` / `start`                  | Next.js                                                                                           |
+| `npm run lint`, `lint:fix`                         | `next typegen` + ESLint 10: правила Next.js, `strictTypeChecked`, архитектурные границы, Prettier |
+| `npm run typecheck`                                | `next typegen && tsc --noEmit`                                                                    |
+| `npm run format`, `format:check`                   | Prettier                                                                                          |
+| `npm test`, `test:coverage`                        | Vitest: ядро и компоненты; 100 % на `src/**/domain/**`                                            |
+| `npm run test:e2e`                                 | Playwright против `next build && next start`                                                      |
+| `npm run perf`                                     | Lighthouse по бюджету из `lighthouserc.cjs` (после `npm run build`)                               |
+| `npm run analyze`                                  | сборка с анализатором бандла                                                                      |
+| `npm run knip`                                     | неиспользуемые файлы, экспорты, зависимости                                                       |
+| `npm run jscpd`                                    | дубли кода (порог 0 %)                                                                            |
+| `npm run req:check`                                | реестр требований заказчика: повторы номеров, статусы, требования без ссылки                      |
+| `npm run new:module <имя>`                         | каркас модуля по архитектуре                                                                      |
+| `npm run db:generate`                              | SQL из схемы Drizzle в `drizzle/` для сверки с `supabase/migrations`                              |
+| `npm run db:types`                                 | типы supabase-js из локальной базы → `src/shared/infrastructure/supabase/types.ts`                |
+| `npm run db:studio`                                | Drizzle Studio                                                                                    |
+| `supabase test db`, `supabase db advisors --local` | pgTAP и проверки безопасности и производительности базы                                           |
+
+На коммите lint-staged прогоняет eslint и prettier по изменённым файлам (simple-git-hooks ставит хук при `npm ci`; без `.git` или без devDependencies установка молча пропускается).
 
 ## Что где лежит
 
-- `src/app` — только маршруты и layout (`/`, `/login`, `/notes`, `error.tsx`, `global-error.tsx`, `not-found.tsx`).
-- `src/features/<домен>` — `schema.ts` (Zod, общий для формы и action), `action.ts` (next-safe-action), компоненты домена (пример: `notes`, `auth`).
-- `src/components/ui` — shadcn/ui (добавлять `npx shadcn@latest add <имя>`); `src/components/form` — `TextField` для форм на react-hook-form.
-- `src/data` — слой доступа к данным: `server-only`, проверка сессии (`verifySession`), DTO наружу.
-- `src/db` — схема Drizzle с политиками `pgPolicy` и прямое подключение `db()` для серверных задач (мимо RLS — осознанно).
-- `src/lib` — `env.ts` (ленивое чтение переменных), `money.ts` (decimal.js, `formatMoney`), `safe-action.ts` (`actionClient`, `authActionClient`, `ActionError`), `supabase/` (клиенты `@supabase/ssr`).
-- `src/proxy.ts` — обновление сессии и редирект неавторизованных; не единственная защита. Что proxy попал в сборку, проверяет e2e-тест.
-- `supabase/migrations` — источник правды для базы; `supabase/tests` — pgTAP; `supabase/config.toml` — локальный стек (`supabase start`).
-- `tests/unit`, `tests/e2e` — Vitest и Playwright.
-- `.claude/` — `settings.json` (маркетплейс `claude-kit`, плагин `dev-kit`, запреты), `rules/` (правила по областям).
-- `docs/knowledge` — статус, реестр требований заказчика (`requirements.md`), решения, открытые вопросы; `docs/roadmap.md` — спринты; `docs/superpowers` — спецификации и планы.
-- `scripts/requirements-check.mjs` — проверка реестра требований (`npm run req:check`).
-- `.github/workflows` — `ci.yml` (lint, typecheck, тесты, knip, jscpd, build, e2e, gitleaks, semgrep), `db.yml` (advisors + pgTAP при изменениях базы).
+- `src/app` — только маршруты, layout, `error.tsx`, `global-error.tsx`, `not-found.tsx`.
+- `src/modules/<домен>` — см. «Архитектура». Пример: `notes` (полный цикл: модель, use cases, репозиторий, фейк, action, форма, поиск в URL, кэшируемые подсказки), `auth` (вход через порт `AuthGateway`).
+- `src/shared/ui` — shadcn/ui (добавлять `npx shadcn@latest add <имя>`; локальные правки под strict TS: `field.tsx`, `sonner.tsx`, `card.tsx`), `form/text-field.tsx`.
+- `supabase/migrations` — источник правды для базы; `supabase/tests` — pgTAP; `supabase/config.toml` — локальный стек.
+- `tests/unit` (зеркалит `src`), `tests/e2e`.
+- `scripts/` — `new-module.mjs`, `requirements-check.mjs`.
+- `.claude/` — `settings.json` (маркетплейс `claude-kit`, плагин `dev-kit`, запреты), `rules/` (архитектура, безопасность, база, интерфейс, тесты, документация).
+- `docs/knowledge` — статус, реестр требований заказчика (`requirements.md`), решения, открытые вопросы; `docs/roadmap.md`; `docs/superpowers` — спецификации и планы.
+- `.github/workflows` — `ci.yml` (lint, typecheck, тесты, knip, jscpd, build, e2e, Lighthouse, gitleaks, Semgrep), `db.yml` (advisors + pgTAP при изменениях базы).
 
-## Claude Code
+## Работа с Claude Code
 
-В `.claude/settings.json` записаны маркетплейс `Volodymyr-FullStack-Pro/claude-kit` и плагин `dev-kit@claude-kit`: после доверия папке Claude Code предложит установить плагин (скилы по безопасности данных, RLS, деньгам, тестам, ревью; хуки форматирования, проверки типов и защиты `.env`/миграций; команды `/dev-kit:handoff`, `/dev-kit:resume`, `/dev-kit:clickup-card`). Правила проекта — в `.claude/rules/`, процесс — в `CLAUDE.md`.
-
-## Формы, действия, уведомления, состояние
-
-- **Server Action** = `authActionClient.inputSchema(Schema).action(async ({ parsedInput, ctx }) => …)`: сессия проверяется в middleware, вход — Zod, ошибка для пользователя — `throw new ActionError('…')`, остальное наружу уходит общей фразой. Публичные действия — `actionClient`.
-- **Форма** = `useHookFormAction(action, zodResolver(Schema))` + `TextField`: та же Zod-схема на клиенте и сервере, ошибки полей под полем, ошибки сервера — `toast.error` (sonner), успех — `toast.success`.
-- **Состояние в URL** = nuqs: `useQueryState` на клиенте, `createLoader` на сервере (`src/features/notes/search-params.ts`). Глобального стора нет: данные живут на сервере, фильтры — в URL, формы — локально; zustand добавляется только под доказанную нужду.
-- **Тема** — класс `dark` через next-themes; **даты** — date-fns (`ru`); **иконки** — lucide-react.
-- **Git-хуки** — simple-git-hooks ставит `pre-commit` при `npm ci`/`npm install` (`prepare`), lint-staged прогоняет eslint и prettier по изменённым файлам. Где нет `.git` (Docker, Vercel) установка пропускается; при `npm install --omit=dev` бинаря нет, поэтому скрипт `prepare` не падает (`|| true`).
+- В `.claude/settings.json` записаны маркетплейс `Volodymyr-FullStack-Pro/claude-kit` и плагин `dev-kit@claude-kit`: после доверия папке Claude Code предложит его установить. Скилы плагина: `clean-layers` (архитектура), `performance-budget`, `nextjs-data-security`, `supabase-rls-drizzle`, `money-decimal`, `test-layers`, `review-checklist`, `requirements-register`, `clickup-card`; команды `/dev-kit:handoff`, `/dev-kit:resume`; хуки форматирования, проверки типов и защиты `.env`/миграций.
+- Правила проекта — `.claude/rules/*.md` (подключаются по путям файлов), процесс — `CLAUDE.md`: эпик из roadmap → `brainstorming` → спецификация → `writing-plans` → `executing-plans` → `/simplify` → `/code-review` → `/security-review` для auth, денег и миграций → PR.
+- Ответы и решения заказчика — в реестр `docs/knowledge/requirements.md` в тот же день; задачи и тесты ссылаются на его номера; `npm run req:check` следит за трассировкой.
 
 ## Что добавлять по мере надобности
 
@@ -71,13 +136,12 @@ npm run dev
 | Таблицы с сортировкой и фильтрами | `npx shadcn@latest add table` + `@tanstack/react-table`          |
 | Несколько языков интерфейса       | `next-intl` (маршруты с локалью, словари, форматы чисел и дат)   |
 | Ошибки в проде                    | `@sentry/nextjs` (нужен DSN проекта)                             |
+| Внешние HTTP-API в тестах         | `msw`                                                            |
 | Клиентский стор                   | `zustand`; серверные данные на клиенте — `@tanstack/react-query` |
 | Письма                            | `resend` + `react-email`                                         |
 
-Официальные компоненты импортируют `cn` из пакета `cn`; сторонним реестрам с `@/lib/utils` нужен файл `src/lib/utils.ts` с `export { cn } from 'cn'`.
-
-Если `npx shadcn add` падает с `EALLOWSCRIPTS` (настройка `allow-scripts` в вашем `~/.npmrc`), запустите с чистым пользовательским конфигом: `NPM_CONFIG_USERCONFIG=/dev/null npx shadcn@latest add <имя>`.
+Официальные компоненты shadcn импортируют `cn` из пакета `cn`; сторонним реестрам с `@/lib/utils` нужен файл `src/shared/lib/utils.ts` с `export { cn } from 'cn'`. Если `npx shadcn add` падает с `EALLOWSCRIPTS` (настройка `allow-scripts` в `~/.npmrc`), запустите с чистым пользовательским конфигом: `NPM_CONFIG_USERCONFIG=/dev/null npx shadcn@latest add <имя>`.
 
 ## Доступность
 
-`eslint-plugin-jsx-a11y` целиком пока не ставится: его peer-зависимость — ESLint ≤ 9. Из `eslint-config-next` работают только шесть базовых правил a11y (alt у изображений, роли ARIA и т. п.). Остальное — ручная проверка по чеклисту `/web-design-guidelines` и Playwright-сценарии с клавиатурой; когда плагин поддержит ESLint 10 — добавить `jsx-a11y/strict` в `eslint.config.mjs`.
+`eslint-plugin-jsx-a11y` целиком пока не ставится: его peer-зависимость — ESLint ≤ 9. Из `eslint-config-next` работают только шесть базовых правил a11y. Остальное — ручная проверка по чеклисту `/web-design-guidelines` и Playwright-сценарии с клавиатурой; когда плагин поддержит ESLint 10 — добавить `jsx-a11y/strict` в `eslint.config.mjs`.

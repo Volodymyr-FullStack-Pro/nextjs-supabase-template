@@ -50,3 +50,6 @@ coverage/
 .superpowers/
 .playwright-mcp/
 .claude/settings.local.json
+
+# lighthouse ci
+.lighthouseci/
