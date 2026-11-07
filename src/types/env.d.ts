@@ -1,5 +1,3 @@
-// Объявленные переменные окружения: позволяют обращаться через process.env.NAME при noPropertyAccessFromIndexSignature
-// и дают Next.js подставить NEXT_PUBLIC_* в клиентский код.
 declare global {
   namespace NodeJS {
     interface ProcessEnv {

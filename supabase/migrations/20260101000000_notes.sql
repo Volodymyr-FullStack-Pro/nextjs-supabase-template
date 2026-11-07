@@ -2,12 +2,13 @@
 create table public.notes (
   id uuid primary key default gen_random_uuid(),
   owner_id uuid not null references auth.users (id) on delete cascade,
-  title text not null,
+  title text not null check (char_length(title) <= 200),
   amount numeric(18, 2) not null default 0,
   created_at timestamptz not null default now()
 );
 
-create index notes_owner_id_idx on public.notes (owner_id);
+-- Индекс под запрос списка: фильтр по владельцу (он же в политике RLS) и сортировка по дате.
+create index notes_owner_id_created_at_idx on public.notes (owner_id, created_at desc);
 
 alter table public.notes enable row level security;
 

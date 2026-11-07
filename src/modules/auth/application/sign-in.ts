@@ -1,0 +1,20 @@
+import { err, ok, type Result } from '@/shared/domain/result'
+
+import { InvalidCredentialsError, TooManyAttemptsError } from '../domain/errors'
+import type { SignInInput } from '../domain/sign-in'
+import type { AuthGateway } from './auth-gateway'
+
+export type SignInError = InvalidCredentialsError | TooManyAttemptsError
+
+export function makeSignIn({ auth }: { auth: AuthGateway }) {
+  return async (input: SignInInput): Promise<Result<void, SignInError>> => {
+    const outcome = await auth.signInWithPassword(input)
+    if (outcome === 'invalid-credentials') {
+      return err(new InvalidCredentialsError('Неверная почта или пароль'))
+    }
+    if (outcome === 'too-many-attempts') {
+      return err(new TooManyAttemptsError('Слишком много попыток, подождите минуту'))
+    }
+    return ok(undefined)
+  }
+}

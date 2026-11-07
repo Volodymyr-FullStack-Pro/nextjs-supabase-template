@@ -1,17 +1,14 @@
+import { type NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
-import { env } from '@/lib/env'
-import type { Database } from '@/lib/supabase/types'
 
-const PUBLIC_PATHS = ['/', '/login']
+import { env } from '@/shared/infrastructure/env'
+import type { Database } from '@/shared/infrastructure/supabase/types'
 
-/**
- * Обновляет сессию Supabase в cookie и уводит неавторизованных со служебных страниц на /login.
- * Это не единственная защита: права проверяются в DAL (src/data) и в каждом Server Action.
- */
+const PUBLIC_PATHS = ['/', '/login', '/api/vitals']
+
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request })
-  if (!env.hasSupabase()) return response // шаблон без настроенного Supabase: публичные страницы работают
+  if (!env.hasSupabase()) return response
 
   const supabase = createServerClient<Database>(env.supabaseUrl(), env.supabasePublishableKey(), {
     cookies: {
@@ -31,10 +28,12 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const isPublic = PUBLIC_PATHS.includes(pathname)
   if (!data?.claims && !isPublic) {
+    if (pathname.startsWith('/api/'))
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     const redirect = NextResponse.redirect(url)
-    for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie) // обновлённая сессия не теряется
+    for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie)
     return redirect
   }
   return response

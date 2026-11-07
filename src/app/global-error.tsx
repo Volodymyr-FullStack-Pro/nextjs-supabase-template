@@ -1,6 +1,5 @@
 'use client'
 
-/** Ошибки корневого layout: рендерится без него, поэтому содержит html и body. */
 export default function GlobalError({
   reset,
 }: {

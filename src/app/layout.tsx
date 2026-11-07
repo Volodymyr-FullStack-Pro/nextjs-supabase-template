@@ -1,9 +1,13 @@
-import type { Metadata } from 'next'
+import './globals.css'
+
 import { Geist, Geist_Mono } from 'next/font/google'
+import type { Metadata } from 'next'
 import { ThemeProvider } from 'next-themes'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
-import { Toaster } from '@/components/ui/sonner'
-import './globals.css'
+
+import { Toaster } from '@/shared/ui/sonner'
+
+import { WebVitals } from './web-vitals'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -20,7 +24,6 @@ export const metadata: Metadata = {
   description: 'Стартовый проект: Next.js 16, Supabase, Drizzle, строгий TypeScript',
 }
 
-/** Тема через класс (next-themes, см. @custom-variant dark в globals.css), состояние URL (nuqs), уведомления (sonner). */
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html
@@ -37,6 +40,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
         >
           <NuqsAdapter>{children}</NuqsAdapter>
           <Toaster />
+          <WebVitals />
         </ThemeProvider>
       </body>
     </html>
