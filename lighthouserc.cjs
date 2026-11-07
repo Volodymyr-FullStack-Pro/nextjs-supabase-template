@@ -15,6 +15,7 @@ module.exports = {
         'largest-contentful-paint': ['error', { maxNumericValue: 1500 }],
         'total-blocking-time': ['error', { maxNumericValue: 200 }],
         'cumulative-layout-shift': ['error', { maxNumericValue: 0.1 }],
+        'server-response-time': ['error', { maxNumericValue: 200 }],
         // объём JS считает npm run budget по HTML страницы: Lighthouse учитывает и префетч ссылок
       },
     },

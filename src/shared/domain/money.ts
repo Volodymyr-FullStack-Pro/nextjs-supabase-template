@@ -6,8 +6,8 @@ export const money = (value: string | Decimal): Decimal => new Decimal(value)
 
 const MONEY_SCALE = 2
 
-export function investorShare(valuation: string, share: string): string {
-  return money(valuation).times(share).toFixed(MONEY_SCALE)
+export function shareOf(value: string, fraction: string): string {
+  return money(value).times(fraction).toFixed(MONEY_SCALE)
 }
 
 export function formatMoney(amount: string, currency = 'EUR'): string {

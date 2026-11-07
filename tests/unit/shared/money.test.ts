@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { formatMoney, investorShare, money } from '@/shared/domain/money'
+import { formatMoney, shareOf, money } from '@/shared/domain/money'
 
 describe('money helpers', () => {
-  it('computes investor share exactly (valuation × share)', () => {
-    expect(investorShare('3080000', '0.6')).toBe('1848000.00')
-    expect(investorShare('1760000', '0.35')).toBe('616000.00')
+  it('multiplies a value by a fraction exactly', () => {
+    expect(shareOf('3080000', '0.6')).toBe('1848000.00')
+    expect(shareOf('1760000', '0.35')).toBe('616000.00')
   })
 
   it('adds decimals without floating point drift', () => {

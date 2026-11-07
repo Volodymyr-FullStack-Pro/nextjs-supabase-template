@@ -53,3 +53,6 @@ coverage/
 
 # lighthouse ci
 .lighthouseci/
+
+# drizzle-kit generate (сверка со схемой; миграции — в supabase/migrations)
+drizzle/

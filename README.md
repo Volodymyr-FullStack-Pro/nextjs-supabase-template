@@ -16,6 +16,8 @@ npm run dev
 
 Затем: заменить `<Проект>` в `CLAUDE.md` и `docs/knowledge/`, записать первое решение в `docs/knowledge/decisions.md`, завести первый модуль `npm run new:module <имя>`, при работе с ClickUp переименовать `.claude/rules/clickup.md.example` в `clickup.md`.
 
+Для `/notes`, `npm run db:types` и pgTAP нужны Docker и Supabase CLI (`brew install supabase/tap/supabase`). Первого пользователя заведите в Studio (`http://127.0.0.1:54323` → Authentication → Add user) или через `supabase/seed.sql`.
+
 ## Архитектура: модули и четыре слоя
 
 Код разложен по доменам (модулям), внутри модуля — по слоям. Правило одно: зависимости направлены внутрь, к чистому ядру; фреймворки и база — снаружи и заменяемы. Нарушение правила — ошибка `npm run lint`, а не замечание на ревью.
@@ -45,7 +47,7 @@ src/proxy.ts                     обновление сессии и редир
 | `ui`             | actions, компоненты       | свой `server.ts`, `domain`, `ui`; `shared/ui`, `shared/lib`, `shared/domain`; чужие модули — только их `server.ts` и `domain` |
 | `app`            | маршруты                  | `modules/*/ui`, `modules/*/server.ts`, `modules/*/domain`, `shared/ui`, `shared/lib`, `shared/domain`                         |
 
-`domain` и `application` не могут импортировать `react`, `next`, `@supabase/*`, `drizzle-orm`, `server-only` — это проверяет `eslint-plugin-boundaries` (конфигурация в `eslint.config.mjs`). Barrel-файлы (`index.ts` с реэкспортом) не используются: импорт по точному пути, это быстрее собирается и лучше анализируется.
+`domain` и `application` из пакетов npm могут импортировать только `zod`, `decimal.js` и `date-fns` — всё остальное запрещено `eslint-plugin-boundaries` (конфигурация в `eslint.config.mjs`). Тесты живут в `tests/unit`, зеркалом `src`: рядом с кодом они нарушили бы границы. Barrel-файлы (`index.ts` с реэкспортом) не используются: импорт по точному пути, это быстрее собирается и лучше анализируется.
 
 **Зачем так.** Правила денег и бизнеса живут в чистых функциях и проверяются тестами без базы и браузера; замена Supabase, Vercel или UI-библиотеки не трогает ядро; у каждой вещи одно место, и Claude Code не выбирает, «куда положить»; модуль можно вынести в пакет или другой сервис без переписывания.
 
@@ -62,11 +64,13 @@ src/proxy.ts                     обновление сессии и редир
 npm run new:module businesses
 ```
 
-Создаёт `src/modules/businesses/{domain,application,infrastructure,ui}`, `server.ts`, фейк репозитория, тест use case и страницу `src/app/businesses/page.tsx`. Всё проходит lint, typecheck и тесты сразу; дальше описываете модель в `domain`, use cases в `application`, запросы в `infrastructure`.
+Создаёт `src/modules/businesses/{domain,application,infrastructure,ui}`, `server.ts`, фейк репозитория, тесты домена и use case и страницу `src/app/businesses/page.tsx`. Всё проходит `npm run check` сразу; дальше описываете модель в `domain`, use cases в `application`, запросы в `infrastructure`. Action и форму генератор не создаёт: образец — `src/modules/notes/ui/actions.ts` и `notes-form.tsx`.
+
+**Модули и чужие данные.** Из `ui` и `app` чужой модуль доступен через его `server.ts` (use cases) и `domain` (типы). Внутри `application` и `infrastructure` чужие use cases не вызываются: агрегирующий модуль (например, портфель, которому нужны бизнесы и инвестиции) описывает свой порт и реализует его своим репозиторием поверх таблиц или представления в базе. Так модули остаются независимыми, а агрегаты считаются там, где данные.
 
 ## Чистый код
 
-Линтер держит код простым и читаемым, а правила и ревью — осмысленным: без комментариев (смысл в именах, структуре и тестах; разрешены только директивы инструментов), файл ≤ 300 строк (потолок; единую ответственность держат лимиты на функцию), функция ≤ 80 строк и ≤ 3 параметров, сложность ≤ 10, без магических чисел, имена без сокращений и одиночных букв, kebab-case файлов, `eslint-disable` только с именем правила и причиной. Принципы DRY (на третьем повторе), KISS, YAGNI, честный TypeScript и неизменяемость — в `.claude/rules/code-style.md` и скиле `dev-kit:code-style`. Компоненты shadcn в `src/shared/ui` — сторонний код, правила стиля к ним не применяются.
+Линтер держит код простым и читаемым, а правила и ревью — осмысленным: без комментариев (смысл в именах, структуре и тестах; разрешены только директивы инструментов), файл ≤ 300 строк (потолок; единую ответственность держат лимиты на функцию), функция ≤ 80 строк и ≤ 3 параметров, сложность ≤ 10, без магических чисел, имена без сокращений и одиночных букв, kebab-case файлов, `eslint-disable` только с именем правила и причиной. Принципы DRY (на третьем повторе), KISS, YAGNI, честный TypeScript и неизменяемость — в `.claude/rules/code-style.md` и скиле `dev-kit:code-style`. Компоненты shadcn в `src/shared/ui` — сторонний код: к ним применяются только границы импортов. Корневые конфиги (`eslint.config.mjs`, `vitest.config.mts` и т. п.) и SQL могут содержать комментарии — правило «без комментариев» действует на `src`, `scripts` и `tests`.
 
 ## Производительность
 
@@ -121,17 +125,17 @@ npm run new:module businesses
 
 - `src/app` — только маршруты, layout, `error.tsx`, `global-error.tsx`, `not-found.tsx`.
 - `src/modules/<домен>` — см. «Архитектура». Пример: `notes` (полный цикл: модель, use cases, репозиторий, фейк, action, форма, поиск в URL, кэшируемые подсказки), `auth` (вход через порт `AuthGateway`).
-- `src/shared/ui` — shadcn/ui (добавлять `npx shadcn@latest add <имя>`; локальные правки под strict TS: `field.tsx`, `sonner.tsx`, `card.tsx`), `form/text-field.tsx`.
+- `src/shared/ui` — shadcn/ui: добавлять `npx shadcn@latest add <имя>` и сразу `npm run format`; к этим файлам применяются только границы, строгие типовые и стилевые правила выключены (сторонний код); локальные правки: `field.tsx`, `sonner.tsx`, `card.tsx`. Свой код здесь — `form/text-field.tsx`, к нему правила применяются.
 - `supabase/migrations` — источник правды для базы; `supabase/tests` — pgTAP; `supabase/config.toml` — локальный стек.
 - `tests/unit` (зеркалит `src`), `tests/e2e`.
-- `scripts/` — `new-module.mjs`, `requirements-check.mjs`.
+- `scripts/` — `new-module.mjs` (каркас модуля), `requirements-check.mjs` (реестр требований), `bundle-budget.mjs` (бюджет JS), `check-lock.mjs` (lock-файл для npm 10).
 - `.claude/` — `settings.json` (маркетплейс `claude-kit`, плагин `dev-kit`, запреты), `rules/` (архитектура, безопасность, база, интерфейс, тесты, документация).
 - `docs/knowledge` — статус, реестр требований заказчика (`requirements.md`), индекс решений (`decisions.md`) и ADR крупных решений (`decisions/D-NNN-*.md`), открытые вопросы; `docs/roadmap.md`; `docs/superpowers` — спецификации и планы.
 - `.github/workflows` — `ci.yml` (lint, typecheck, тесты, knip, jscpd, build, e2e, Lighthouse, gitleaks, Semgrep), `db.yml` (advisors + pgTAP при изменениях базы).
 
 ## Работа с Claude Code
 
-- В `.claude/settings.json` записаны маркетплейс `Volodymyr-FullStack-Pro/claude-kit` и плагин `dev-kit@claude-kit`: после доверия папке Claude Code предложит его установить. Скилы плагина: `clean-layers` (архитектура), `performance-budget`, `nextjs-data-security`, `supabase-rls-drizzle`, `money-decimal`, `test-layers`, `review-checklist`, `requirements-register`, `clickup-card`; команды `/dev-kit:handoff`, `/dev-kit:resume`; хуки форматирования, проверки типов и защиты `.env`/миграций.
+- В `.claude/settings.json` записаны маркетплейс `Volodymyr-FullStack-Pro/claude-kit` и плагин `dev-kit@claude-kit`: после доверия папке Claude Code предложит его установить. Скилы плагина: `clean-layers` (архитектура), `code-style`, `performance-budget`, `nextjs-data-security`, `supabase-rls-drizzle`, `money-decimal`, `test-layers`, `review-checklist`, `requirements-register`, `clickup-card`; команды `/dev-kit:handoff`, `/dev-kit:resume`; хуки форматирования, проверки типов и защиты `.env`/миграций.
 - Правила проекта — `.claude/rules/*.md` (подключаются по путям файлов), процесс — `CLAUDE.md`: эпик из roadmap → `brainstorming` → спецификация → `writing-plans` → `executing-plans` → `/simplify` → `/code-review` → `/security-review` для auth, денег и миграций → PR.
 - Ответы и решения заказчика — в реестр `docs/knowledge/requirements.md` в тот же день; задачи и тесты ссылаются на его номера; `npm run req:check` следит за трассировкой.
 

@@ -1,12 +1,11 @@
 import { defineConfig } from 'vitest/config'
-import tsconfigPaths from 'vite-tsconfig-paths'
 
 export default defineConfig({
-  plugins: [tsconfigPaths()],
+  resolve: { tsconfigPaths: true },
   test: {
     environment: 'node',
     globals: true, // только ради auto-cleanup Testing Library (afterEach); в тестах импортировать из 'vitest' явно
-    include: ['tests/unit/**/*.test.{ts,tsx}', 'src/**/*.test.{ts,tsx}'],
+    include: ['tests/unit/**/*.test.{ts,tsx}'],
     coverage: {
       provider: 'v8',
       include: [

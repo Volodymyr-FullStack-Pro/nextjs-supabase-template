@@ -14,7 +14,7 @@ paths:
 - `security definer` — только с `set search_path = ''` и вне открытых схем; никакой авторизации по `user_metadata`.
 - Деньги и доли: `numeric(18, 2)` / `numeric(12, 6)` в базе, в Drizzle `numeric()` как строка (`mode: 'number'` запрещён), расчёты через `decimal.js`, округление только на выводе.
 - `update` и `delete` всегда с `where`.
-- После новой миграции — `npm run db:types`: типы для supabase-js генерируются из локальной базы в `src/shared/infrastructure/supabase/types.ts`, руками не правятся.
+- После новой миграции — `npm run db:types`: типы для supabase-js генерируются из локальной базы в `src/shared/infrastructure/supabase/types.ts` и руками не правятся. В шаблоне этот файл — ручная заглушка для таблицы `notes`; первый запуск `db:types` заменяет его сгенерированным.
 - Пользовательские запросы — через клиент Supabase (RLS применяется); `db()` из `src/shared/infrastructure/db` — прямое подключение мимо RLS, только для серверных задач; репозитории модулей живут в `infrastructure/` и реализуют порты из `application/`.
 - Новая политика без pgTAP-теста в `supabase/tests/` с негативным случаем не считается готовой; `supabase db advisors --local` без ошибок.
 

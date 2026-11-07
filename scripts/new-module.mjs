@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'nod
 import { dirname, join } from 'node:path'
 
 const name = process.argv[2]
-if (!name || !/^[a-z][a-z0-9-]*$/.test(name)) {
+if (!name || !/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/.test(name)) {
   console.error(
     'Использование: npm run new:module <имя>  (строчные буквы, цифры, дефис; например, businesses)',
   )

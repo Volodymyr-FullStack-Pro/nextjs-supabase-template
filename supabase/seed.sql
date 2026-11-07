@@ -1,0 +1,1 @@
+-- Локальные тестовые данные для supabase start / db reset; пользователей заводите через Studio → Authentication.

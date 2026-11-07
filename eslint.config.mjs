@@ -203,7 +203,11 @@ const noComments = {
 
 const codeStyleConfig = {
   files: ['src/**/*.{ts,tsx}', 'scripts/**/*.mjs', 'tests/**/*.{ts,tsx}'],
-  ignores: ['src/shared/ui/*.tsx', 'src/shared/infrastructure/supabase/types.ts'], // shadcn и сгенерированные типы — не наш код
+  ignores: [
+    'src/shared/ui/**',
+    '!src/shared/ui/form/**',
+    'src/shared/infrastructure/supabase/types.ts',
+  ],
   plugins: { unicorn, sonarjs, local: { rules: { 'no-comments': noComments } } },
   rules: {
     'local/no-comments': 'error',
@@ -266,6 +270,11 @@ const codeStyleConfig = {
 }
 const codeStyleTsConfig = {
   files: ['src/**/*.{ts,tsx}'],
+  ignores: [
+    'src/shared/ui/**',
+    '!src/shared/ui/form/**',
+    'src/shared/infrastructure/supabase/types.ts',
+  ],
   rules: {
     '@typescript-eslint/max-params': ['error', { max: 3 }],
     '@typescript-eslint/no-magic-numbers': [
@@ -300,6 +309,17 @@ const codeStyleTsConfig = {
   },
 }
 
+// Компоненты shadcn (npx shadcn add) — сторонний код: границы проверяем, строгие типовые и стилевые правила — нет.
+const vendorUiConfig = {
+  files: ['src/shared/ui/**/*.{ts,tsx}'],
+  ignores: ['src/shared/ui/form/**'],
+  ...tseslint.configs.disableTypeChecked,
+  rules: {
+    ...tseslint.configs.disableTypeChecked.rules,
+    'react-hooks/set-state-in-effect': 'off',
+  },
+}
+
 export default defineConfig([
   globalIgnores([
     '.next/**',
@@ -317,6 +337,7 @@ export default defineConfig([
   boundariesConfig,
   codeStyleConfig,
   codeStyleTsConfig,
+  vendorUiConfig,
   {
     files: ['**/*.{ts,tsx,mts}'],
     languageOptions: {
