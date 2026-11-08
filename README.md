@@ -101,8 +101,8 @@ src/proxy.ts                     обновление сессии и редир
 ### Как проходит запрос
 
 1. **Чтение.** `page.tsx` рендерит статическую оболочку и оборачивает динамику в `<Suspense>`. Серверный компонент из `ui/` берёт сессию (`verifySession`) и вызывает use case из `server.ts`; use case ходит в порт, порт реализован на user-scoped клиенте Supabase (RLS применяется). Наружу уходит модель домена, не строка таблицы.
-2. **Запись.** Форма (`useHookFormAction` + Zod-схема из `domain`) вызывает action из `ui/actions.ts`. `authActionClient` проверяет сессию в middleware и валидирует вход той же схемой; action вызывает use case, получает `Result`, при ошибке домена делает `fail(error)` (текст уходит пользователю), затем `revalidatePath`/`revalidateTag`.
-3. **Ошибки.** Ожидаемые (`NotFoundError`, `ForbiddenError`, `ConflictError`, `RuleViolationError`) возвращаются из use case как `Result`. Неожиданные (сеть, база) бросаются и превращаются в общую фразу в `handleServerError`; причина попадает в лог и Sentry.
+2. **Запись.** Форма (`useHookFormAction` + Zod-схема из `domain`) вызывает action из `ui/actions.ts`. `authActionClient` проверяет сессию в middleware и валидирует вход той же схемой; action вызывает use case, получает `Result`, при ошибке домена делает `fail(error)` (текст уходит пользователю), затем обновляет данные: `updateTag(tag)` для кэшированных, `refresh()` или `revalidatePath` для динамических на текущей странице.
+3. **Ошибки.** Ожидаемые (`NotFoundError`, `ForbiddenError`, `ConflictError`, `RuleViolationError`) возвращаются из use case как `Result`. Неожиданные (сеть, база) бросаются и превращаются в общую фразу в `handleServerError`; причина попадает в лог (Sentry подключается в проекте до первого релиза, `docs/release.md`).
 4. **Кэш.** Данные пользователя читаются динамически под Suspense. Справочники и редко меняющиеся данные — компоненты и функции с `'use cache'`, `cacheLife`, `cacheTag`; инвалидация — `updateTag(tag)` (или `revalidateTag(tag, 'max')`, в Next 16 второй аргумент обязателен) в action, который их меняет. Внутри `'use cache'` нельзя читать cookies и сессию.
 
 ### Новый модуль
@@ -131,13 +131,13 @@ npm run new:module businesses business
 
 ### Типовые расширения
 
-| Нужно                                   | Что делать                                                                                   |
-| --------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Адрес с языком                          | `src/app/[locale]` и `next-intl`; модули не меняются                                         |
-| API для мобильного приложения           | Route Handlers в `src/app/api/...` вызывают те же use cases из `server.ts`                   |
-| Другая база или внешний сервис          | новая реализация порта в `infrastructure` модуля; `domain`, `application` и `ui` не меняются |
-| Другой способ входа                     | `src/shared/lib/session.ts` и `src/proxy.ts`; use cases получают `userId` как раньше         |
-| Фоновые задачи, расписание, уведомления | `src/app/api/cron/*` и `after()`; долгие — очередь, когда понадобится                        |
+| Нужно                                   | Что делать                                                                                                                                                                              |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Адрес с языком                          | `src/app/[locale]` и `next-intl`; модули не меняются                                                                                                                                    |
+| API для мобильного приложения           | Route Handlers в `src/app/api/...` вызывают те же use cases; вход по токену `Authorization: Bearer` — отдельный клиент Supabase и проверка в `proxy.ts` (сейчас сессия только в cookie) |
+| Другая база или внешний сервис          | новая реализация порта в `infrastructure` модуля; `domain`, `application` и `ui` не меняются                                                                                            |
+| Другой способ входа                     | `src/shared/lib/session.ts` и `src/proxy.ts`; use cases получают `userId` как раньше                                                                                                    |
+| Фоновые задачи, расписание, уведомления | `src/app/api/cron/*` и `after()`; долгие — очередь, когда понадобится                                                                                                                   |
 
 ## Чистый код
 
@@ -173,35 +173,35 @@ npm run new:module businesses business
 
 ## Команды
 
-| Команда                                            | Что делает                                                                                                      |
-| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `npm run dev` / `build` / `start`                  | Next.js                                                                                                         |
-| `npm run check`                                    | всё, что проверяет CI, одной командой: lint, typecheck, test:coverage, knip, jscpd, format:check, build, budget |
-| `npm run lint`, `lint:fix`                         | `next typegen` + ESLint 10: правила Next.js, `strictTypeChecked`, архитектурные границы, стиль кода, Prettier   |
-| `npm run typecheck`                                | `next typegen && tsc --noEmit`                                                                                  |
-| `npm run format`, `format:check`                   | Prettier                                                                                                        |
-| `npm test`, `test:coverage`                        | Vitest: ядро и компоненты; 100 % на `src/**/domain/**`                                                          |
-| `npm run test:e2e`                                 | Playwright против `next build && next start`                                                                    |
-| `npm run perf`                                     | Lighthouse по бюджету из `lighthouserc.cjs` (после `npm run build`)                                             |
-| `npm run analyze`                                  | сборка с анализатором бандла                                                                                    |
-| `npm run knip`                                     | неиспользуемые файлы, экспорты, зависимости                                                                     |
-| `npm run jscpd`                                    | дубли кода (порог 0 %)                                                                                          |
-| `npm run req:check`                                | реестр требований заказчика: повторы номеров, статусы, требования без ссылки                                    |
-| `npm run new:module <модуль> <запись>`             | каркас модуля по архитектуре                                                                                    |
-| `npm run db:generate`                              | SQL из схемы Drizzle в `drizzle/` (папка в .gitignore) для сверки с `supabase/migrations`                       |
-| `npm run db:types`                                 | типы supabase-js из локальной базы → `src/shared/infrastructure/supabase/types.ts`                              |
-| `npm run db:studio`                                | Drizzle Studio                                                                                                  |
-| `supabase test db`, `supabase db advisors --local` | pgTAP и проверки безопасности и производительности базы                                                         |
+| Команда                                            | Что делает                                                                                                                                                          |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev` / `build` / `start`                  | Next.js                                                                                                                                                             |
+| `npm run check`                                    | проверки CI одной командой: lint, typecheck, req:check, test:coverage, knip, jscpd, format:check, build, budget (e2e, Lighthouse, аудит зависимостей и базы — в CI) |
+| `npm run lint`, `lint:fix`                         | `next typegen` + ESLint 10: правила Next.js, `strictTypeChecked`, архитектурные границы, стиль кода, Prettier                                                       |
+| `npm run typecheck`                                | `next typegen && tsc --noEmit`                                                                                                                                      |
+| `npm run format`, `format:check`                   | Prettier                                                                                                                                                            |
+| `npm test`, `test:coverage`                        | Vitest: ядро и компоненты; 100 % на `src/**/domain/**`                                                                                                              |
+| `npm run test:e2e`                                 | Playwright против `next build && next start`                                                                                                                        |
+| `npm run perf`                                     | Lighthouse по бюджету из `lighthouserc.cjs` (после `npm run build`)                                                                                                 |
+| `npm run analyze`                                  | сборка с анализатором бандла                                                                                                                                        |
+| `npm run knip`                                     | неиспользуемые файлы, экспорты, зависимости                                                                                                                         |
+| `npm run jscpd`                                    | дубли кода (порог 0 %)                                                                                                                                              |
+| `npm run req:check`                                | реестр требований заказчика: повторы номеров, статусы, требования без ссылки                                                                                        |
+| `npm run new:module <модуль> <запись>`             | каркас модуля по архитектуре                                                                                                                                        |
+| `npm run db:generate`                              | SQL из схемы Drizzle в `drizzle/` (папка в .gitignore) для сверки с `supabase/migrations`                                                                           |
+| `npm run db:types`                                 | типы supabase-js из локальной базы → `src/shared/infrastructure/supabase/types.ts`                                                                                  |
+| `npm run db:studio`                                | Drizzle Studio                                                                                                                                                      |
+| `supabase test db`, `supabase db advisors --local` | pgTAP и проверки безопасности и производительности базы                                                                                                             |
 
 На коммите lint-staged прогоняет eslint и prettier по изменённым файлам (simple-git-hooks ставит хук при `npm ci`; без `.git` или без devDependencies установка молча пропускается).
 
-Зависимости и lock-файл: Node 24 и встроенный в него npm 11 — локально, в CI (`.nvmrc`) и на Vercel (`engines.node: 24.x`); lock-файл пишет обычный `npm install`. На коммите lint-staged проверяет его сухим прогоном `npm@11 ci` (`scripts/check-lock.mjs`), чтобы CI не упал на рассинхронизации.
+Зависимости и lock-файл: Node 24 и встроенный в него npm 11 — локально, в CI (`.nvmrc`) и на Vercel (`engines.node: 24.x`); lock-файл пишет обычный `npm install`. На коммите lint-staged проверяет его сухим прогоном `npm@11 ci` (`scripts/check-lock.mjs`), чтобы CI не упал на рассинхронизации. TypeScript закреплён на `~6.0.3`: TypeScript 7 (компилятор на Go) пока без программного API, и typescript-eslint его не поддерживает — переход одной задачей, когда выйдут TypeScript 7.1 и поддержка в typescript-eslint; `@types/node` — по версии Node (24).
 
 ## Что где лежит
 
 - `src/app` — только маршруты, layout, `error.tsx`, `global-error.tsx`, `not-found.tsx`.
 - `src/modules/<домен>` — см. «Архитектура». Пример: `notes` (полный цикл: модель, use cases, репозиторий, фейк, action, форма, поиск в URL, кэшируемые подсказки), `auth` (вход через порт `AuthGateway`).
-- `src/shared/ui` — shadcn/ui: добавлять `npx shadcn@latest add <имя>` и сразу `npm run format`; к этим файлам применяются только границы и базовые правила Next; типозависимые и стилевые правила, `no-non-null-assertion`, `no-explicit-any` выключены (сторонний код); локальные правки: `field.tsx`, `sonner.tsx`, `card.tsx`. Свой код здесь — `form/text-field.tsx`, к нему правила применяются.
+- `src/shared/ui` — shadcn/ui: добавлять `npx shadcn@latest add <имя>` и сразу `npm run format`; к этим файлам применяются только границы и базовые правила Next; типозависимые и стилевые правила, `no-non-null-assertion`, `no-explicit-any` выключены (сторонний код); локальные правки: `field.tsx`, `sonner.tsx`, `card.tsx`, `button.tsx` и `input.tsx` (фокус — общий контур 2px из `globals.css` вместо `outline-none` и полупрозрачного кольца, hover — токен `--primary-hover`). Свой код здесь — `form/text-field.tsx`, к нему правила применяются.
 - `supabase/migrations` — источник правды для базы; `supabase/tests` — pgTAP; `supabase/config.toml` — локальный стек.
 - `tests/unit` (зеркалит `src`), `tests/e2e`.
 - `scripts/` — `new-module.mjs` (каркас модуля), `requirements-check.mjs` (реестр требований), `bundle-budget.mjs` (бюджет JS), `check-lock.mjs` (lock-файл для npm 11, как в CI и на Vercel).

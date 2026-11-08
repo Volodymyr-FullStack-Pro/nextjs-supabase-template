@@ -12,6 +12,8 @@ import {
 import { authenticatedRole, authUid, authUsers } from 'drizzle-orm/supabase'
 
 const NOTE_TITLE_MAX = 200
+const MONEY_PRECISION = 18
+const MONEY_SCALE = 2
 
 export const notes = pgTable(
   'notes',
@@ -21,12 +23,17 @@ export const notes = pgTable(
       .notNull()
       .references(() => authUsers.id, { onDelete: 'cascade' }),
     title: text('title').notNull(),
-    amount: numeric('amount', { precision: 18, scale: 2 }).notNull().default('0'),
+    amount: numeric('amount', { precision: MONEY_PRECISION, scale: MONEY_SCALE })
+      .notNull()
+      .default('0'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    index('notes_owner_id_created_at_idx').on(table.ownerId, table.createdAt.desc()),
-    check('notes_title_length', sql`char_length(${table.title}) <= ${NOTE_TITLE_MAX}`),
+    index('notes_owner_id_created_at_idx').on(table.ownerId, table.createdAt.desc().nullsFirst()),
+    check(
+      'notes_title_length',
+      sql`char_length(${table.title}) <= ${sql.raw(String(NOTE_TITLE_MAX))}`,
+    ),
     pgPolicy('notes: owner selects', {
       for: 'select',
       to: authenticatedRole,

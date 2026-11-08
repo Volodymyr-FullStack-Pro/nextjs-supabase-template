@@ -19,7 +19,7 @@
 
 ```bash
 npm run dev            # next dev
-npm run lint           # next typegen + ESLint 10: strict TypeScript, архитектурные границы (a11y — 6 правил, см. README)
+npm run lint           # next typegen + ESLint 10: strict TypeScript, архитектурные границы, доступность (jsx-a11y strict)
 npm run typecheck      # next typegen && tsc --noEmit (tsconfig strictest)
 npm test               # Vitest: ядро на фейках (100 % на src/**/domain/**) и компоненты (jsdom)
 npm run test:e2e       # Playwright против production-сборки

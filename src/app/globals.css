@@ -47,6 +47,7 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -69,6 +70,8 @@
   --popover-foreground: oklch(0.145 0 0);
   --primary: oklch(0.205 0 0);
   --primary-foreground: oklch(0.985 0 0);
+  /* hover уводит фон от цвета подписи: контраст при наведении не ниже, чем в покое */
+  --primary-hover: color-mix(in oklch, var(--primary) 85%, black);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
@@ -109,6 +112,7 @@
   --popover-foreground: oklch(0.985 0 0);
   --primary: oklch(0.922 0 0);
   --primary-foreground: oklch(0.205 0 0);
+  --primary-hover: color-mix(in oklch, var(--primary) 85%, white);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -143,9 +147,18 @@
   * {
     @apply border-border outline-ring;
   }
+  /* Фокус — сплошной контур 2px цвета --ring; компоненты не гасят его через outline-none (иначе пропадёт и в режиме высокой контрастности) */
   :focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
+  }
+  /* iPhone: без задержки двойного касания; вырезы экрана слева и справа (viewportFit: cover в layout.tsx) */
+  html {
+    touch-action: manipulation;
+  }
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
   @media (pointer: coarse) {
     [data-slot='button'],

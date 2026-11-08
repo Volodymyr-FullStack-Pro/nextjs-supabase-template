@@ -1,6 +1,8 @@
 import Decimal from 'decimal.js'
 
-Decimal.set({ precision: 28, rounding: Decimal.ROUND_HALF_EVEN })
+const DECIMAL_PRECISION = 28
+
+Decimal.set({ precision: DECIMAL_PRECISION, rounding: Decimal.ROUND_HALF_EVEN })
 
 export const money = (value: string | Decimal): Decimal => new Decimal(value)
 
@@ -8,7 +10,8 @@ const MONEY_SCALE = 2
 const MINUS = '−'
 const NBSP = ' '
 const LETTER_CODE = /^[A-Z]{3}$/u
-const SPACES = /[\s  ]/gu
+const GROUPING = /[\s  '’]/gu
+const DECIMAL_MARKS = /[.,]/gu
 const PLAIN_DECIMAL = /^-?\d+(?:\.\d+)?$/u
 const DECIMAL_PROBE = 1.5
 
@@ -50,12 +53,9 @@ export function formatMoney(
   return LETTER_CODE.test(symbol) ? `${sign}${digits}${NBSP}${symbol}` : `${sign}${symbol}${digits}`
 }
 
-export function parseDecimalInput(raw: string, decimalSeparator: ',' | '.' = ','): string | null {
-  const groupSeparator = decimalSeparator === ',' ? '.' : ','
-  const normalized = raw
-    .replace(SPACES, '')
-    .replace(MINUS, '-')
-    .replaceAll(groupSeparator, '')
-    .replace(decimalSeparator, '.')
+export function parseDecimalInput(raw: string): string | null {
+  const compact = raw.replace(GROUPING, '').replace(MINUS, '-')
+  if ((compact.match(DECIMAL_MARKS) ?? []).length > 1) return null
+  const normalized = compact.replace(',', '.')
   return PLAIN_DECIMAL.test(normalized) ? normalized : null
 }

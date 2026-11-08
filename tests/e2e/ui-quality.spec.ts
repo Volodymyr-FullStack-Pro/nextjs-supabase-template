@@ -5,7 +5,9 @@ const PUBLIC_PAGES = ['/', '/login']
 const WCAG_AA = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 const COLOR_SCHEMES = ['light', 'dark'] as const
 const TOUCH_TARGET_PX = 44
-const CONTROLS = 'button, input, select, textarea, [role="button"]'
+const CONTROLS =
+  'button, input, select, textarea, summary, [role="button"], [role="checkbox"], [role="radio"], [role="switch"], [role="tab"]'
+const NARROWEST_SCREEN = { width: 320, height: 640 }
 const DARK_CLASS = /\bdark\b/
 
 for (const path of PUBLIC_PAGES) {
@@ -40,6 +42,16 @@ for (const path of PUBLIC_PAGES) {
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     )
     expect(overflow, 'страница шире экрана').toBeLessThanOrEqual(0)
+  })
+
+  test(`${path} reflows on a 320 px screen (WCAG 1.4.10)`, async ({ page, isMobile }) => {
+    test.skip(isMobile, 'ширина задаётся вручную, проверка одна на любом устройстве')
+    await page.setViewportSize(NARROWEST_SCREEN)
+    await page.goto(path)
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    )
+    expect(overflow, 'на 320 px появляется горизонтальная прокрутка').toBeLessThanOrEqual(0)
   })
 
   test(`${path} has touch targets of at least 44 px on a phone`, async ({ page, isMobile }) => {

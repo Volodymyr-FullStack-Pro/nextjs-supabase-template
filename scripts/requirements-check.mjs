@@ -32,21 +32,29 @@ const scan = values('--scan')
 const scanPaths = scan.length > 0 ? scan : DEFAULT_SCAN
 
 const rows = []
+const errors = []
+const SEPARATOR_ROW = /^\|[\s:|-]+\|$/
 let statusIndex = -1
 for (const line of readFileSync(register, 'utf8').split('\n')) {
-  if (!line.startsWith('|')) continue
+  if (!line.startsWith('|')) {
+    statusIndex = -1
+    continue
+  }
   const cells = line.split('|').map((cell) => cell.trim())
   const headerIndex = cells.findIndex((cell) => cell.startsWith('Статус'))
   if (headerIndex >= 0) {
     statusIndex = headerIndex
     continue
   }
-  const id = cells[1]
-  if (!id || !ID_PATTERN.test(id) || statusIndex < 0) continue
+  if (statusIndex < 0 || SEPARATOR_ROW.test(line.trim())) continue
+  const id = cells[1] ?? ''
+  if (!ID_PATTERN.test(id)) {
+    errors.push(`строка «${id}»: номер не по формату (латиница и цифры: A3, P7, T-001, R-001)`)
+    continue
+  }
   rows.push({ id, status: cells[statusIndex] ?? '' })
 }
 
-const errors = []
 const seen = new Set()
 for (const { id, status } of rows) {
   if (seen.has(id)) errors.push(`${id}: номер повторяется`)

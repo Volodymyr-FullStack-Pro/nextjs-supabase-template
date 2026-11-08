@@ -3,8 +3,14 @@ import type { NextConfig } from 'next'
 
 const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env['ANALYZE'] === 'true' })
 
-// Базовые заголовки безопасности; CSP с nonce добавляется в проекте через proxy.ts при необходимости
+// Базовые заголовки безопасности и CSP без nonce: nonce делает все страницы динамическими и ломает
+// статическую оболочку Cache Components. script-src — через хэши (experimental.sri), когда понадобится.
+// form-action не задан: вход через OAuth уходит редиректом на домен Supabase.
 const securityHeaders = [
+  {
+    key: 'Content-Security-Policy',
+    value: "frame-ancestors 'none'; object-src 'none'; base-uri 'none'",
+  },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
