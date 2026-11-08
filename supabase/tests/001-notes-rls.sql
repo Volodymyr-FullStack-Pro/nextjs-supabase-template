@@ -43,6 +43,7 @@ select lives_ok($$ update public.notes set title = 'renamed' where title = 'seco
 select lives_ok($$ delete from public.notes where title = 'renamed' $$, 'owner can delete own note');
 
 select tests.clear_authentication();
+set local role anon; -- clear_authentication возвращает к роли postgres, а она обходит RLS
 select is_empty('select * from public.notes', 'anonymous user sees nothing');
 select throws_ok(
   $$ insert into public.notes (owner_id, title) values (gen_random_uuid(), 'anonymous') $$,
