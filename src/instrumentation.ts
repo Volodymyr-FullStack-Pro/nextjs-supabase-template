@@ -4,7 +4,7 @@ import { env } from '@/shared/infrastructure/env'
 
 export function register() {
   const dsn = env.sentryDsn()
-  if (dsn === '') return
+  if (!dsn) return
   Sentry.init({ dsn })
 }
 

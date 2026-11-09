@@ -2,13 +2,26 @@
 
 Что менялось в шаблоне. Проект, созданный раньше, переносит нужное руками и записывает это строкой D-NNN.
 
+## 2026-11-09 — готовность к старту: второй фактор в e2e, безопасный образец таблицы, типы денег
+
+- `AFTER_SIGN_IN_PATH` (`src/shared/domain/routes.ts`) вместо `/notes` в действиях входа и e2e; задача B00-T03 «Убрать пример notes» (нумерация B00 сдвинута: T04 Supabase … T09 Закрытие блока).
+- e2e: `alice` и `bob` в setup подключают TOTP (`enrollTotp`, `submitTotpCode` в `support/users.ts`) — сессии `aal2`, сценарии работают при обязательном втором факторе в политиках базы.
+- `setupActionClient`: подключить новый TOTP при неподтверждённом существующем нельзя (`FORBIDDEN`); `verifyTotpCode` на шаге `verify` берёт только подтверждённый фактор, `factorId` от клиента игнорируется — путь обхода второго фактора по украденному паролю закрыт на уровне приложения, не в расчёте на GoTrue.
+- `db()`: TLS `verify-full` вне локальной машины (postgres.js для `require` не проверяет сертификат), `DATABASE_CA_CERT` для своего центра сертификации.
+- Миграция-образец `*_notes_sample_hardening.sql`: `on delete restrict` на `auth.users`, запрет `truncate` (`audit.forbid_truncate`), pgTAP `004`; схема Drizzle — `restrict`.
+- `npm run db:types` → `scripts/db-types.mjs`: `numeric`-колонки в `types.ts` типа `string` — сумму числом не передать.
+- `npm run seed:test-user` и `npm run totp` — тестовый пользователь с TOTP для проверки экранов (`.env.test.local`), вместо Studio руками.
+- `formatDay` для колонок `date` без сдвига часового пояса; `money` — свой конструктор Decimal (`clone`), глобальный не меняется.
+- pgTAP-хелперы `tests.*` — `revoke execute … from public`, исполняемы `postgres`, ролям API — только `authenticate_as`, `get_supabase_uid` и `clear_authentication` (их тесты зовут уже под ролью `authenticated`).
+- `.prettierignore` — папки документов заказчика; `.claude/settings.json` — разрешения на все команды проверок; `release.md` — «Если что-то упало», Free-план засыпает, preview для разработчика; B00 — предусловия (Team, Environments, `GITLEAKS_LICENSE`), Free без `[auth.sessions]`, Access после домена, словари в T08, `--strict` с первого блока продукта.
+
 ## 2026-11-09 — проверки базы, лицензий и покрытия сценариев
 
 - Squawk 2.70.0 (`npm run db:check-migrations`, CI `db.yml`): новые миграции без опасных для живой базы операций; в начале миграции — `lock_timeout` и `statement_timeout`; `.squawk.toml` — миграция в транзакции, без требования `CONCURRENTLY`.
 - `supabase db lint --fail-on warning` в CI: ошибки в функциях базы (plpgsql_check).
 - `npm run licenses` (в `check` и CI): production-зависимости без GPL, AGPL, SSPL и неизвестных лицензий.
 - Порог покрытия `application`: 100 % строк и функций, 95 % ветвей.
-- B00-T07: с next-intl — `react/jsx-no-literals`, текст интерфейса только из словарей.
+- B00-T07 (ныне T08): с next-intl — `react/jsx-no-literals`, текст интерфейса только из словарей.
 
 ## 2026-11-09 — правила стиля: ловушки нуля, React, директивы, тесты
 

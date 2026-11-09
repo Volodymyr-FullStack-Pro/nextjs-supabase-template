@@ -5,9 +5,9 @@ import { DEFAULT_LOCALE } from './locale'
 
 const DECIMAL_PRECISION = 64
 
-Decimal.set({ precision: DECIMAL_PRECISION, rounding: Decimal.ROUND_HALF_EVEN })
+const Money = Decimal.clone({ precision: DECIMAL_PRECISION, rounding: Decimal.ROUND_HALF_EVEN })
 
-export const money = (value: string | Decimal): Decimal => new Decimal(value)
+export const money = (value: string | Decimal): Decimal => new Money(value)
 
 const NBSP = '\u00A0'
 const LETTER_CODE = /^[A-Z]{3}$/u

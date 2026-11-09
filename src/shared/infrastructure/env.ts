@@ -1,3 +1,5 @@
+import 'server-only'
+
 export class EnvironmentError extends Error {
   override readonly name = 'EnvironmentError'
 }
@@ -16,7 +18,11 @@ export const env = {
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     ),
   databaseUrl: () => required('DATABASE_URL', process.env.DATABASE_URL),
-  sentryDsn: () => process.env.SENTRY_DSN ?? '',
+  databaseCaCert: () => {
+    const cert = process.env.DATABASE_CA_CERT
+    return cert ? cert.replaceAll(String.raw`\n`, '\n') : undefined
+  },
+  sentryDsn: () => process.env.SENTRY_DSN,
   authRequireMfa: () => process.env.AUTH_REQUIRE_MFA === 'true',
   hasSupabase: () =>
     Boolean(

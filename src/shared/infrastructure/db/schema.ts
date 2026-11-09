@@ -24,7 +24,7 @@ export const notes = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     ownerId: uuid('owner_id')
       .notNull()
-      .references(() => authUsers.id, { onDelete: 'cascade' }),
+      .references(() => authUsers.id, { onDelete: 'restrict' }),
     title: text('title').notNull(),
     amount: numeric('amount', { precision: MONEY_PRECISION, scale: MONEY_SCALE })
       .notNull()

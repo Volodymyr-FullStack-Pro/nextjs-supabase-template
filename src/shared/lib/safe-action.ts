@@ -5,6 +5,7 @@ import { createSafeActionClient } from 'next-safe-action'
 import {
   type ActionFailure,
   type DomainError,
+  ForbiddenError,
   MfaRequiredError,
   toActionFailure,
   UNEXPECTED_ERROR,
@@ -40,6 +41,11 @@ export const actionClient = createSafeActionClient({
 export const mfaActionClient = actionClient.use(async ({ next }) => {
   const session = await verifySession()
   return next({ ctx: { session } })
+})
+
+export const setupActionClient = mfaActionClient.use(async ({ next, ctx }) => {
+  if (sessionMfaStep(ctx.session) === 'verify') fail(new ForbiddenError())
+  return next()
 })
 
 export const authActionClient = mfaActionClient.use(async ({ next, ctx }) => {

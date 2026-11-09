@@ -2,6 +2,7 @@ import { test as setup } from '@playwright/test'
 
 import {
   createTestUser,
+  enrollTotp,
   hasDatabase,
   NEEDS_DATABASE,
   type SignedInUser,
@@ -16,6 +17,7 @@ for (const name of SIGNED_IN_USERS) {
     setup.skip(!hasDatabase, NEEDS_DATABASE)
     const user = await createTestUser(name)
     await signIn(page, user)
+    await enrollTotp(page)
     await page.context().storageState({ path: storageStatePath(name) })
   })
 }

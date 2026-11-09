@@ -7,18 +7,18 @@
 | Среда      | Код                | База                | Для чего                             |
 | ---------- | ------------------ | ------------------- | ------------------------------------ |
 | Локально   | `npm run dev`      | `supabase start`    | разработка, тесты                    |
-| Preview    | каждый PR (Vercel) | Supabase staging    | показать задачу по ссылке            |
+| Preview    | каждый PR (Vercel) | Supabase staging    | проверка разработчиком               |
 | Staging    | ветка `main`       | Supabase staging    | проверка перед выпуском              |
 | Production | ветка `production` | Supabase production | пользователи, только реальные данные |
 
-Preview работает с базой staging, а миграции попадают туда только после слияния в `main`: задачу с новой миграцией по ссылке preview не показать до слияния блока — её проверяют локально, а заказчику показывают на staging после слияния.
+Preview — для разработчика; заказчику показывается staging после слияния блока. Preview работает с базой staging, а миграции попадают туда только после слияния в `main`: задачу с новой миграцией по ссылке preview не показать до слияния блока — её проверяют локально.
 
 Приложение и база — в одном регионе: функции Vercel во Франкфурте (`fra1` в `vercel.json`), проекты Supabase — в регионе Frankfurt (eu-central-1). Регион проекта Supabase выбирается при создании и потом не меняется.
 
 ## Настройка один раз
 
-1. **Supabase.** Два проекта, staging и production, в регионе Frankfurt; в production включить PITR. В каждом: Authentication → Sign In / Providers → «Allow new users to sign up» = off. Только в облаке, через панель (в `config.toml` этой настройки нет): защита от утёкших паролей (Authentication → Providers → Email → «Prevent use of leaked passwords», тариф Pro и выше). Второй фактор (TOTP) из `config.toml` работает на всех тарифах; финансовым проектам в Vercel — `AUTH_REQUIRE_MFA=true`. Ограничения сессий из `config.toml` (`[auth.sessions]`: 24 ч всего, 8 ч без активности; финансовым проектам — `inactivity_timeout = "30m"` и `jwt_expiry = 900`: бездействие проверяется только при обновлении токена, фактический срок — таймаут плюс срок токена) облако принимает на тарифе Pro и выше: на Free секцию `[auth.sessions]` убрать, иначе `config push` откажет.
-2. **Vercel.** Settings → Environments → Production → Branch Tracking — ветка `production`; домен staging назначить на ветку `main`; переменные окружения — отдельно для Preview и Production (`.env.example`). `DATABASE_URL` — пул Supavisor в режиме transaction, порт 6543 (Supabase → Connect → Transaction pooler). Регион функций берётся из `vercel.json`.
+1. **Supabase.** Два проекта, staging и production, в регионе Frankfurt; в production включить PITR. Проект на плане Free засыпает через неделю без запросов: перед показом разбудить в панели (Restore project), иначе staging не открывается и `deploy-db` падает; перевод на Pro — при подготовке к запуску. В каждом: Authentication → Sign In / Providers → «Allow new users to sign up» = off. Только в облаке, через панель (в `config.toml` этой настройки нет): защита от утёкших паролей (Authentication → Providers → Email → «Prevent use of leaked passwords», тариф Pro и выше). Второй фактор (TOTP) из `config.toml` работает на всех тарифах; финансовым проектам в Vercel — `AUTH_REQUIRE_MFA=true`. Ограничения сессий из `config.toml` (`[auth.sessions]`: 24 ч всего, 8 ч без активности; финансовым проектам — `inactivity_timeout = "30m"` и `jwt_expiry = 900`: бездействие проверяется только при обновлении токена, фактический срок — таймаут плюс срок токена) облако принимает на тарифе Pro и выше: на Free секцию `[auth.sessions]` убрать, иначе `config push` откажет.
+2. **Vercel.** Settings → Environments → Production → Branch Tracking — ветка `production`; домен staging назначить на ветку `main`; переменные окружения — отдельно для Preview и Production (`.env.example`). `DATABASE_URL` — пул Supavisor в режиме transaction, порт 6543 (Supabase → Connect → Transaction pooler); подключение идёт по TLS с проверкой сертификата (`verify-full`); сертификаты Supabase подписаны его собственным центром, поэтому `DATABASE_CA_CERT` (Project Settings → Database → SSL → Download certificate) задаётся сразу, в Preview и Production. Регион функций берётся из `vercel.json`.
 3. **GitHub.** Ветка `production` — `git push origin main:production`. Защитить `main` и `production` (только PR, зелёный CI); в настройках слияния оставить squash и merge commit. Два окружения (Settings → Environments): `staging` и `production`, у `production` — обязательное подтверждение (required reviewers). В каждом — секреты `SUPABASE_ACCESS_TOKEN` (Supabase → Account → Access Tokens), `SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_REF` и переменная `SITE_URL` (адрес приложения в этой среде, `https://…`). Пока секретов нет, выкладка базы пропускается с предупреждением; когда они заданы — первая выкладка вручную: Actions → Deploy database → Run workflow на `main`.
    Порт Postgres закрыт сетевыми ограничениями (Database → Network Restrictions, приложение ходит только через HTTPS API)? Переменная окружения `SUPABASE_NETWORK_RESTRICTED=true`: `deploy-db.yml` на время `link` и `db push` добавляет IP раннера (`/32`), а после — даже если выкладка упала — возвращает сохранённый список целиком.
    Токен `SUPABASE_ACCESS_TOKEN` тогда должен иметь право менять сетевые ограничения проекта (роль Owner или Administrator в организации Supabase); `[db.network_restrictions]` в `config.toml` оставить `enabled = false`, иначе `config push` перепишет список.
@@ -35,6 +35,13 @@ Preview работает с базой staging, а миграции попада
 ## Выпуск в production
 
 PR `main → production` сливается merge commit, не squash (иначе `production` расходится с `main` и следующий выпуск конфликтует), с описанием «что выходит» (блоки, требования), CI зелёный → слияние человеком → Vercel деплоит код, а `deploy-db.yml` ждёт подтверждения в окружении `production` и выкладывает миграции и настройки Auth. Упавшую выкладку повторить: Actions → Deploy database → Run workflow на ветке `production`.
+
+## Если что-то упало
+
+- **Красный `deploy-db` на staging** (push в `main`): открыть лог шага в Actions; миграцию не править — исправление новой миграцией вперёд (`npm run db:check-migrations`, `supabase test db`), PR, слияние, выкладка пойдёт сама; повторить вручную — Actions → Deploy database → Run workflow. Пока не исправлено, код на staging новее базы — проверить, что приложение терпит старую схему (миграции только добавляют).
+- **Красный `deploy-db` на production:** ничего не повторять вслепую; сравнить `supabase migration list --remote` с репозиторием, причину — в `decisions.md`, исправление — новой миграцией через staging.
+- **Оповещение Sentry:** читает разработчик (Sentry → Issues, окружение в тэге); ошибка воспроизводится локально тестом первым, правка — обычной задачей `fix/<имя>`; серия неверных кодов второго фактора или входов — признак подбора: заблокировать пользователя в Supabase → Authentication и сообщить заказчику.
+- **Staging не отвечает:** проект Supabase на Free уснул — Restore project в панели.
 
 ## Откат
 

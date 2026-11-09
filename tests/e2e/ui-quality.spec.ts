@@ -1,10 +1,12 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 
+import { AFTER_SIGN_IN_PATH } from '@/shared/domain/routes'
+
 import { hasDatabase, NEEDS_DATABASE, storageStatePath } from './support/users'
 
 const PUBLIC_PAGES = ['/', '/login']
-const SIGNED_IN_PAGES = ['/notes', '/mfa/setup', '/mfa/verify']
+const SIGNED_IN_PAGES = [AFTER_SIGN_IN_PATH, '/mfa/setup', '/mfa/verify']
 const WCAG_AA = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 const COLOR_SCHEMES = ['light', 'dark'] as const
 const TOUCH_TARGET_PX = 44
