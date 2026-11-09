@@ -12,6 +12,7 @@ const SKIP_DIRECTORIES = new Set([
   'coverage',
   'playwright-report',
   'test-results',
+  '_template',
 ])
 const DEFAULT_SCAN = ['docs/roadmap.md', 'docs/blocks', 'tests', 'src']
 

@@ -49,6 +49,8 @@ export default defineConfig({
     {
       command: `npm run build && npm run start -- -p ${String(E2E_PORT)}`,
       url: baseURL,
+      // Второй фактор проверяет отдельный сервер ниже; здесь он выключен, даже если включён в .env.local.
+      env: { AUTH_REQUIRE_MFA: 'false' },
       reuseExistingServer: !isCI,
       timeout: 180_000,
     },
