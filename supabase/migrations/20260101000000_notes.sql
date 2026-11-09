@@ -12,6 +12,9 @@ create index notes_owner_id_created_at_idx on public.notes (owner_id, created_at
 
 alter table public.notes enable row level security;
 
+-- Права только вошедшему пользователю и только на операции, у которых есть политика; anon — ничего.
+grant select, insert, update, delete on public.notes to authenticated;
+
 create policy "notes: owner selects" on public.notes
   for select to authenticated
   using ((select auth.uid()) = owner_id);

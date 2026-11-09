@@ -189,11 +189,15 @@ const boundariesConfig = {
 // Код объясняет себя сам: комментарии запрещены, кроме директив инструментов (eslint, vitest, ts).
 const DIRECTIVE =
   /^(eslint-|@vitest-environment|@ts-expect-error|@ts-ignore|@ts-check|@ts-nocheck|@jsx|global\s|@type\s|prettier-ignore|v8 ignore|c8 ignore)/
+
 const noComments = {
   meta: {
     type: 'suggestion',
     docs: { description: 'Смысл выражается именами и структурой, а не комментариями' },
-    messages: { comment: 'Комментарий: вынесите смысл в имя функции, переменной или в тест' },
+    messages: {
+      comment:
+        'Комментарий: вынесите смысл в имя или тест; причина решения — строка в docs/knowledge/decisions.md',
+    },
     schema: [],
   },
   create(context) {

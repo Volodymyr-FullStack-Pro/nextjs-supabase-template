@@ -1,2 +1,2 @@
 -- Локальные тестовые данные для supabase start / db reset. Тестового пользователя для проверки экранов
--- заведите в Studio → Authentication и запишите в .env.local: TEST_USER_EMAIL, TEST_USER_PASSWORD.
+-- заведите в Studio → Authentication и запишите в .env.test.local: TEST_USER_EMAIL, TEST_USER_PASSWORD.

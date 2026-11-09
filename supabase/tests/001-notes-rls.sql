@@ -1,4 +1,4 @@
--- Политики таблицы notes: владелец видит и меняет своё, чужое невидимо и неизменяемо, аноним не видит ничего.
+-- Политики таблицы notes: владелец видит и меняет своё, чужое невидимо и неизменяемо; у анонима нет прав на таблицу.
 -- Проверка самого теста: временно замените using на (true) в миграции — тест «other user sees nothing» должен упасть.
 begin;
 select plan(12);
@@ -44,11 +44,16 @@ select lives_ok($$ delete from public.notes where title = 'renamed' $$, 'owner c
 
 select tests.clear_authentication();
 set local role anon; -- clear_authentication возвращает к роли postgres, а она обходит RLS
-select is_empty('select * from public.notes', 'anonymous user sees nothing');
+select throws_ok(
+  'select * from public.notes',
+  '42501',
+  'permission denied for table notes',
+  'anonymous user cannot read notes'
+);
 select throws_ok(
   $$ insert into public.notes (owner_id, title) values (gen_random_uuid(), 'anonymous') $$,
   '42501',
-  null,
+  'permission denied for table notes',
   'anonymous user cannot insert'
 );
 
