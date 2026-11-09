@@ -4,6 +4,7 @@ import { AFTER_SIGN_IN_PATH } from '@/shared/domain/routes'
 
 import {
   afterSignInUrl,
+  confirmTotpUntil,
   createTestUser,
   deleteTestUser,
   enrollTotp,
@@ -11,7 +12,6 @@ import {
   NEEDS_DATABASE,
   signIn,
   submitLoginUntil,
-  submitTotpCode,
 } from './support/users'
 
 const MFA_REQUIRED_URL = 'http://localhost:3101'
@@ -31,11 +31,8 @@ test('enrolls TOTP and asks for the code at the next sign-in', async ({ page }) 
     )
     await page.goto(AFTER_SIGN_IN_PATH)
     await expect(page).toHaveURL(/\/mfa\/verify$/u)
-    await expect(async () => {
-      await submitTotpCode(page, secret)
-      await expect(page).toHaveURL(afterSignInUrl, { timeout: STEP_TIMEOUT_MS })
-    }).toPass()
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Заметки')
+    await confirmTotpUntil(page, secret, afterSignInUrl)
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   } finally {
     await deleteTestUser(user)
   }

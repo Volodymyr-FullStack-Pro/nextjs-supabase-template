@@ -30,26 +30,28 @@ await sql.end()
 
 const columnsByTable = Map.groupBy(numericColumns, (column) => column.table_name)
 let output = formatted
-let replaced = 0
+const unmatched = []
 for (const [table, columns] of columnsByTable) {
   const start = output.indexOf(`\n${TABLE_INDENT}${table}: {`)
   if (start < 0) continue
   const end = output.indexOf(`\n${TABLE_INDENT}}`, start)
   let block = output.slice(start, end)
   for (const { column_name: column } of columns) {
-    const pattern = new RegExp(`^(\\s+${column}\\??: )number$`, 'gmu')
+    const pattern = new RegExp(`^(\\s+${RegExp.escape(column)}\\??: )number$`, 'gmu')
+    let replaced = 0
     block = block.replaceAll(pattern, (_match, prefix) => {
       replaced += 1
       return `${prefix}string`
     })
+    if (replaced === 0) unmatched.push(`${table}.${column}`)
   }
   output = output.slice(0, start) + block + output.slice(end)
 }
-if (replaced === 0 && numericColumns.length > 0) {
+if (unmatched.length > 0) {
   console.error(
-    `numeric-колонки есть (${String(numericColumns.length)}), но в ${OUTPUT} ни одна не заменена: формат вывода изменился`,
+    `numeric-колонки не найдены в ${OUTPUT} (формат вывода изменился?): ${unmatched.join(', ')}`,
   )
   process.exit(1)
 }
 writeFileSync(OUTPUT, output)
-console.log(`${OUTPUT}: numeric → string, заменено полей ${String(replaced)}`)
+console.log(`${OUTPUT}: numeric → string, колонок ${String(numericColumns.length)}`)

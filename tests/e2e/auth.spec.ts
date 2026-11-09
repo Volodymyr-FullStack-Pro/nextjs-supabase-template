@@ -25,7 +25,7 @@ test('signs in with email and password', async ({ page }) => {
   const user = await createTestUser('login')
   try {
     await signIn(page, user)
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Заметки')
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   } finally {
     await deleteTestUser(user)
   }

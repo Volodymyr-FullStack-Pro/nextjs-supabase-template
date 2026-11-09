@@ -26,6 +26,8 @@ begin
 end;
 $$;
 
+revoke execute on function audit.forbid_truncate() from public, anon, authenticated, service_role;
+
 create trigger notes_forbid_truncate
   before truncate on public.notes
   for each statement execute function audit.forbid_truncate();

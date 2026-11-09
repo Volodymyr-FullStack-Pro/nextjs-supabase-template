@@ -6,6 +6,7 @@ create schema if not exists tests;
 -- Хелперы зовёт только postgres (до смены роли); ролям API доступен лишь clear_authentication — его зовут
 -- уже под ролью authenticated или anon. Файл запускается только локально: supabase test db без --remote.
 grant usage on schema tests to anon, authenticated;
+alter default privileges in schema tests revoke execute on functions from public;
 
 create or replace function tests.create_supabase_user(identifier text)
 returns uuid language plpgsql security definer set search_path = '' as $$
@@ -64,7 +65,9 @@ begin
 end;
 $$;
 
-grant execute on function tests.clear_authentication() to anon, authenticated;
+revoke execute on all functions in schema tests from public;
+-- Под ролью authenticated тесты зовут только эти три: смена сессии, чтение id тестового пользователя, сброс роли.
+grant execute on function tests.authenticate_as(text, text), tests.get_supabase_uid(text), tests.clear_authentication() to anon, authenticated;
 
 -- supabase test db ждёт TAP-вывод от каждого файла.
 select plan(1);

@@ -91,25 +91,35 @@ export async function signIn(page: Page, user: TestUser): Promise<void> {
 const TOTP_STEP_TIMEOUT_MS = 5000
 
 export async function submitTotpCode(page: Page, secret: string): Promise<void> {
-  await page.getByLabel('Код из приложения').fill(await generate({ secret }))
-  await page.getByRole('button', { name: 'Подтвердить' }).click()
+  await page
+    .getByLabel('Код из приложения')
+    .fill(await generate({ secret }), { timeout: TOTP_STEP_TIMEOUT_MS })
+  await page.getByRole('button', { name: 'Подтвердить' }).click({ timeout: TOTP_STEP_TIMEOUT_MS })
+}
+
+export async function confirmTotpUntil(page: Page, secret: string, url: RegExp): Promise<void> {
+  await expect(async () => {
+    if (!url.test(page.url())) await submitTotpCode(page, secret)
+    await expect(page).toHaveURL(url, { timeout: TOTP_STEP_TIMEOUT_MS })
+  }).toPass()
 }
 
 export async function enrollTotp(page: Page): Promise<string> {
   await page.goto('/mfa/setup')
-  let secret = ''
+  const secretLocator = page.getByLabel('Секретный ключ')
   await expect(async () => {
-    await page.getByRole('button', { name: 'Подключить приложение' }).click()
-    secret =
-      (await page.getByLabel('Секретный ключ').textContent({ timeout: TOTP_STEP_TIMEOUT_MS })) ?? ''
-    expect(secret).not.toBe('')
+    if (!(await secretLocator.isVisible())) {
+      await page
+        .getByRole('button', { name: 'Подключить приложение' })
+        .click({ timeout: TOTP_STEP_TIMEOUT_MS })
+    }
+    await expect(secretLocator).toBeVisible({ timeout: TOTP_STEP_TIMEOUT_MS })
   }).toPass()
   await expect(
     page.getByRole('img', { name: 'QR-код для приложения-аутентификатора' }),
   ).toBeVisible()
-  await expect(async () => {
-    await submitTotpCode(page, secret)
-    await expect(page).toHaveURL(afterSignInUrl, { timeout: TOTP_STEP_TIMEOUT_MS })
-  }).toPass()
+  const secret = (await secretLocator.textContent()) ?? ''
+  expect(secret).not.toBe('')
+  await confirmTotpUntil(page, secret, afterSignInUrl)
   return secret
 }

@@ -28,7 +28,7 @@ const totpSecret = process.env.TEST_USER_TOTP_SECRET
 
 if (!url || !secretKey || !databaseUrl)
   fail('Запуск: npm run seed:test-user при запущенном supabase start')
-if (!LOCAL_HOSTS.has(new URL(url).hostname))
+if (!LOCAL_HOSTS.has(new URL(url).hostname) || !LOCAL_HOSTS.has(new URL(databaseUrl).hostname))
   fail('Тестовый пользователь заводится только в локальном Supabase')
 if (!email || !password) fail(`В ${ENV_FILE} нужны TEST_USER_EMAIL и TEST_USER_PASSWORD`)
 if (totpSecret && !TOTP_SECRET_PATTERN.test(totpSecret))
