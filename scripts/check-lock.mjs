@@ -1,21 +1,27 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process'
-import { cpSync, mkdtempSync, rmSync } from 'node:fs'
+import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const CI_NPM = 'npm@11'
 const lockFile = process.argv[2] ?? 'package-lock.json'
 const workDir = mkdtempSync(join(tmpdir(), 'lock-check-'))
+const emptyUserConfig = join(workDir, 'user.npmrc')
+const ciLikeEnv = Object.fromEntries(
+  Object.entries(process.env).filter(([key]) => !key.toLowerCase().startsWith('npm_config_')),
+)
 try {
   cpSync('package.json', join(workDir, 'package.json'))
   cpSync(lockFile, join(workDir, 'package-lock.json'))
+  writeFileSync(emptyUserConfig, '')
   execFileSync(
     'npx',
     ['-y', CI_NPM, 'ci', '--dry-run', '--ignore-scripts', '--no-audit', '--no-fund'],
     {
       cwd: workDir,
       stdio: 'pipe',
+      env: { ...ciLikeEnv, NPM_CONFIG_USERCONFIG: emptyUserConfig },
     },
   )
   console.log(`package-lock.json принимается ${CI_NPM} (как в CI и на Vercel)`)
