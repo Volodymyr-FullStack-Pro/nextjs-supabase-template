@@ -11,6 +11,7 @@ export type Database = {
           owner_id: string
           title: string
         }
+        ComputedFields: never
         Insert: {
           amount?: number
           created_at?: string
