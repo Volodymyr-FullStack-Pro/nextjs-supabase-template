@@ -24,7 +24,9 @@ returns uuid language sql security definer set search_path = '' as $$
   select id from auth.users where raw_user_meta_data ->> 'test_identifier' = identifier limit 1;
 $$;
 
-create or replace function tests.authenticate_as(identifier text)
+-- aal: 'aal1' — вход паролем, 'aal2' — пароль и второй фактор (TOTP).
+drop function if exists tests.authenticate_as(text);
+create or replace function tests.authenticate_as(identifier text, aal text default 'aal1')
 returns void language plpgsql as $$
 declare
   uid uuid := tests.get_supabase_uid(identifier);
@@ -32,10 +34,23 @@ begin
   if uid is null then
     raise exception 'tests.authenticate_as: пользователь % не создан (tests.create_supabase_user)', identifier;
   end if;
-  perform set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated')::text, true);
+  perform set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated', 'aal', aal)::text, true);
   perform set_config('request.jwt.claim.sub', uid::text, true);
   perform set_config('request.jwt.claim.role', 'authenticated', true);
   set local role authenticated;
+end;
+$$;
+
+-- Подтверждённый фактор TOTP, как после /mfa/setup.
+create or replace function tests.add_verified_totp(identifier text)
+returns uuid language plpgsql security definer set search_path = '' as $$
+declare
+  factor_id uuid := gen_random_uuid();
+begin
+  insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, secret, created_at, updated_at)
+  values (factor_id, tests.get_supabase_uid(identifier), 'test totp', 'totp', 'verified',
+          'JBSWY3DPEHPK3PXP', now(), now());
+  return factor_id;
 end;
 $$;
 
@@ -53,5 +68,5 @@ grant execute on all functions in schema tests to anon, authenticated, service_r
 
 -- supabase test db ждёт TAP-вывод от каждого файла.
 select plan(1);
-select has_function('tests', 'authenticate_as', array['text'], 'test helpers installed');
+select has_function('tests', 'authenticate_as', array['text', 'text'], 'test helpers installed');
 select * from finish();

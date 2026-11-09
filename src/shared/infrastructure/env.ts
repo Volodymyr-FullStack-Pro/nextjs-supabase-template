@@ -17,6 +17,7 @@ export const env = {
     ),
   databaseUrl: () => required('DATABASE_URL', process.env.DATABASE_URL),
   sentryDsn: () => process.env.SENTRY_DSN ?? '',
+  authRequireMfa: () => process.env.AUTH_REQUIRE_MFA === 'true',
   hasSupabase: () =>
     Boolean(
       process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,

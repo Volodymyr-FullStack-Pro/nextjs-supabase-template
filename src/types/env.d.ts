@@ -5,6 +5,7 @@ declare global {
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?: string
       DATABASE_URL?: string
       SENTRY_DSN?: string
+      AUTH_REQUIRE_MFA?: string
     }
   }
 }
