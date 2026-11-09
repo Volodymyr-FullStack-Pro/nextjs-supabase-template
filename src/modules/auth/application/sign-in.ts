@@ -10,10 +10,10 @@ export function makeSignIn({ auth }: { auth: Pick<AuthGateway, 'signInWithPasswo
   return async (input: SignInInput): Promise<Result<void, SignInError>> => {
     const outcome = await auth.signInWithPassword(input)
     if (outcome === 'invalid-credentials') {
-      return err(new InvalidCredentialsError('Неверная почта или пароль'))
+      return err(new InvalidCredentialsError())
     }
     if (outcome === 'too-many-attempts') {
-      return err(new TooManyAttemptsError('Слишком много попыток, подождите минуту'))
+      return err(new TooManyAttemptsError())
     }
     return ok(undefined)
   }

@@ -1,22 +1,21 @@
 import Decimal from 'decimal.js'
 
-const DECIMAL_PRECISION = 28
+import { MINUS, SCALE } from './decimal-input'
+import { DEFAULT_LOCALE } from './locale'
+
+const DECIMAL_PRECISION = 64
 
 Decimal.set({ precision: DECIMAL_PRECISION, rounding: Decimal.ROUND_HALF_EVEN })
 
 export const money = (value: string | Decimal): Decimal => new Decimal(value)
 
-const MONEY_SCALE = 2
-const MINUS = '−'
-const NBSP = ' '
+const NBSP = '\u00A0'
 const LETTER_CODE = /^[A-Z]{3}$/u
-const GROUPING = /[\s  '’]/gu
-const DECIMAL_MARKS = /[.,]/gu
-const PLAIN_DECIMAL = /^-?\d+(?:\.\d+)?$/u
 const DECIMAL_PROBE = 1.5
+const ISO_CURRENCIES = new Set(Intl.supportedValuesOf('currency'))
 
 export function shareOf(value: string, fraction: string): string {
-  return money(value).times(fraction).toFixed(MONEY_SCALE)
+  return money(value).times(fraction).toFixed()
 }
 
 type MoneyFormat = { currency?: string; locale?: string; fractionDigits?: number }
@@ -42,20 +41,23 @@ function groupDigits(fixed: string, locale: string): string {
   return `${grouped}${decimalSeparator}${fixed.slice(point + 1)}`
 }
 
-export function formatMoney(
-  amount: string,
-  { currency = 'EUR', locale = 'ru-RU', fractionDigits = 0 }: MoneyFormat = {},
-): string {
-  const rounded = money(amount).toDecimalPlaces(fractionDigits)
-  const digits = groupDigits(rounded.abs().toFixed(fractionDigits), locale)
+function signedDigits(amount: string, locale: string, fractionDigits: number | undefined) {
+  const rounded = money(amount).toDecimalPlaces(fractionDigits ?? SCALE.quantity)
+  const fixed =
+    fractionDigits === undefined ? rounded.abs().toFixed() : rounded.abs().toFixed(fractionDigits)
   const sign = rounded.isNegative() && !rounded.isZero() ? MINUS : ''
-  const symbol = currencySymbol(currency, locale)
-  return LETTER_CODE.test(symbol) ? `${sign}${digits}${NBSP}${symbol}` : `${sign}${symbol}${digits}`
+  return { sign, digits: groupDigits(fixed, locale) }
 }
 
-export function parseDecimalInput(raw: string): string | null {
-  const compact = raw.replace(GROUPING, '').replace(MINUS, '-')
-  if ((compact.match(DECIMAL_MARKS) ?? []).length > 1) return null
-  const normalized = compact.replace(',', '.')
-  return PLAIN_DECIMAL.test(normalized) ? normalized : null
+export function formatMoney(
+  amount: string,
+  { currency = 'EUR', locale = DEFAULT_LOCALE, fractionDigits }: MoneyFormat = {},
+): string {
+  if (!ISO_CURRENCIES.has(currency)) {
+    const { sign, digits } = signedDigits(amount, locale, fractionDigits)
+    return `${sign}${digits}${NBSP}${currency}`
+  }
+  const { sign, digits } = signedDigits(amount, locale, fractionDigits ?? 0)
+  const symbol = currencySymbol(currency, locale)
+  return LETTER_CODE.test(symbol) ? `${sign}${digits}${NBSP}${symbol}` : `${sign}${symbol}${digits}`
 }

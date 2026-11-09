@@ -4,9 +4,11 @@ import Image from 'next/image'
 import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 
+import { failureMessage } from '@/shared/ui/form/messages'
 import { SubmitButton } from '@/shared/ui/form/submit-button'
 
 import { startTotpSetup } from './actions'
+import { authMessages } from './messages'
 import { TotpCodeForm } from './totp-code-form'
 
 const QR_CODE_SIZE_PX = 192
@@ -14,7 +16,7 @@ const QR_CODE_SIZE_PX = 192
 export function TotpSetup() {
   const start = useAction(startTotpSetup, {
     onError: ({ error }) => {
-      if (error.serverError) toast.error(error.serverError)
+      if (error.serverError) toast.error(failureMessage(error.serverError, authMessages))
     },
   })
   const enrollment = start.result.data

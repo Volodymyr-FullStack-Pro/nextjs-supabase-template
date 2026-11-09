@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
-import { APP_LOCALE, APP_TIME_ZONE } from './src/shared/domain/time'
+import { DEFAULT_LOCALE } from './src/shared/domain/locale'
+import { APP_TIME_ZONE } from './src/shared/domain/time'
 
 // Свой порт: локальный dev-сервер на 3000 не подменяет production-сборку
 const E2E_PORT = 3100
@@ -22,7 +23,7 @@ export default defineConfig({
   reporter: isCI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL,
-    locale: APP_LOCALE,
+    locale: DEFAULT_LOCALE,
     timezoneId: APP_TIME_ZONE,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',

@@ -5,6 +5,7 @@ import type { Metadata, Viewport } from 'next'
 import { ThemeProvider } from 'next-themes'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
 
+import { DEFAULT_LOCALE } from '@/shared/domain/locale'
 import { Toaster } from '@/shared/ui/sonner'
 
 import { WebVitals } from './web-vitals'
@@ -33,7 +34,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html
-      lang="ru"
+      lang={DEFAULT_LOCALE}
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >

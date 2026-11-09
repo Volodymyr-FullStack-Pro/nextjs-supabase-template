@@ -4,9 +4,27 @@ import { makeListNotes } from '@/modules/notes/application/list-notes'
 import { fakeNotesRepository } from '@/modules/notes/infrastructure/notes-repository.fake'
 
 const seed = [
-  { id: 'n1', title: 'Аренда офиса', createdAt: '2026-01-01T00:00:00.000Z', ownerId: 'u1' },
-  { id: 'n2', title: 'Зарплаты', createdAt: '2026-01-02T00:00:00.000Z', ownerId: 'u1' },
-  { id: 'n3', title: 'Аренда склада', createdAt: '2026-01-03T00:00:00.000Z', ownerId: 'u2' },
+  {
+    id: 'n1',
+    title: 'Аренда офиса',
+    amount: '0.00',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    ownerId: 'u1',
+  },
+  {
+    id: 'n2',
+    title: 'Зарплаты',
+    amount: '0.00',
+    createdAt: '2026-01-02T00:00:00.000Z',
+    ownerId: 'u1',
+  },
+  {
+    id: 'n3',
+    title: 'Аренда склада',
+    amount: '0.00',
+    createdAt: '2026-01-03T00:00:00.000Z',
+    ownerId: 'u2',
+  },
 ]
 const listNotes = () => makeListNotes({ notes: fakeNotesRepository(seed).repository })
 

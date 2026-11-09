@@ -5,11 +5,13 @@ import { useHookFormAction } from '@next-safe-action/adapter-react-hook-form/hoo
 import { toast } from 'sonner'
 
 import { FieldGroup } from '@/shared/ui/field'
+import { failureMessage } from '@/shared/ui/form/messages'
 import { SubmitButton } from '@/shared/ui/form/submit-button'
 import { TextField } from '@/shared/ui/form/text-field'
 
 import { SignInInput } from '../domain/sign-in'
 import { signIn } from './actions'
+import { authMessages } from './messages'
 
 export function LoginForm() {
   const { form, action, handleSubmitWithAction } = useHookFormAction(
@@ -19,7 +21,7 @@ export function LoginForm() {
       formProps: { defaultValues: { email: '', password: '' } },
       actionProps: {
         onError: ({ error }) => {
-          if (error.serverError) toast.error(error.serverError)
+          if (error.serverError) toast.error(failureMessage(error.serverError, authMessages))
         },
       },
     },
@@ -30,6 +32,7 @@ export function LoginForm() {
       <FieldGroup>
         <TextField
           control={form.control}
+          messages={authMessages}
           name="email"
           label="Почта"
           type="email"
@@ -37,6 +40,7 @@ export function LoginForm() {
         />
         <TextField
           control={form.control}
+          messages={authMessages}
           name="password"
           label="Пароль"
           type="password"

@@ -14,16 +14,10 @@ export type VerifyTotpCodeError =
 export function makeVerifyTotpCode({ mfa }: { mfa: MfaGateway }) {
   return async (input: TotpCodeInput): Promise<Result<void, VerifyTotpCodeError>> => {
     const factorId = input.factorId ?? (await mfa.verifiedTotpFactorId())
-    if (!factorId) {
-      return err(new SecondFactorMissingError('Второй фактор не подключён'))
-    }
+    if (!factorId) return err(new SecondFactorMissingError())
     const outcome = await mfa.verifyTotp({ factorId, code: input.code })
-    if (outcome === 'invalid-code') {
-      return err(new InvalidTotpCodeError('Код не подошёл: введите новый код из приложения'))
-    }
-    if (outcome === 'too-many-attempts') {
-      return err(new TooManyAttemptsError('Слишком много попыток, подождите минуту'))
-    }
+    if (outcome === 'invalid-code') return err(new InvalidTotpCodeError())
+    if (outcome === 'too-many-attempts') return err(new TooManyAttemptsError())
     return ok(undefined)
   }
 }

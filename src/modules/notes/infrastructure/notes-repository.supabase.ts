@@ -5,10 +5,17 @@ import { createClient } from '@/shared/infrastructure/supabase/server'
 import type { NotesRepository } from '../application/notes-repository'
 import { type Note, NOTE_SEARCH_MAX, NOTES_LIST_LIMIT, NoteSchema } from '../domain/note'
 
-type NoteRow = { id: string; title: string; created_at: string }
+const NOTE_COLUMNS = 'id, title, amount::text, created_at'
+
+type NoteRow = { id: string; title: string; amount: string; created_at: string }
 
 function toNote(row: NoteRow): Note {
-  return NoteSchema.parse({ id: row.id, title: row.title, createdAt: row.created_at })
+  return NoteSchema.parse({
+    id: row.id,
+    title: row.title,
+    amount: row.amount,
+    createdAt: row.created_at,
+  })
 }
 
 export const supabaseNotesRepository: NotesRepository = {
@@ -16,7 +23,7 @@ export const supabaseNotesRepository: NotesRepository = {
     const supabase = await createClient()
     let query = supabase
       .from('notes')
-      .select('id, title, created_at')
+      .select(NOTE_COLUMNS)
       .eq('owner_id', userId)
       .order('created_at', { ascending: false })
       .limit(NOTES_LIST_LIMIT)
@@ -35,7 +42,7 @@ export const supabaseNotesRepository: NotesRepository = {
     const { data: row, error } = await supabase
       .from('notes')
       .insert({ title: data.title, owner_id: data.ownerId })
-      .select('id, title, created_at')
+      .select(NOTE_COLUMNS)
       .single()
     if (error) throw new Error(`notes.insert: ${error.message}`)
     return toNote(row)

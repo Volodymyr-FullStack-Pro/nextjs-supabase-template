@@ -25,10 +25,17 @@ export class MfaRequiredError extends DomainError {
 export class RuleViolationError extends DomainError {
   override readonly name = 'RuleViolationError'
   readonly code = 'RULE_VIOLATION'
-  constructor(
-    readonly rule: string,
-    message: string,
-  ) {
-    super(message)
+  constructor(readonly rule: string) {
+    super(rule)
   }
+}
+
+export const UNEXPECTED_ERROR = 'UNEXPECTED'
+
+export type ActionFailure = { code: string; rule?: string; detail?: string }
+
+export function toActionFailure(error: DomainError): ActionFailure {
+  return error instanceof RuleViolationError
+    ? { code: error.code, rule: error.rule }
+    : { code: error.code }
 }

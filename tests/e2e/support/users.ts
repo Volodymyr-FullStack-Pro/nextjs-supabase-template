@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env['NEXT_PUBLIC_SUPABASE_URL'] ?? ''
 const secretKey = process.env['SUPABASE_SECRET_KEY'] ?? ''
+const publishableKey = process.env['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'] ?? ''
 
 export const hasDatabase = supabaseUrl !== '' && secretKey !== ''
 export const NEEDS_DATABASE = 'нужен локальный Supabase: supabase start и npm run test:e2e:db'
@@ -15,10 +16,27 @@ export type SignedInUser = 'alice' | 'bob'
 
 export const storageStatePath = (user: SignedInUser) => `playwright/.auth/${user}.json`
 
+const NO_SESSION = { auth: { persistSession: false, autoRefreshToken: false } }
+
 function adminAuth() {
-  return createClient(supabaseUrl, secretKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  }).auth.admin
+  return createClient(supabaseUrl, secretKey, NO_SESSION).auth.admin
+}
+
+export async function insertNote(
+  owner: TestUser,
+  note: { title: string; amount: string },
+): Promise<void> {
+  const { error } = await createClient(supabaseUrl, secretKey, NO_SESSION)
+    .from('notes')
+    .insert({ owner_id: owner.id, title: note.title, amount: note.amount })
+  if (error) throw new Error(`insertNote: ${error.message}`, { cause: error })
+}
+
+export async function signedInClient(user: TestUser) {
+  const client = createClient(supabaseUrl, publishableKey, NO_SESSION)
+  const { error } = await client.auth.signInWithPassword(user)
+  if (error) throw new Error(`signedInClient: ${error.message}`, { cause: error })
+  return client
 }
 
 export async function createTestUser(label: string): Promise<TestUser> {

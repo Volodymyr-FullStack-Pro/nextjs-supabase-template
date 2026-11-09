@@ -22,7 +22,7 @@ describe('signIn', () => {
   it('tells the user to wait when attempts are rate limited', async () => {
     expect(await signInWith('too-many-attempts')(credentials)).toMatchObject({
       ok: false,
-      error: { code: 'TOO_MANY_ATTEMPTS', message: 'Слишком много попыток, подождите минуту' },
+      error: { code: 'TOO_MANY_ATTEMPTS' },
     })
   })
 })

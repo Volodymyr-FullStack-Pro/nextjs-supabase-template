@@ -16,25 +16,21 @@ vi.mock('server-only', () => ({}))
 vi.mock('@sentry/nextjs', () => ({ captureException }))
 vi.mock('@/shared/lib/session', () => session)
 
-const GENERIC_MESSAGE = 'Что-то пошло не так. Попробуйте ещё раз.'
-
 describe('actionClient', () => {
   afterEach(() => {
     vi.restoreAllMocks()
     captureException.mockClear()
   })
 
-  it('returns the domain message of an expected error without logging it', async () => {
+  it('returns the code and rule of an expected error without logging it', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     const action = actionClient.action(() =>
-      Promise.resolve().then(() =>
-        fail(new RuleViolationError('note.title.meaningless', 'Заголовок без букв')),
-      ),
+      Promise.resolve().then(() => fail(new RuleViolationError('note.title.meaningless'))),
     )
 
     const result = await action()
 
-    expect(result.serverError).toBe('Заголовок без букв')
+    expect(result.serverError).toEqual({ code: 'RULE_VIOLATION', rule: 'note.title.meaningless' })
     expect(consoleError).not.toHaveBeenCalled()
     expect(captureException).not.toHaveBeenCalled()
   })
@@ -46,7 +42,7 @@ describe('actionClient', () => {
 
     const result = await action()
 
-    expect(result.serverError).toBe(GENERIC_MESSAGE)
+    expect(result.serverError).toEqual({ code: 'UNEXPECTED' })
     expect(consoleError).toHaveBeenCalledTimes(1)
     expect(JSON.parse(String(consoleError.mock.calls[0]?.[0]))).toEqual({
       type: 'action-error',
@@ -62,7 +58,7 @@ describe('actionClient', () => {
 
     const result = await authActionClient.action(run)()
 
-    expect(result.serverError).toBe('Подтвердите вход кодом из приложения')
+    expect(result.serverError).toEqual({ code: 'MFA_REQUIRED' })
     expect(run).not.toHaveBeenCalled()
   })
 

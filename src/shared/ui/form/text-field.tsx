@@ -6,10 +6,13 @@ import { type Control, Controller, type FieldPathByValue, type FieldValues } fro
 import { Field, FieldError, FieldLabel } from '@/shared/ui/field'
 import { Input } from '@/shared/ui/input'
 
+import { messageFor, type Messages } from './messages'
+
 type TextFieldProps<T extends FieldValues> = {
   control: Control<T>
   name: FieldPathByValue<T, string>
   label: string
+  messages: Messages
 } & Omit<
   ComponentProps<typeof Input>,
   'name' | 'id' | 'value' | 'onChange' | 'onBlur' | 'ref' | 'aria-invalid' | 'aria-describedby'
@@ -19,6 +22,7 @@ export function TextField<T extends FieldValues>({
   control,
   name,
   label,
+  messages,
   ...inputProps
 }: TextFieldProps<T>) {
   const id = useId()
@@ -37,7 +41,11 @@ export function TextField<T extends FieldValues>({
             aria-invalid={fieldState.invalid}
             {...(fieldState.invalid ? { 'aria-describedby': errorId } : {})}
           />
-          {fieldState.invalid ? <FieldError id={errorId} errors={[fieldState.error]} /> : null}
+          {fieldState.invalid ? (
+            <FieldError id={errorId}>
+              {messageFor(fieldState.error?.message, messages) ?? fieldState.error?.message}
+            </FieldError>
+          ) : null}
         </Field>
       )}
     />
