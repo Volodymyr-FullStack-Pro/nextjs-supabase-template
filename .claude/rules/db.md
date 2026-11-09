@@ -10,6 +10,7 @@ paths:
 # База данных: Supabase, RLS, Drizzle, деньги
 
 - Источник правды — миграции `supabase/migrations/<timestamp>_name.sql`. `src/shared/infrastructure/db/schema.ts` повторяет их ради типов Drizzle; `npm run db:generate` пишет SQL в `drizzle/` только для сверки.
+- Миграцию, уже слитую в `main`, не правят и не удаляют: она выложена на staging, правка разведёт базу и историю миграций. Исправление — новой миграцией вперёд; CI (`db.yml`, шаг «Merged migrations are not changed») это проверяет.
 - Data API закрыт по умолчанию (`supabase/migrations/20251231000000_default_privileges.sql`): миграция таблицы сама выдаёт `grant` роли `authenticated` только на операции, у которых есть политика; `anon` — ничего.
 - После миграции — `npm run db:types`: `src/shared/infrastructure/supabase/types.ts` генерируется из локальной базы и руками не правится; CI (`db.yml`) падает, если файл не совпадает с миграциями.
 - Прямое подключение `db()` — через пул Supavisor (transaction, порт 6543): `prepare: false`, одно соединение, SSL вне локальной машины (`src/shared/infrastructure/db/index.ts`).
