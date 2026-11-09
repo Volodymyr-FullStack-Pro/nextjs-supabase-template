@@ -20,7 +20,7 @@ export function WebVitals() {
       path: window.location.pathname,
     }
     if (!isProduction) {
-      console.debug('[web-vitals]', body.name, body.value.toFixed(0), body.rating)
+      console.info(JSON.stringify({ type: 'web-vitals', ...body }))
       return
     }
     navigator.sendBeacon('/api/vitals', JSON.stringify(body))

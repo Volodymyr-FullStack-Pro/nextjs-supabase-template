@@ -2,6 +2,15 @@
 
 Что менялось в шаблоне. Проект, созданный раньше, переносит нужное руками и записывает это строкой D-NNN.
 
+## 2026-11-09 — правила стиля: ловушки нуля, React, директивы, тесты
+
+- 0 как значение: `prefer-nullish-coalescing`, `prefer-optional-chain`, `strict-boolean-expressions` (числа — явное сравнение; строки разрешены), `react/jsx-no-leaked-render`.
+- React: `no-array-index-key`, `button-has-type`. Логи: `no-console` (только `info`, `warn`, `error`).
+- `eslint-disable` — с причиной после `--` (`@eslint-community/eslint-plugin-eslint-comments`), лишняя директива — ошибка (`reportUnusedDisableDirectives`).
+- Явные ошибки логики из `sonarjs`: одинаковые ветки и условия, перезапись элемента, проигнорированный результат.
+- Тесты: `@vitest/eslint-plugin` и `eslint-plugin-playwright` — без `.only`, безусловного `.skip`, `waitForTimeout`, с проверкой в каждом тесте и `await` у проверок.
+- Код шаблона приведён к правилам: лог web-vitals в dev — `console.info` строкой JSON, явная проверка `error.code` в `mfa-gateway`.
+
 ## 2026-11-09 — слитые миграции неизменны
 
 - `db.yml`: шаг «Merged migrations are not changed» — PR, который меняет или удаляет миграцию из `main`, красный; исправление — новой миграцией. Хук `protect.sh` спрашивает только про правки через Edit и Write, а CI ловит и правку из терминала. Правило — в `.claude/rules/db.md` и `docs/release.md`.
