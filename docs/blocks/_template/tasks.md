@@ -26,7 +26,7 @@
 
 Требования: все требования блока · Подзадача: <ссылка>
 
-**Что делаем.** Полная проверка всего блока перед слиянием: `/code-review high <номер PR>`, `/simplify <номер PR>`, `/security-review`, правки по находкам, `npm run check`, `npm run test:e2e` на компьютере и iPhone, все экраны блока в обеих темах, `npm run req:check -- --strict`.
+**Что делаем.** Полная проверка всего блока перед слиянием: `/code-review high <номер PR>`, `/simplify <номер PR>`, `/security-review`, правки по находкам, `npm run check`, `npm run test:e2e:db` на компьютере и iPhone, все экраны блока в обеих темах, `npm run req:check -- --strict`.
 
 **Результат.** PR блока готов к слиянию (ready), требования блока отмечены «сделан B00 (PR #N)».
 

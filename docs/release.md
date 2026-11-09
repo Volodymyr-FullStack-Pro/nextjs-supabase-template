@@ -15,7 +15,7 @@
 
 ## Настройка один раз
 
-1. **Supabase.** Два проекта, staging и production, в регионе Frankfurt; в production включить PITR. В каждом: Authentication → Sign In / Providers → «Allow new users to sign up» = off. Только в облаке, через панель (в `config.toml` этой настройки нет): защита от утёкших паролей (Authentication → Providers → Email → «Prevent use of leaked passwords», тариф Pro и выше). Второй фактор (TOTP) из `config.toml` работает на всех тарифах; финансовым проектам в Vercel — `AUTH_REQUIRE_MFA=true`. Ограничения сессий из `config.toml` (`[auth.sessions]`: 24 ч всего, 8 ч без активности; финансовым проектам — `inactivity_timeout = "30m"`) облако принимает на тарифе Pro и выше: на Free секцию `[auth.sessions]` убрать, иначе `config push` откажет.
+1. **Supabase.** Два проекта, staging и production, в регионе Frankfurt; в production включить PITR. В каждом: Authentication → Sign In / Providers → «Allow new users to sign up» = off. Только в облаке, через панель (в `config.toml` этой настройки нет): защита от утёкших паролей (Authentication → Providers → Email → «Prevent use of leaked passwords», тариф Pro и выше). Второй фактор (TOTP) из `config.toml` работает на всех тарифах; финансовым проектам в Vercel — `AUTH_REQUIRE_MFA=true`. Ограничения сессий из `config.toml` (`[auth.sessions]`: 24 ч всего, 8 ч без активности; финансовым проектам — `inactivity_timeout = "30m"` и `jwt_expiry = 900`: бездействие проверяется только при обновлении токена, фактический срок — таймаут плюс срок токена) облако принимает на тарифе Pro и выше: на Free секцию `[auth.sessions]` убрать, иначе `config push` откажет.
 2. **Vercel.** Settings → Environments → Production → Branch Tracking — ветка `production`; домен staging назначить на ветку `main`; переменные окружения — отдельно для Preview и Production (`.env.example`). `DATABASE_URL` — пул Supavisor в режиме transaction, порт 6543 (Supabase → Connect → Transaction pooler). Регион функций берётся из `vercel.json`.
 3. **GitHub.** Защитить `main` и `production` (только PR, зелёный CI). Два окружения (Settings → Environments): `staging` и `production`, у `production` — обязательное подтверждение (required reviewers). В каждом — секреты `SUPABASE_ACCESS_TOKEN` (Supabase → Account → Access Tokens), `SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_REF` и переменная `SITE_URL` (адрес приложения в этой среде, `https://…`). Пока секретов нет, выкладка базы пропускается с предупреждением.
    Порт Postgres закрыт сетевыми ограничениями (Database → Network Restrictions, приложение ходит только через HTTPS API)? Переменная окружения `SUPABASE_NETWORK_RESTRICTED=true`: `deploy-db.yml` на время `link` и `db push` добавляет IP раннера (`/32`), а после — даже если выкладка упала — возвращает сохранённый список целиком.
@@ -28,14 +28,16 @@
 1. Локально: `supabase migration new <имя>` → SQL → `supabase test db` → `npm run db:types` → PR (CI `db.yml` проверяет advisors, pgTAP и что типы совпадают с миграциями).
 2. Слияние в `main` → workflow `deploy-db.yml` сам выкладывает на staging: `supabase link`, `supabase db push`, `supabase config push` (настройки Auth и API из `config.toml`; `site_url` и адреса возврата подменяются переменной `SITE_URL`). Проверить staging.
 3. Перед первым включением выкладки посмотреть, что `config push` поменяет в облаке: `supabase link --project-ref <staging>` и `supabase config diff`.
-4. Миграция только добавляет (новые колонки и таблицы), удаление — отдельным выпуском, когда код старое уже не читает: при выпуске код и база выкладываются одновременно.
+4. Миграция только добавляет (новые колонки и таблицы), удаление — отдельным выпуском, когда код старое уже не читает: при выпуске база выходит после кода (её выкладка ждёт подтверждения), поэтому новый код должен работать и со старой схемой; иначе миграция — отдельным выпуском раньше кода.
 
 ## Выпуск в production
 
-PR `main → production` с описанием «что выходит» (блоки, требования), CI зелёный → слияние человеком → Vercel деплоит код, а `deploy-db.yml` ждёт подтверждения в окружении `production` и выкладывает миграции и настройки Auth. Упавшую выкладку повторить: Actions → Deploy database → Run workflow на ветке `production`.
+PR `main → production` сливается merge commit, не squash (иначе `production` расходится с `main` и следующий выпуск конфликтует), с описанием «что выходит» (блоки, требования), CI зелёный → слияние человеком → Vercel деплоит код, а `deploy-db.yml` ждёт подтверждения в окружении `production` и выкладывает миграции и настройки Auth. Упавшую выкладку повторить: Actions → Deploy database → Run workflow на ветке `production`.
 
 ## Откат
 
 - Код — Vercel Instant Rollback на предыдущий деплой.
 - База — новая миграция, исправляющая вперёд; авария с данными — восстановление PITR.
 - Причина и вывод — строка D-NNN в `docs/knowledge/decisions.md`.
+
+`ADDITIONAL_REDIRECT_URLS` (переменная окружения GitHub, необязательно) — адреса возврата после входа через `config push`, через запятую; для staging добавьте маску адресов preview Vercel (например `https://*-<команда>.vercel.app/**`), иначе вход через SSO на preview вернёт на staging. Без неё — только `SITE_URL`.

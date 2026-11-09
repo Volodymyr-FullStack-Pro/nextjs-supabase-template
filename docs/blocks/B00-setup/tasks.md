@@ -20,7 +20,7 @@
 
 Требования: — · Подзадача: <ссылка>
 
-**Что делаем.** Проекты staging и production. Способ входа — по требованиям заказчика: email и пароль (от 12 символов, защита от утёкших паролей) или SSO-провайдер, например Google; в любом случае только по приглашению, саморегистрация выключена. Для финансовых данных — второй фактор (TOTP) и `AUTH_REQUIRE_MFA=true`. Таймаут неактивности сессии. Переключатели, которых нет в `supabase/config.toml` и которые ставятся только в панели Supabase, — руками на staging и production, списком в README блока. `.env.local`, первая миграция, тестовый пользователь (Studio → Authentication) с данными в `.env.test.local` (`TEST_USER_EMAIL`, `TEST_USER_PASSWORD`).
+**Что делаем.** Проекты staging и production. Способ входа — по требованиям заказчика: email и пароль (от 12 символов, защита от утёкших паролей) или SSO-провайдер, например Google; в любом случае только по приглашению, саморегистрация выключена. Для финансовых данных — второй фактор (TOTP) и `AUTH_REQUIRE_MFA=true`. Таймаут неактивности сессии. Переключатели, которых нет в `supabase/config.toml` и которые ставятся только в панели Supabase, — руками на staging и production, списком в README блока. `.env.local`, первая миграция, тестовый пользователь (Studio → Authentication) с данными в `.env.test.local` (`TEST_USER_EMAIL`, `TEST_USER_PASSWORD`). Вход только через SSO — провайдер Email в production выключить и закрепить в настройках, которые выкладывает `deploy-db.yml`: иначе следующий `config push` вернёт его из `config.toml` (переопределение для среды production; проверить на staging до первого выпуска). Финансовым — `inactivity_timeout = "30m"` и `jwt_expiry = 900`.
 **Результат.** Локально и на staging работает вход (со вторым фактором, если он включён) и защищённая страница.
 **Как проверить.** `supabase test db` зелёный; вход тестовым пользователем; регистрация нового пользователя недоступна; при `AUTH_REQUIRE_MFA=true` без второго фактора защищённая страница отправляет на `/mfa/setup` или `/mfa/verify`.
 
@@ -44,7 +44,7 @@
 
 Требования: — · Подзадача: <ссылка>
 
-**Что делаем.** Строгий CSP без nonce (nonce делает все страницы динамическими): хэши скриптов через Subresource Integrity (`experimental.sri: { algorithm: 'sha256' }` в `next.config.ts`, функция экспериментальная) и `script-src 'self'` (в dev — плюс `'unsafe-eval'`), а также `default-src 'self'`, `img-src 'self' blob: data:`, `font-src 'self'`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'` (и домен Supabase при входе через OAuth), `frame-ancestors 'none'`, `upgrade-insecure-requests` — по руководству Next.js «Content Security Policy». Если приложение закрыто Cloudflare Access — проверка его JWT в `src/proxy.ts` или закрытый `*.vercel.app`; заголовки безопасности проверены на staging.
+**Что делаем.** Строгий CSP без nonce (nonce делает все страницы динамическими): хэши скриптов через Subresource Integrity (`experimental.sri: { algorithm: 'sha256' }` в `next.config.ts`, функция экспериментальная) и `script-src 'self'` (в dev — плюс `'unsafe-eval'`), а также `default-src 'self'`, `img-src 'self' blob: data:`, `font-src 'self'`, `object-src 'none'`, `base-uri 'none'`, `form-action 'self'` (и домен Supabase при входе через OAuth), `frame-ancestors 'none'`, `upgrade-insecure-requests` — по руководству Next.js «Content Security Policy». Если приложение закрыто Cloudflare Access — проверка его JWT в `src/proxy.ts` или закрытый `*.vercel.app`; заголовки безопасности проверены на staging.
 **Результат.** Без входа через периметр приложение недоступно; браузер выполняет только скрипты приложения.
 **Как проверить.** e2e проходит страницы и не видит в консоли ни одного нарушения CSP; заголовки staging (`curl -sI <адрес>`) содержат CSP и остальные заголовки безопасности; запрос к staging в обход периметра получает отказ.
 
@@ -60,6 +60,6 @@
 
 Требования: все требования блока · Подзадача: <ссылка>
 
-**Что делаем.** Полная проверка всего блока перед слиянием: `/code-review high <номер PR>`, `/simplify <номер PR>`, `/security-review`, правки по находкам, `npm run check`, `npm run test:e2e` на компьютере и iPhone, все экраны блока в обеих темах, `npm run req:check -- --strict`.
+**Что делаем.** Полная проверка всего блока перед слиянием: `/code-review high <номер PR>`, `/simplify <номер PR>`, `/security-review`, правки по находкам, `npm run check`, `npm run test:e2e:db` на компьютере и iPhone, все экраны блока в обеих темах, `npm run req:check -- --strict`.
 **Результат.** PR блока готов к слиянию (ready), требования блока отмечены «сделан B00 (PR #N)».
 **Как проверить.** Итоги проходов и команд — в описании PR; CI зелёный. После слияния `main` обновлён, ветка блока удалена.

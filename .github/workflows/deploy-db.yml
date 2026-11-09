@@ -104,9 +104,10 @@ jobs:
         # site_url и адреса возврата в config.toml — локальные; для облака их подменяет переменная окружения SITE_URL
         env:
           SITE_URL: ${{ vars.SITE_URL }}
+          ADDITIONAL_REDIRECT_URLS: ${{ vars.ADDITIONAL_REDIRECT_URLS }}
         run: |
           if [ -z "$SITE_URL" ]; then
             echo "::error::Задайте переменную SITE_URL в окружении (адрес приложения, https://…): без неё в облако ушёл бы локальный site_url"
             exit 1
           fi
-          SUPABASE_AUTH_SITE_URL="$SITE_URL" SUPABASE_AUTH_ADDITIONAL_REDIRECT_URLS="$SITE_URL" supabase config push --yes
+          SUPABASE_AUTH_SITE_URL="$SITE_URL" SUPABASE_AUTH_ADDITIONAL_REDIRECT_URLS="${ADDITIONAL_REDIRECT_URLS:-$SITE_URL}" supabase config push --yes

@@ -54,7 +54,7 @@ src/modules/<домен>/
 src/shared/
   domain/                        деньги (decimal.js), Result, ошибки домена, текст, даты и часовой пояс
   infrastructure/                клиенты Supabase, схема Drizzle и прямое подключение, env
-  lib/                           safe-action (actionClient, authActionClient, fail), session, runtime
+  lib/                           safe-action (actionClient, mfaActionClient, authActionClient, fail), session, runtime
   ui/                            shadcn/ui, form/TextField, SubmitButton, sonner
 src/proxy.ts                     обновление сессии и редиректы (не единственная защита)
 ```
