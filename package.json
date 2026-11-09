@@ -24,7 +24,7 @@
     "test:coverage": "vitest run --coverage",
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio",
-    "db:types": "supabase gen types typescript --local --schema public > src/shared/infrastructure/supabase/types.ts && prettier --write src/shared/infrastructure/supabase/types.ts",
+    "db:types": "supabase gen types typescript --schema public > src/shared/infrastructure/supabase/types.ts && prettier --write src/shared/infrastructure/supabase/types.ts",
     "test:e2e": "playwright test",
     "test:e2e:db": "node scripts/with-local-supabase.mjs playwright test",
     "perf": "lhci autorun && lhci autorun --config=lighthouserc.mobile.cjs",

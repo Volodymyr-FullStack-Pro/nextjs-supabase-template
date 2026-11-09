@@ -1,8 +1,8 @@
 # For detailed configuration reference documentation, visit:
 # https://supabase.com/docs/guides/local-development/cli/config
-# A string used to distinguish different Supabase projects on the same host. Defaults to the
-# working directory name when running `supabase init`.
-project_id = "nextjs-supabase-template"
+# project_id не задан: Supabase CLI 3 называет локальные контейнеры по имени папки проекта, поэтому
+# проекты из шаблона на одной машине не делят базу. Порты общие: перед `supabase start` в другом
+# проекте остановить этот (`supabase stop`).
 
 [api]
 enabled = true
@@ -219,8 +219,9 @@ web3 = 30
 # secret = ""
 
 [auth.email]
-# Allow/disallow new user signups via email to your project.
-enable_signup = true
+# Включает вход по почте и паролю (CLI 3: `enabled`; `false` закрывает вход и уже заведённым).
+# Новые регистрации закрыты отдельно — `[auth] enable_signup = false`.
+enabled = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
@@ -257,8 +258,8 @@ otp_expiry = 3600
 # content_path = "./supabase/templates/password_changed_notification.html"
 
 [auth.sms]
-# Allow/disallow new user signups via SMS to your project.
-enable_signup = false
+# Вход по телефону выключен (CLI 3: `enabled`).
+enabled = false
 # If enabled, users need to confirm their phone number before signing in.
 enable_confirmations = false
 # Template for sending OTP to users

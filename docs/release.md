@@ -26,8 +26,8 @@
 ## Миграции
 
 1. Локально: `supabase migration new <имя>` → SQL → `supabase test db` → `npm run db:types` → PR (CI `db.yml` проверяет advisors, pgTAP и что типы совпадают с миграциями).
-2. Слияние в `main` → workflow `deploy-db.yml` сам выкладывает на staging: `supabase link`, `supabase db push`, `supabase config push` (настройки Auth и API из `config.toml`; `site_url` и адреса возврата подменяются переменной `SITE_URL`). Проверить staging.
-3. Перед первым включением выкладки посмотреть, что `config push` поменяет в облаке: `supabase link --project-ref <staging>` и `supabase config diff`.
+2. Слияние в `main` → workflow `deploy-db.yml` сам выкладывает на staging: `supabase link`, `supabase db push --remote`, `supabase config push` (настройки Auth и API из `config.toml`; `site_url` и адреса возврата подменяются переменной `SITE_URL`). Проверить staging.
+3. Перед первым включением выкладки посмотреть, что `config push` поменяет в облаке: `supabase link --project-ref <staging>` и `supabase config diff` (CLI 3 подставляет в настройки переменные `SUPABASE_*` из окружения и `.env`-файлов — diff показывает и их).
 4. Миграция только добавляет (новые колонки и таблицы), удаление — отдельным выпуском, когда код старое уже не читает: при выпуске база выходит после кода (её выкладка ждёт подтверждения), поэтому новый код должен работать и со старой схемой; иначе миграция — отдельным выпуском раньше кода.
 
 ## Выпуск в production
