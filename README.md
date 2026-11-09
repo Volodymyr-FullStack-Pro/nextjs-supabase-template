@@ -205,7 +205,7 @@ npm run new:module businesses business
 - `supabase/migrations` — источник правды для базы; `supabase/tests` — pgTAP; `supabase/config.toml` — локальный стек.
 - `tests/unit` (зеркалит `src`), `tests/e2e`.
 - `scripts/` — `new-module.mjs` (каркас модуля), `requirements-check.mjs` (реестр требований), `bundle-budget.mjs` (бюджет JS), `check-lock.mjs` (lock-файл для npm 11, как в CI и на Vercel).
-- `.claude/` — `settings.json` (маркетплейс `claude-kit`, плагин `dev-kit`, запреты), `rules/` (архитектура, безопасность, база, интерфейс, тесты, документация).
+- `.claude/` — `settings.json` (маркетплейс `claude-kit`, плагин `dev-kit`, разрешения: команды проверок и удаление на GitHub веток, уже слитых в `main`; запреты: чтение `.env*` с ключами, удаление в ClickUp), `rules/` (архитектура, безопасность, база, интерфейс, тесты, документация).
 - `docs/knowledge` — статус, реестр требований заказчика (`requirements.md`), индекс решений (`decisions.md`) и ADR крупных решений (`decisions/D-NNN-*.md`), открытые вопросы; `docs/roadmap.md` и `docs/blocks/` — поставка: спринты, блоки, задачи; `docs/glossary.md` — понятия.
 - `.github/workflows` — `ci.yml` (lint, typecheck, тесты, knip, jscpd, build, e2e, Lighthouse, gitleaks, Semgrep), `db.yml` (advisors + pgTAP при изменениях базы).
 
