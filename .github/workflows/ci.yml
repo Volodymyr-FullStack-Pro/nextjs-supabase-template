@@ -27,6 +27,7 @@ jobs:
       - run: npm ci
       - run: npm audit signatures # подписи и provenance пакетов из реестра
       - run: npm audit --omit=dev --audit-level=high # production-зависимости без известных уязвимостей; dev — через Dependabot
+      - run: npm run licenses # production-зависимости без GPL, AGPL, SSPL и неизвестных лицензий
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run req:check

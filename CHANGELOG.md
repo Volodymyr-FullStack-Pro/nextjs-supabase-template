@@ -2,6 +2,14 @@
 
 Что менялось в шаблоне. Проект, созданный раньше, переносит нужное руками и записывает это строкой D-NNN.
 
+## 2026-11-09 — проверки базы, лицензий и покрытия сценариев
+
+- Squawk 2.70.0 (`npm run db:check-migrations`, CI `db.yml`): новые миграции без опасных для живой базы операций; в начале миграции — `lock_timeout` и `statement_timeout`; `.squawk.toml` — миграция в транзакции, без требования `CONCURRENTLY`.
+- `supabase db lint --fail-on warning` в CI: ошибки в функциях базы (plpgsql_check).
+- `npm run licenses` (в `check` и CI): production-зависимости без GPL, AGPL, SSPL и неизвестных лицензий.
+- Порог покрытия `application`: 100 % строк и функций, 95 % ветвей.
+- B00-T07: с next-intl — `react/jsx-no-literals`, текст интерфейса только из словарей.
+
 ## 2026-11-09 — правила стиля: ловушки нуля, React, директивы, тесты
 
 - 0 как значение: `prefer-nullish-coalescing`, `prefer-optional-chain`, `strict-boolean-expressions` (числа — явное сравнение; строки разрешены), `react/jsx-no-leaked-render`.
