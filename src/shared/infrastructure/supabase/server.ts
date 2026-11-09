@@ -1,6 +1,7 @@
 import 'server-only'
 
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
+import { connection } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
 import { env } from '@/shared/infrastructure/env'
@@ -9,9 +10,10 @@ import { sessionCookieOptions } from './cookie-options'
 import type { Database } from './types'
 
 export async function createClient() {
-  const cookieStore = await cookies()
+  await connection()
+  const [cookieStore, headerStore] = await Promise.all([cookies(), headers()])
   return createServerClient<Database>(env.supabaseUrl(), env.supabasePublishableKey(), {
-    cookieOptions: sessionCookieOptions,
+    cookieOptions: sessionCookieOptions(headerStore.get('host') ?? ''),
     cookies: {
       getAll() {
         return cookieStore.getAll()

@@ -48,9 +48,15 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: npm
+      - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
+        with:
+          version: 2.119.0 # как в db.yml и на машинах разработчиков
+      - name: Start local Supabase (Postgres, Auth, REST)
+        run: supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,realtime,storage-api,postgres-meta,supavisor
       - run: npm ci
       - run: npx playwright install --with-deps chromium webkit
-      - run: npm run test:e2e
+      - name: Playwright with the local database
+        run: npm run test:e2e:db # адрес и ключи берёт из supabase status, сценарии за входом не пропускаются
         env:
           CI: 'true'
       - name: Lighthouse budget

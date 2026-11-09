@@ -18,7 +18,9 @@ npm run dev
 
 Безопасность: в Supabase выключить саморегистрацию (Authentication → «Allow new users to sign up» = off; пользователи заводятся приглашением), а если приложение закрыто Cloudflare Access — проверять его JWT в `proxy.ts` или закрыть `*.vercel.app`, иначе периметр обходится (`.claude/rules/security.md`). В репозитории включить оповещения Dependabot и автоматические security-PR (`gh api -X PUT repos/<org>/<проект>/vulnerability-alerts` и `.../automated-security-fixes`), защитить `main` (PR и зелёный CI обязательны). Версия Supabase CLI в `.github/workflows/db.yml` закреплена и должна совпадать с `supabase --version` на машинах разработчиков: обновлять обе вместе.
 
-Для `/notes`, `npm run db:types` и pgTAP нужны Docker и Supabase CLI (`brew install supabase/tap/supabase`). Первого пользователя заведите в Studio (`http://127.0.0.1:54323` → Authentication → Add user) или через `supabase/seed.sql`.
+Для `/notes`, `npm run db:types`, pgTAP и e2e за входом (`npm run test:e2e:db`) нужны Docker и Supabase CLI (`brew install supabase/tap/supabase`). Первого пользователя заведите в Studio (`http://127.0.0.1:54323` → Authentication → Add user) или через `supabase/seed.sql`.
+
+Хостинг и выпуск — [docs/release.md](docs/release.md): Vercel в регионе Франкфурт (`fra1` в `vercel.json`), Supabase в регионе Frankfurt, миграции и настройки Auth на staging и production выкладывает `deploy-db.yml`, ошибки сервера — Sentry (`src/instrumentation.ts`, организация в регионе EU).
 
 ## Архитектура: модули и четыре слоя
 
@@ -102,7 +104,7 @@ src/proxy.ts                     обновление сессии и редир
 
 1. **Чтение.** `page.tsx` рендерит статическую оболочку и оборачивает динамику в `<Suspense>`. Серверный компонент из `ui/` берёт сессию (`verifySession`) и вызывает use case из `server.ts`; use case ходит в порт, порт реализован на user-scoped клиенте Supabase (RLS применяется). Наружу уходит модель домена, не строка таблицы.
 2. **Запись.** Форма (`useHookFormAction` + Zod-схема из `domain`) вызывает action из `ui/actions.ts`. `authActionClient` проверяет сессию в middleware и валидирует вход той же схемой; action вызывает use case, получает `Result`, при ошибке домена делает `fail(error)` (текст уходит пользователю), затем обновляет данные: `updateTag(tag)` для кэшированных, `refresh()` или `revalidatePath` для динамических на текущей странице.
-3. **Ошибки.** Ожидаемые (`NotFoundError`, `ForbiddenError`, `ConflictError`, `RuleViolationError`) возвращаются из use case как `Result`. Неожиданные (сеть, база) бросаются и превращаются в общую фразу в `handleServerError`; причина попадает в лог (Sentry подключается в проекте до первого релиза, `docs/release.md`).
+3. **Ошибки.** Ожидаемые (`NotFoundError`, `ForbiddenError`, `ConflictError`, `RuleViolationError`) возвращаются из use case как `Result`. Неожиданные (сеть, база) бросаются и превращаются в общую фразу в `handleServerError`; причина уходит строкой JSON в лог и в Sentry (`src/shared/infrastructure/monitoring.ts`; Sentry включается переменной `SENTRY_DSN`, `docs/release.md`).
 4. **Кэш.** Данные пользователя читаются динамически под Suspense. Справочники и редко меняющиеся данные — компоненты и функции с `'use cache'`, `cacheLife`, `cacheTag`; инвалидация — `updateTag(tag)` (или `revalidateTag(tag, 'max')`, в Next 16 второй аргумент обязателен) в action, который их меняет. Внутри `'use cache'` нельзя читать cookies и сессию.
 
 ### Новый модуль
@@ -151,13 +153,13 @@ npm run new:module businesses business
 
 Бюджет на маршрут: TTFB ≤ 200 мс с кэшем, LCP ≤ 1,5 с, TBT ≤ 200 мс, CLS ≤ 0,1, Lighthouse Performance ≥ 90, JavaScript начальной загрузки ≤ 300 КБ gzip. Проверки:
 
-- **Лаборатория, на каждом PR:** Lighthouse (`lighthouserc.cjs`, `npm run perf`), `npm run budget` (сумма gzip-скриптов из HTML каждой страницы, без префетча; сравнивает с базой `perf-baseline.json` — рост даже внутри лимита красный, пока базу не обновили осознанно: `npm run budget -- --update-baseline` в том же PR с объяснением), e2e-замер TTFB главной, `npm run analyze` для разбора бандла.
+- **Лаборатория, на каждом PR:** Lighthouse на компьютере и на телефоне (`lighthouserc.cjs`, `lighthouserc.mobile.cjs` с эмуляцией телефона и порогом LCP 2,5 с; `npm run perf`), `npm run budget` (сумма gzip-скриптов из HTML каждой страницы, без префетча; сравнивает с базой `perf-baseline.json` — рост даже внутри лимита красный, пока базу не обновили осознанно: `npm run budget -- --update-baseline` в том же PR с объяснением), e2e-замер TTFB главной, `npm run analyze` для разбора бандла.
 - **Лимит — граница, не цель.** Цель каждой задачи — не ухудшить метрики, а при возможности улучшить; улучшение тоже фиксируется в базе.
 - **Поле, в проде:** Web Vitals реальных пользователей (`src/app/web-vitals.tsx` → `/api/vitals`): LCP, INP, CLS, FCP, TTFB с оценкой good / needs-improvement / poor. Сейчас пишутся в лог структурированной строкой; в проекте подключить Sentry или аналитику в `src/app/api/vitals/route.ts`.
 
 Точка отсчёта шаблона (Next 16 + React 19, без nomodule-полифилла): пустая страница ≈ 172 КБ gzip, главная с темой, уведомлениями, nuqs и Web Vitals ≈ 210, страница с формой (zod, react-hook-form, Base UI) ≈ 260. Текущие значения — в `perf-baseline.json`. Новый экран должен укладываться в бюджет: тяжёлые компоненты через `next/dynamic`, валидация на клиенте — только схемы из `domain`, серверные модули в клиент не импортировать.
 
-Принципы: считать там, где данные (снимки и агрегаты в базе, индексы под фильтры, пагинация на сервере); кэш по умолчанию с точной инвалидацией по тегам; минимум JS в браузере (серверные компоненты, клиентские только листья, тяжёлое через `next/dynamic`, DTO вместо объектов целиком); мгновенный отклик (`useOptimistic`, `useTransition`, префетч, debounce); без водопадов (`Promise.all`, `React.cache` для дедупликации, `after()` для фоновой работы); один регион для приложения и базы.
+Принципы: считать там, где данные (снимки и агрегаты в базе, индексы под фильтры, пагинация на сервере); кэш по умолчанию с точной инвалидацией по тегам; минимум JS в браузере (серверные компоненты, клиентские только листья, тяжёлое через `next/dynamic`, DTO вместо объектов целиком); мгновенный отклик (`useOptimistic`, `useTransition`, префетч, debounce); без водопадов (`Promise.all`, `React.cache` для дедупликации, `after()` для фоновой работы); один регион для приложения и базы (Vercel `fra1` в `vercel.json` и Supabase Frankfurt), прямое подключение — через пул Supavisor.
 
 ## Тесты
 
@@ -165,7 +167,7 @@ npm run new:module businesses business
 | ----------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------- |
 | `domain`, `application` | Vitest на фейках из `infrastructure/*.fake.ts`                    | правила и use cases без базы; `src/**/domain/**` — покрытие 100 % |
 | клиентские компоненты   | Vitest + Testing Library в jsdom (`// @vitest-environment jsdom`) | поведение, доступность; URL — `withNuqsTestingAdapter`            |
-| страницы и сценарии     | Playwright против production-сборки                               | серверные компоненты, формы, редиректы, TTFB                      |
+| страницы и сценарии     | Playwright против production-сборки и локального Supabase         | серверные компоненты, формы, вход, RLS глазами пользователя, TTFB |
 | политики RLS            | pgTAP (`supabase test db`)                                        | свои строки видны, чужие нет                                      |
 | внешние HTTP            | MSW (добавляется с первым внешним API)                            | ответы записаны, сеть не мокается на уровне функций               |
 
@@ -181,15 +183,16 @@ npm run new:module businesses business
 | `npm run typecheck`                                | `next typegen && tsc --noEmit`                                                                                                                                      |
 | `npm run format`, `format:check`                   | Prettier                                                                                                                                                            |
 | `npm test`, `test:coverage`                        | Vitest: ядро и компоненты; 100 % на `src/**/domain/**`                                                                                                              |
-| `npm run test:e2e`                                 | Playwright против `next build && next start`                                                                                                                        |
-| `npm run perf`                                     | Lighthouse по бюджету из `lighthouserc.cjs` (после `npm run build`)                                                                                                 |
+| `npm run test:e2e`                                 | Playwright против `next build && next start`; без Supabase сценарии за входом пропускаются                                                                          |
+| `npm run test:e2e:db`                              | то же с локальным Supabase (`supabase start`): адрес и ключи из `supabase status`, пользователи — через admin API (так идёт в CI)                                   |
+| `npm run perf`                                     | Lighthouse по бюджету на компьютере и телефоне (`lighthouserc.cjs`, `lighthouserc.mobile.cjs`; после `npm run build`)                                               |
 | `npm run analyze`                                  | сборка с анализатором бандла                                                                                                                                        |
 | `npm run knip`                                     | неиспользуемые файлы, экспорты, зависимости                                                                                                                         |
 | `npm run jscpd`                                    | дубли кода (порог 0 %)                                                                                                                                              |
 | `npm run req:check`                                | реестр требований заказчика: повторы номеров, статусы, требования без ссылки                                                                                        |
 | `npm run new:module <модуль> <запись>`             | каркас модуля по архитектуре                                                                                                                                        |
 | `npm run db:generate`                              | SQL из схемы Drizzle в `drizzle/` (папка в .gitignore) для сверки с `supabase/migrations`                                                                           |
-| `npm run db:types`                                 | типы supabase-js из локальной базы → `src/shared/infrastructure/supabase/types.ts`                                                                                  |
+| `npm run db:types`                                 | типы supabase-js из локальной базы → `src/shared/infrastructure/supabase/types.ts` (CI сверяет файл с миграциями)                                                   |
 | `npm run db:studio`                                | Drizzle Studio                                                                                                                                                      |
 | `supabase test db`, `supabase db advisors --local` | pgTAP и проверки безопасности и производительности базы                                                                                                             |
 
@@ -204,10 +207,11 @@ npm run new:module businesses business
 - `src/shared/ui` — shadcn/ui: добавлять `npx shadcn@latest add <имя>` и сразу `npm run format`; к этим файлам применяются только границы и базовые правила Next; типозависимые и стилевые правила, `no-non-null-assertion`, `no-explicit-any` выключены (сторонний код); локальные правки: `field.tsx`, `sonner.tsx`, `card.tsx`, `button.tsx` и `input.tsx` (фокус — общий контур 2px из `globals.css` вместо `outline-none` и полупрозрачного кольца, hover — токен `--primary-hover`). Свой код здесь — `form/text-field.tsx`, к нему правила применяются.
 - `supabase/migrations` — источник правды для базы; `supabase/tests` — pgTAP; `supabase/config.toml` — локальный стек.
 - `tests/unit` (зеркалит `src`), `tests/e2e`.
-- `scripts/` — `new-module.mjs` (каркас модуля), `requirements-check.mjs` (реестр требований), `bundle-budget.mjs` (бюджет JS), `check-lock.mjs` (lock-файл для npm 11, как в CI и на Vercel).
+- `scripts/` — `new-module.mjs` (каркас модуля), `requirements-check.mjs` (реестр требований), `bundle-budget.mjs` (бюджет JS; страница без HTML — ошибка), `check-lock.mjs` (lock-файл для npm 11, как в CI и на Vercel), `with-local-supabase.mjs` (команда с адресом и ключами локального Supabase).
 - `.claude/` — `settings.json` (маркетплейс `claude-kit`, плагин `dev-kit`, разрешения: команды проверок и удаление на GitHub веток, уже слитых в `main`; запреты: чтение `.env*` с ключами, удаление в ClickUp), `rules/` (архитектура, безопасность, база, интерфейс, тесты, документация).
 - `docs/knowledge` — статус, реестр требований заказчика (`requirements.md`), индекс решений (`decisions.md`) и ADR крупных решений (`decisions/D-NNN-*.md`), открытые вопросы; `docs/roadmap.md` и `docs/blocks/` — поставка: спринты, блоки, задачи; `docs/glossary.md` — понятия.
-- `.github/workflows` — `ci.yml` (lint, typecheck, тесты, knip, jscpd, build, e2e, Lighthouse, gitleaks, Semgrep), `db.yml` (advisors + pgTAP при изменениях базы).
+- `.github/workflows` — `ci.yml` (lint, typecheck, тесты, knip, jscpd, build, e2e с локальным Supabase, Lighthouse, gitleaks, Semgrep), `db.yml` (advisors, pgTAP и свежесть типов при изменениях базы), `deploy-db.yml` (миграции и настройки Auth: `main` → staging, `production` → production с подтверждением).
+- `vercel.json` — регион функций `fra1`; `src/instrumentation.ts` — Sentry на сервере.
 
 ## Работа с Claude Code
 
@@ -224,7 +228,6 @@ npm run new:module businesses business
 | Графики                           | `npx shadcn@latest add chart` (Recharts)                         |
 | Таблицы с сортировкой и фильтрами | `npx shadcn@latest add table` + `@tanstack/react-table`          |
 | Несколько языков интерфейса       | `next-intl` (маршруты с локалью, словари, форматы чисел и дат)   |
-| Ошибки в проде                    | `@sentry/nextjs` (нужен DSN проекта)                             |
 | Внешние HTTP-API в тестах         | `msw`                                                            |
 | Клиентский стор                   | `zustand`; серверные данные на клиенте — `@tanstack/react-query` |
 | Письма                            | `resend` + `react-email`                                         |

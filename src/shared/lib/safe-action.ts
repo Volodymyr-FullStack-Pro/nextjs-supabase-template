@@ -4,6 +4,7 @@ import { createSafeActionClient } from 'next-safe-action'
 
 import type { DomainError } from '@/shared/domain/errors'
 import { EnvironmentError } from '@/shared/infrastructure/env'
+import { reportUnexpectedError } from '@/shared/infrastructure/monitoring'
 
 import { isProduction } from './runtime'
 import { verifySession } from './session'
@@ -18,8 +19,8 @@ export function fail(error: DomainError): never {
 
 export const actionClient = createSafeActionClient({
   handleServerError(error) {
-    console.error(error)
     if (error instanceof ActionError) return error.message
+    reportUnexpectedError('action-error', error)
     if (error instanceof EnvironmentError && !isProduction) return error.message
     return 'Что-то пошло не так. Попробуйте ещё раз.'
   },

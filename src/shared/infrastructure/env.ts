@@ -16,6 +16,7 @@ export const env = {
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     ),
   databaseUrl: () => required('DATABASE_URL', process.env.DATABASE_URL),
+  sentryDsn: () => process.env.SENTRY_DSN ?? '',
   hasSupabase: () =>
     Boolean(
       process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,

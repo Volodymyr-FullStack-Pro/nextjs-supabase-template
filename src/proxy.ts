@@ -25,7 +25,7 @@ export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request })
   const cacheHeaders = new Headers()
   const supabase = createServerClient<Database>(env.supabaseUrl(), env.supabasePublishableKey(), {
-    cookieOptions: sessionCookieOptions,
+    cookieOptions: sessionCookieOptions(request.nextUrl.host),
     cookies: {
       getAll() {
         return request.cookies.getAll()

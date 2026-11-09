@@ -80,16 +80,22 @@ for (const { route, file } of routes.sort((left, right) => left.route.localeComp
   )
 }
 
+let unmeasured = []
 if (existsSync(ROUTES_MANIFEST)) {
   const measured = new Set(routes.map(({ route }) => route))
   const pages = Object.keys(JSON.parse(readFileSync(ROUTES_MANIFEST, 'utf8')))
     .filter((key) => key.endsWith('/page'))
     .map((key) => key.replace(/\/page$/, '').replaceAll(/\/\([^)]+\)/g, '') || '/')
-  const skipped = pages.filter((route) => !measured.has(route))
-  if (skipped.length > 0)
-    console.log(`  (без HTML, не измерены: ${skipped.join(', ')} — добавьте статическую оболочку)`)
+  unmeasured = pages.filter((route) => !measured.has(route))
+  for (const route of unmeasured) console.log(`  ✘ без HTML ${route}`)
 }
 
+if (unmeasured.length > 0) {
+  console.log(
+    'Страница без HTML не измерена: дайте ей статическую оболочку (динамика — под <Suspense>), иначе её JS не проверяется',
+  )
+  process.exit(1)
+}
 if (updateBaseline) {
   writeFileSync(BASELINE_FILE, `${JSON.stringify(current, null, 2)}\n`)
   console.log(`База обновлена: ${BASELINE_FILE} (закоммитьте вместе с изменением)`)
