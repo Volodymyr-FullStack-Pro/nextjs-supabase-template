@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test'
 import { hasDatabase, NEEDS_DATABASE, storageStatePath } from './support/users'
 
 const PUBLIC_PAGES = ['/', '/login']
-const SIGNED_IN_PAGES = ['/notes']
+const SIGNED_IN_PAGES = ['/notes', '/mfa/setup', '/mfa/verify']
 const WCAG_AA = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 const COLOR_SCHEMES = ['light', 'dark'] as const
 const TOUCH_TARGET_PX = 44

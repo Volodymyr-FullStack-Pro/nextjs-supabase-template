@@ -17,6 +17,11 @@ export class ConflictError extends DomainError {
   readonly code = 'CONFLICT'
 }
 
+export class MfaRequiredError extends DomainError {
+  override readonly name = 'MfaRequiredError'
+  readonly code = 'MFA_REQUIRED'
+}
+
 export class RuleViolationError extends DomainError {
   override readonly name = 'RuleViolationError'
   readonly code = 'RULE_VIOLATION'

@@ -2,9 +2,10 @@
 
 import { redirect } from 'next/navigation'
 
-import { actionClient, fail } from '@/shared/lib/safe-action'
+import { actionClient, fail, mfaActionClient } from '@/shared/lib/safe-action'
 
 import { SignInInput } from '../domain/sign-in'
+import { TotpCodeInput } from '../domain/totp'
 import { auth } from '../server'
 
 export const signIn = actionClient.inputSchema(SignInInput).action(async ({ parsedInput }) => {
@@ -12,3 +13,18 @@ export const signIn = actionClient.inputSchema(SignInInput).action(async ({ pars
   if (!result.ok) fail(result.error)
   redirect('/notes')
 })
+
+export const signOut = actionClient.action(async () => {
+  await auth.signOut()
+  redirect('/login')
+})
+
+export const startTotpSetup = mfaActionClient.action(async () => auth.startTotpSetup())
+
+export const verifyTotpCode = mfaActionClient
+  .inputSchema(TotpCodeInput)
+  .action(async ({ parsedInput }) => {
+    const result = await auth.verifyTotpCode(parsedInput)
+    if (!result.ok) fail(result.error)
+    redirect('/notes')
+  })

@@ -20,7 +20,8 @@ paths:
 - Drizzle `sql` — только с интерполяцией значений внутри шаблона; строки в SQL не склеиваются.
 - Файлы: имя генерирует сервер, путей из запроса нет.
 - Пользователи только приглашением: `enable_signup = false` в `supabase/config.toml`, в проекте — Authentication → Sign In / Providers → «Allow new users to sign up» = off. Публичный ключ лежит в бандле: с открытой регистрацией любой станет `authenticated`, а политики написаны `to authenticated`.
-- Пароль от 12 символов с буквами и цифрами, смена пароля — с недавним входом, сессия — не дольше 24 ч и 8 ч без активности (`supabase/config.toml`, в облако — `deploy-db.yml`); в проекте Supabase включить защиту от утёкших паролей; для финансовых данных — второй фактор (TOTP) и `aal2` в политиках RLS.
+- Пароль от 12 символов с буквами и цифрами, смена пароля — с недавним входом, сессия — не дольше 24 ч и 8 ч без активности (`supabase/config.toml`, в облако — `deploy-db.yml`); в проекте Supabase включить защиту от утёкших паролей.
+- Второй фактор: `verifySession()` → `{ userId, aal, hasVerifiedFactor }`; шаг (`pendingMfaStep`, `src/shared/domain/mfa.ts`) проверяют `src/proxy.ts` и `authActionClient`; экраны `/mfa/*` и их actions — на `mfaActionClient` (сессия без второго фактора). Финансовые проекты — `AUTH_REQUIRE_MFA=true`.
 - Перебор: 429 от Supabase Auth → `TooManyAttemptsError` (`src/modules/auth/domain/errors.ts`).
 - Периметр Cloudflare Access: либо `proxy.ts` проверяет `Cf-Access-Jwt-Assertion` (jose, JWKS `https://<team>.cloudflareaccess.com/cdn-cgi/access/certs`, `aud` приложения), либо `*.vercel.app` закрыт Deployment Protection — иначе Access обходится по адресу деплоя.
 - Зависимости: красный `npm audit --omit=dev --audit-level=high` в CI — обновить пакет, а если исправления нет — временный `overrides` в `package.json` с причиной и датой пересмотра. Мажоры — руками после чтения changelog (Dependabot их пропускает).

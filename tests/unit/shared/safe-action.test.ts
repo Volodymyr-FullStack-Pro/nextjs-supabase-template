@@ -1,13 +1,20 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { RuleViolationError } from '@/shared/domain/errors'
-import { actionClient, fail } from '@/shared/lib/safe-action'
+import type { MfaStep } from '@/shared/domain/mfa'
+import { actionClient, authActionClient, fail } from '@/shared/lib/safe-action'
 
 const captureException = vi.hoisted(() => vi.fn())
+const session = vi.hoisted(() => ({
+  verifySession: vi.fn(() =>
+    Promise.resolve({ userId: 'user-1', aal: 'aal1', hasVerifiedFactor: false }),
+  ),
+  sessionMfaStep: vi.fn((): MfaStep | null => null),
+}))
 
 vi.mock('server-only', () => ({}))
 vi.mock('@sentry/nextjs', () => ({ captureException }))
-vi.mock('@/shared/lib/session', () => ({ verifySession: vi.fn() }))
+vi.mock('@/shared/lib/session', () => session)
 
 const GENERIC_MESSAGE = 'Что-то пошло не так. Попробуйте ещё раз.'
 
@@ -47,5 +54,21 @@ describe('actionClient', () => {
       message: 'notes.insert: connection reset',
     })
     expect(captureException).toHaveBeenCalledWith(failure)
+  })
+
+  it('refuses a signed-in action until the second factor is confirmed', async () => {
+    session.sessionMfaStep.mockReturnValueOnce('verify')
+    const run = vi.fn(() => Promise.resolve('done'))
+
+    const result = await authActionClient.action(run)()
+
+    expect(result.serverError).toBe('Подтвердите вход кодом из приложения')
+    expect(run).not.toHaveBeenCalled()
+  })
+
+  it('runs a signed-in action when no second-factor step is pending', async () => {
+    const result = await authActionClient.action(() => Promise.resolve('done'))()
+
+    expect(result.data).toBe('done')
   })
 })

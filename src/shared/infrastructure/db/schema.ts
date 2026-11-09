@@ -1,9 +1,12 @@
 import { sql } from 'drizzle-orm'
 import {
+  bigint,
   check,
   index,
+  jsonb,
   numeric,
   pgPolicy,
+  pgSchema,
   pgTable,
   text,
   timestamp,
@@ -55,7 +58,33 @@ export const notes = pgTable(
       to: authenticatedRole,
       using: sql`${authUid} = ${table.ownerId}`,
     }),
+    pgPolicy('notes: second factor when enrolled', {
+      as: 'restrictive',
+      for: 'all',
+      to: authenticatedRole,
+      using: sql`(select private.mfa_ok())`,
+      withCheck: sql`(select private.mfa_ok())`,
+    }),
   ],
 ).enableRLS()
 
 export type NoteRow = typeof notes.$inferSelect
+
+export const auditLog = pgSchema('audit')
+  .table(
+    'log',
+    {
+      id: bigint('id', { mode: 'bigint' }).primaryKey().generatedAlwaysAsIdentity(),
+      at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+      actor: uuid('actor'),
+      tableName: text('table_name').notNull(),
+      op: text('op').notNull(),
+      rowId: text('row_id'),
+      old: jsonb('old'),
+      new: jsonb('new'),
+    },
+    (table) => [
+      index('log_table_name_row_id_at_idx').on(table.tableName, table.rowId, table.at.desc()),
+    ],
+  )
+  .enableRLS()

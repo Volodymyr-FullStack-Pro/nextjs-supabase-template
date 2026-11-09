@@ -17,4 +17,10 @@ export const supabaseAuthGateway: AuthGateway = {
     }
     throw new Error(`auth.signIn: ${error.message}`, { cause: error })
   },
+
+  async signOut() {
+    const supabase = await createClient()
+    const { error } = await supabase.auth.signOut()
+    if (error) throw new Error(`auth.signOut: ${error.message}`, { cause: error })
+  },
 }
