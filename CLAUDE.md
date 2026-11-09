@@ -22,7 +22,8 @@ npm run dev            # next dev
 npm run lint           # next typegen + ESLint 10: strict TypeScript, архитектурные границы, доступность (jsx-a11y strict)
 npm run typecheck      # next typegen && tsc --noEmit (tsconfig strictest)
 npm test               # Vitest: ядро на фейках (100 % на src/**/domain/**) и компоненты (jsdom)
-npm run test:e2e       # Playwright против production-сборки
+npm run test:e2e       # Playwright против production-сборки (без базы сценарии за входом пропускаются)
+npm run test:e2e:db    # то же с локальным Supabase — так в CI и при закрытии блока
 npm run perf           # Lighthouse по бюджету (после build); npm run budget — JS на маршрут; npm run analyze — анализ бандла
 npm run knip           # мёртвый код и зависимости
 npm run jscpd          # дубли
@@ -43,7 +44,7 @@ npm run db:types       # типы supabase-js из локальной базы �
 - Superpowers — по таблице «Superpowers в цикле» скила `dev-kit:delivery`; этот файл важнее скилов Superpowers: `brainstorming` на старте блока (крупный — спека `docs/blocks/<блок>/spec.md`), задача из утверждённого `tasks.md` уже одобрена; план — на одну задачу, `docs/blocks/BNN-<имя>/plans/BNN-TNN.md`; исполнение — `executing-plans` в ветке блока, без worktree и без финального ревью ветки (`subagent-driven-development` — только по просьбе человека); вместо `finishing-a-development-branch` — `/dev-kit:task-done`, слияние — человек.
 - Тест первым не нужен (заранее одобрено) для конфигов, CI, сгенерированных типов, токенов дизайна и словарей; у миграции тест первым — pgTAP. Ветки: блок — `block/B01-<имя>`, правка — `fix/<имя>`, документы отдельной темой — `docs/<тема>`; строка реестра или решение посреди задачи — в текущей ветке тем же коммитом; в `main` напрямую не коммитим. Первый блок — `B00-setup` (`docs/blocks/B00-setup/`).
 - Проверка экранов за входом: `npm run dev`, вход тестовым пользователем из `.env.test.local` (`TEST_USER_EMAIL`, `TEST_USER_PASSWORD`); остальные `.env*` Claude не читает (запрет в `.claude/settings.json`).
-- **Готово:** задача — проверки правила 7 скила `delivery` зелёные (при изменениях базы — `supabase test db`); блок — задача «Закрытие блока» пройдена: `npm run check` и `npm run test:e2e` на обоих устройствах зелёные.
+- **Готово:** задача — проверки правила 7 скила `delivery` зелёные (при изменениях базы — `supabase test db`); блок — задача «Закрытие блока» пройдена: `npm run check` и `npm run test:e2e:db` на обоих устройствах зелёные.
 - Процесс улучшается по ходу: правило, хук, скил или проверка, которые мешают или не приносят пользы, не обходятся молча — Claude называет это в отчёте и предлагает изменение; принятое — строка D-NNN и правка шаблона или плагина `dev-kit`.
 - Миграции, `.env*` и lock-файлы Claude правит только с подтверждением (хук плагина). Node 24 и npm 11 везде — локально, в CI и на Vercel; lock-файл пишет обычный `npm install`, на коммите его проверяет `scripts/check-lock.mjs`.
 
