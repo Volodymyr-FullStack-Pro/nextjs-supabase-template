@@ -16,6 +16,7 @@ export default defineConfig({
       thresholds: {
         // Чистое ядро покрывается полностью: это правила денег и бизнеса, их проверяют только тесты.
         'src/**/domain/**/*.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/**/application/**/*.ts': { lines: 100, functions: 100, branches: 95, statements: 100 },
       },
     },
   },

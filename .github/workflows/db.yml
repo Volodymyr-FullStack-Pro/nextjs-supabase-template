@@ -44,6 +44,8 @@ jobs:
         run: supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector
       - name: Security and performance advisors
         run: supabase db advisors --fail-on warn # без флага команда всегда завершается успешно
+      - name: Database functions compile (plpgsql_check)
+        run: supabase db lint --fail-on warning
       - name: pgTAP
         run: supabase test db
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -51,6 +53,12 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      # Новые миграции — без операций, опасных для живой базы (блокировки без lock_timeout, удаление колонок, int вместо bigint)
+      - name: Migration safety (Squawk)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: npm run db:check-migrations -- "$BASE_SHA"
       - name: Database types match the migrations
         run: |
           npm run db:types

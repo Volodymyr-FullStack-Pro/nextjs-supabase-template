@@ -165,38 +165,38 @@ npm run new:module businesses business
 
 ## Тесты
 
-| Слой                    | Инструмент                                                        | Что проверяем                                                     |
-| ----------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `domain`, `application` | Vitest на фейках из `infrastructure/*.fake.ts`                    | правила и use cases без базы; `src/**/domain/**` — покрытие 100 % |
-| клиентские компоненты   | Vitest + Testing Library в jsdom (`// @vitest-environment jsdom`) | поведение, доступность; URL — `withNuqsTestingAdapter`            |
-| страницы и сценарии     | Playwright против production-сборки и локального Supabase         | серверные компоненты, формы, вход, RLS глазами пользователя, TTFB |
-| политики RLS            | pgTAP (`supabase test db`)                                        | свои строки видны, чужие нет                                      |
-| внешние HTTP            | MSW (добавляется с первым внешним API)                            | ответы записаны, сеть не мокается на уровне функций               |
+| Слой                    | Инструмент                                                        | Что проверяем                                                                                  |
+| ----------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `domain`, `application` | Vitest на фейках из `infrastructure/*.fake.ts`                    | правила и use cases без базы; покрытие `domain` 100 %, `application` 100 % строк и 95 % ветвей |
+| клиентские компоненты   | Vitest + Testing Library в jsdom (`// @vitest-environment jsdom`) | поведение, доступность; URL — `withNuqsTestingAdapter`                                         |
+| страницы и сценарии     | Playwright против production-сборки и локального Supabase         | серверные компоненты, формы, вход, RLS глазами пользователя, TTFB                              |
+| политики RLS            | pgTAP (`supabase test db`)                                        | свои строки видны, чужие нет                                                                   |
+| внешние HTTP            | MSW (добавляется с первым внешним API)                            | ответы записаны, сеть не мокается на уровне функций                                            |
 
 Имена тестов: начинаются с глагола в третьем лице и описывают намерение, не реализацию: `it('rejects an empty title')`, `it('lists only the notes of the current user')`. Без `should`, `tests`, `must`; контекст — в названии файла; один тест — одно поведение; в тестах правил домена номер требования из реестра — в имени теста (`(B03-AC-02)`).
 
 ## Команды
 
-| Команда                                    | Что делает                                                                                                                                                          |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run dev` / `build` / `start`          | Next.js                                                                                                                                                             |
-| `npm run check`                            | проверки CI одной командой: lint, typecheck, req:check, test:coverage, knip, jscpd, format:check, build, budget (e2e, Lighthouse, аудит зависимостей и базы — в CI) |
-| `npm run lint`, `lint:fix`                 | `next typegen` + ESLint 10: правила Next.js, `strictTypeChecked`, архитектурные границы, стиль кода, Prettier                                                       |
-| `npm run typecheck`                        | `next typegen && tsc --noEmit`                                                                                                                                      |
-| `npm run format`, `format:check`           | Prettier                                                                                                                                                            |
-| `npm test`, `test:coverage`                | Vitest: ядро и компоненты; 100 % на `src/**/domain/**`                                                                                                              |
-| `npm run test:e2e`                         | Playwright против `next build && next start`; без Supabase сценарии за входом пропускаются                                                                          |
-| `npm run test:e2e:db`                      | то же с локальным Supabase (`supabase start`): адрес и ключи из `supabase status`, пользователи — через admin API (так идёт в CI)                                   |
-| `npm run perf`                             | Lighthouse по бюджету на компьютере и телефоне (`lighthouserc.cjs`, `lighthouserc.mobile.cjs`; после `npm run build`)                                               |
-| `npm run analyze`                          | сборка с анализатором бандла                                                                                                                                        |
-| `npm run knip`                             | неиспользуемые файлы, экспорты, зависимости                                                                                                                         |
-| `npm run jscpd`                            | дубли кода (порог 0 %)                                                                                                                                              |
-| `npm run req:check`                        | реестр требований заказчика: повторы номеров, статусы, требования без ссылки                                                                                        |
-| `npm run new:module <модуль> <запись>`     | каркас модуля по архитектуре                                                                                                                                        |
-| `npm run db:generate`                      | SQL из схемы Drizzle в `drizzle/` (папка в .gitignore) для сверки с `supabase/migrations`                                                                           |
-| `npm run db:types`                         | типы supabase-js из локальной базы → `src/shared/infrastructure/supabase/types.ts` (CI сверяет файл с миграциями)                                                   |
-| `npm run db:studio`                        | Drizzle Studio                                                                                                                                                      |
-| `supabase test db`, `supabase db advisors` | pgTAP и проверки безопасности и производительности базы                                                                                                             |
+| Команда                                                                                       | Что делает                                                                                                                                                                    |
+| --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev` / `build` / `start`                                                             | Next.js                                                                                                                                                                       |
+| `npm run check`                                                                               | проверки CI одной командой: lint, typecheck, req:check, licenses, test:coverage, knip, jscpd, format:check, build, budget (e2e, Lighthouse, аудит зависимостей и базы — в CI) |
+| `npm run lint`, `lint:fix`                                                                    | `next typegen` + ESLint 10: правила Next.js, `strictTypeChecked`, архитектурные границы, стиль кода, Prettier                                                                 |
+| `npm run typecheck`                                                                           | `next typegen && tsc --noEmit`                                                                                                                                                |
+| `npm run format`, `format:check`                                                              | Prettier                                                                                                                                                                      |
+| `npm test`, `test:coverage`                                                                   | Vitest: ядро и компоненты; 100 % на `domain`, на `application` — 100 % строк и 95 % ветвей                                                                                    |
+| `npm run test:e2e`                                                                            | Playwright против `next build && next start`; без Supabase сценарии за входом пропускаются                                                                                    |
+| `npm run test:e2e:db`                                                                         | то же с локальным Supabase (`supabase start`): адрес и ключи из `supabase status`, пользователи — через admin API (так идёт в CI)                                             |
+| `npm run perf`                                                                                | Lighthouse по бюджету на компьютере и телефоне (`lighthouserc.cjs`, `lighthouserc.mobile.cjs`; после `npm run build`)                                                         |
+| `npm run analyze`                                                                             | сборка с анализатором бандла                                                                                                                                                  |
+| `npm run knip`                                                                                | неиспользуемые файлы, экспорты, зависимости                                                                                                                                   |
+| `npm run jscpd`                                                                               | дубли кода (порог 0 %)                                                                                                                                                        |
+| `npm run req:check`                                                                           | реестр требований заказчика: повторы номеров, статусы, требования без ссылки                                                                                                  |
+| `npm run new:module <модуль> <запись>`                                                        | каркас модуля по архитектуре                                                                                                                                                  |
+| `npm run db:generate`                                                                         | SQL из схемы Drizzle в `drizzle/` (папка в .gitignore) для сверки с `supabase/migrations`                                                                                     |
+| `npm run db:types`                                                                            | типы supabase-js из локальной базы → `src/shared/infrastructure/supabase/types.ts` (CI сверяет файл с миграциями)                                                             |
+| `npm run db:studio`                                                                           | Drizzle Studio                                                                                                                                                                |
+| `supabase test db`, `supabase db advisors`, `supabase db lint`, `npm run db:check-migrations` | pgTAP, безопасность и производительность базы, ошибки в функциях базы, опасные операции в новых миграциях (Squawk); `npm run licenses` — лицензии production-зависимостей     |
 
 На коммите lint-staged прогоняет eslint и prettier по изменённым файлам (simple-git-hooks ставит хук при `npm ci`; без `.git` или без devDependencies установка молча пропускается).
 
@@ -212,7 +212,7 @@ npm run new:module businesses business
 - `scripts/` — `new-module.mjs` (каркас модуля), `requirements-check.mjs` (реестр требований), `bundle-budget.mjs` (бюджет JS; страница без HTML — ошибка), `check-lock.mjs` (lock-файл для npm 11, как в CI и на Vercel), `with-local-supabase.mjs` (команда с адресом и ключами локального Supabase).
 - `.claude/` — `settings.json` (маркетплейс `claude-kit`, плагин `dev-kit`, разрешения: команды проверок и удаление на GitHub веток, уже слитых в `main`; запреты: чтение `.env*` с ключами, удаление в ClickUp), `rules/` (архитектура, безопасность, база, интерфейс, тесты, документация).
 - `docs/knowledge` — статус, реестр требований заказчика (`requirements.md`), индекс решений (`decisions.md`) и ADR крупных решений (`decisions/D-NNN.md`), открытые вопросы; `docs/roadmap.md` и `docs/blocks/` — поставка: спринты, блоки, задачи; `docs/glossary.md` — понятия.
-- `.github/workflows` — `ci.yml` (lint, typecheck, тесты, knip, jscpd, build, e2e с локальным Supabase, Lighthouse, gitleaks, Semgrep), `db.yml` (advisors, pgTAP и свежесть типов при изменениях базы), `deploy-db.yml` (миграции и настройки Auth: `main` → staging, `production` → production с подтверждением).
+- `.github/workflows` — `ci.yml` (lint, typecheck, тесты, knip, jscpd, build, e2e с локальным Supabase, Lighthouse, gitleaks, Semgrep), `db.yml` (неизменность слитых миграций, advisors, `db lint`, pgTAP, Squawk для новых миграций и свежесть типов при изменениях базы), `deploy-db.yml` (миграции и настройки Auth: `main` → staging, `production` → production с подтверждением).
 - `vercel.json` — регион функций `fra1`; `src/instrumentation.ts` — Sentry на сервере.
 
 ## Работа с Claude Code
