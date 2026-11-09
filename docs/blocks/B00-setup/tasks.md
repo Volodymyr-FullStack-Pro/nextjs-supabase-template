@@ -6,13 +6,13 @@
 
 **Что делаем.** Репозиторий из шаблона в организации заказчика, план GitHub Team у организации (в бесплатной защита веток приватного репозитория недоступна), защита `main` и `production` (PR и зелёный CI; обязательные проверки — `Lint, types, unit, dead code, build`, `Playwright`, `Secrets`, `Semgrep`; `Advisors and pgTAP` обязательной не делать: она запускается только при изменениях базы, и остальные PR зависнут), ветка `production` (`git push origin main:production`), в настройках слияния включены squash и merge commit (выпуск в production — merge commit), удаление веток после слияния (`gh repo edit --delete-branch-on-merge`), оповещения Dependabot, секрет `GITLEAKS_LICENSE` (бесплатный ключ gitleaks для организаций).
 **Результат.** Draft-PR блока открыт до остановки задачи, все проверки CI в нём зелёные.
-**Как проверить.** Draft-PR блока (Claude открывает его в этой задаче сам, не дожидаясь `/dev-kit:task-done`): все проверки зелёные, прямой push в `main` запрещён; `gh repo view --json deleteBranchOnMerge` → `true`.
+**Как проверить.** Draft-PR блока (Claude открывает его в этой задаче сам, не дожидаясь `/dev-kit:task-done`; нет правок в файлах — сначала `git commit --allow-empty -m "wip: B00-T01"`): все проверки зелёные, прямой push в `main` запрещён; `gh repo view --json deleteBranchOnMerge` → `true`.
 
 ## [ ] B00-T02 Знания и правила проекта
 
 Требования: — · Подзадача: <ссылка>
 
-**Что делаем.** `CLAUDE.md` и `docs/knowledge/` под проект: реестр требований, журнал решений, открытые вопросы; правила работы с заказчиком; `.claude/rules/clickup.md`, если задачи в ClickUp.
+**Что делаем.** `CLAUDE.md` и `docs/knowledge/` под проект: реестр требований, журнал решений, открытые вопросы; правила работы с заказчиком (`.claude/rules/clickup.md` уже заполнен до первой задачи, если задачи в ClickUp).
 **Результат.** Claude в новом окне знает проект, заказчика и правила.
 **Как проверить.** В новом окне на вопрос «что за проект и что сейчас делаем» Claude отвечает без пробелов; `npm run req:check` зелёный.
 
