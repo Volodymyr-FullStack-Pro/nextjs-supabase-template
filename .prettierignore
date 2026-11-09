@@ -13,3 +13,10 @@ drizzle/
 # реестр и журнал: Prettier выравнивает всю таблицу по длинной ячейке, и любая правка переписывает каждую строку
 docs/knowledge/requirements.md
 docs/knowledge/decisions.md
+# документы согласования с заказчиком (ТЗ, анкеты, доска дизайна, выгрузки ответов): переносятся как есть
+docs/tz/
+docs/source/
+docs/stack/
+docs/design/board/
+docs/design/history/
+docs/knowledge/archive/

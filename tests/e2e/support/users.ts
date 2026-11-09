@@ -2,6 +2,9 @@ import { randomUUID } from 'node:crypto'
 
 import { expect, type Page } from '@playwright/test'
 import { createClient } from '@supabase/supabase-js'
+import { generate } from 'otplib'
+
+import { AFTER_SIGN_IN_PATH } from '@/shared/domain/routes'
 
 const supabaseUrl = process.env['NEXT_PUBLIC_SUPABASE_URL'] ?? ''
 const secretKey = process.env['SUPABASE_SECRET_KEY'] ?? ''
@@ -15,6 +18,7 @@ type Credentials = Pick<TestUser, 'email' | 'password'>
 export type SignedInUser = 'alice' | 'bob'
 
 export const storageStatePath = (user: SignedInUser) => `playwright/.auth/${user}.json`
+export const afterSignInUrl = new RegExp(`${AFTER_SIGN_IN_PATH}$`, 'u')
 
 const NO_SESSION = { auth: { persistSession: false, autoRefreshToken: false } }
 
@@ -48,6 +52,11 @@ export async function createTestUser(label: string): Promise<TestUser> {
 }
 
 export async function deleteTestUser(user: TestUser): Promise<void> {
+  const { error: notesError } = await createClient(supabaseUrl, secretKey, NO_SESSION)
+    .from('notes')
+    .delete()
+    .eq('owner_id', user.id)
+  if (notesError) throw new Error(`deleteTestUser: ${notesError.message}`, { cause: notesError })
   const { error } = await adminAuth().deleteUser(user.id)
   if (error) throw new Error(`deleteTestUser: ${error.message}`, { cause: error })
 }
@@ -75,6 +84,32 @@ export async function submitLoginUntil(
 
 export async function signIn(page: Page, user: TestUser): Promise<void> {
   await submitLoginUntil(page, user, () =>
-    expect(page).toHaveURL(/\/notes$/u, { timeout: LOGIN_ATTEMPT_TIMEOUT_MS }),
+    expect(page).toHaveURL(afterSignInUrl, { timeout: LOGIN_ATTEMPT_TIMEOUT_MS }),
   )
+}
+
+const TOTP_STEP_TIMEOUT_MS = 5000
+
+export async function submitTotpCode(page: Page, secret: string): Promise<void> {
+  await page.getByLabel('Код из приложения').fill(await generate({ secret }))
+  await page.getByRole('button', { name: 'Подтвердить' }).click()
+}
+
+export async function enrollTotp(page: Page): Promise<string> {
+  await page.goto('/mfa/setup')
+  let secret = ''
+  await expect(async () => {
+    await page.getByRole('button', { name: 'Подключить приложение' }).click()
+    secret =
+      (await page.getByLabel('Секретный ключ').textContent({ timeout: TOTP_STEP_TIMEOUT_MS })) ?? ''
+    expect(secret).not.toBe('')
+  }).toPass()
+  await expect(
+    page.getByRole('img', { name: 'QR-код для приложения-аутентификатора' }),
+  ).toBeVisible()
+  await expect(async () => {
+    await submitTotpCode(page, secret)
+    await expect(page).toHaveURL(afterSignInUrl, { timeout: TOTP_STEP_TIMEOUT_MS })
+  }).toPass()
+  return secret
 }

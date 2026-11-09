@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { RuleViolationError } from '@/shared/domain/errors'
 import type { MfaStep } from '@/shared/domain/mfa'
-import { actionClient, authActionClient, fail } from '@/shared/lib/safe-action'
+import { actionClient, authActionClient, fail, setupActionClient } from '@/shared/lib/safe-action'
 
 const captureException = vi.hoisted(() => vi.fn())
 const session = vi.hoisted(() => ({
@@ -66,5 +66,23 @@ describe('actionClient', () => {
     const result = await authActionClient.action(() => Promise.resolve('done'))()
 
     expect(result.data).toBe('done')
+  })
+
+  it('refuses to start a new second-factor setup while the existing one is unconfirmed', async () => {
+    session.sessionMfaStep.mockReturnValueOnce('verify')
+    const run = vi.fn(() => Promise.resolve('secret'))
+
+    const result = await setupActionClient.action(run)()
+
+    expect(result.serverError).toEqual({ code: 'FORBIDDEN' })
+    expect(run).not.toHaveBeenCalled()
+  })
+
+  it('lets a user without a second factor start the setup', async () => {
+    session.sessionMfaStep.mockReturnValueOnce('setup')
+
+    const result = await setupActionClient.action(() => Promise.resolve('secret'))()
+
+    expect(result.data).toBe('secret')
   })
 })

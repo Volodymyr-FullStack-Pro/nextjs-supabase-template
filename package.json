@@ -24,14 +24,16 @@
     "test:coverage": "vitest run --coverage",
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio",
-    "db:types": "supabase gen types typescript --schema public > src/shared/infrastructure/supabase/types.ts && prettier --write src/shared/infrastructure/supabase/types.ts",
+    "db:types": "node scripts/with-local-supabase.mjs node scripts/db-types.mjs && prettier --write src/shared/infrastructure/supabase/types.ts",
     "test:e2e": "playwright test",
     "test:e2e:db": "node scripts/with-local-supabase.mjs playwright test",
     "perf": "lhci autorun && lhci autorun --config=lighthouserc.mobile.cjs",
     "new:module": "node scripts/new-module.mjs",
     "prepare": "simple-git-hooks || true",
     "db:check-migrations": "node scripts/check-migrations.mjs",
-    "licenses": "node scripts/check-licenses.mjs"
+    "licenses": "node scripts/check-licenses.mjs",
+    "seed:test-user": "node scripts/with-local-supabase.mjs node scripts/seed-test-user.mjs",
+    "totp": "node scripts/totp-code.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

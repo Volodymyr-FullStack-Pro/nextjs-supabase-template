@@ -11,9 +11,14 @@ import * as schema from './schema'
 type DrizzleDatabase = ReturnType<typeof drizzle<typeof schema>>
 let cached: DrizzleDatabase | undefined
 
+function sslFor(url: string) {
+  if (isLocalHost(new URL(url).hostname)) return false
+  const ca = env.databaseCaCert()
+  return ca === undefined ? 'verify-full' : { ca, rejectUnauthorized: true }
+}
+
 function connect(url: string) {
-  const ssl = isLocalHost(new URL(url).hostname) ? false : 'require'
-  return postgres(url, { prepare: false, max: 1, ssl })
+  return postgres(url, { prepare: false, max: 1, ssl: sslFor(url) })
 }
 
 export function db(): DrizzleDatabase {

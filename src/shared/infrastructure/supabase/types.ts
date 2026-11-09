@@ -5,7 +5,7 @@ export type Database = {
     Tables: {
       notes: {
         Row: {
-          amount: number
+          amount: string
           created_at: string
           id: string
           owner_id: string
@@ -13,14 +13,14 @@ export type Database = {
         }
         ComputedFields: never
         Insert: {
-          amount?: number
+          amount?: string
           created_at?: string
           id?: string
           owner_id: string
           title: string
         }
         Update: {
-          amount?: number
+          amount?: string
           created_at?: string
           id?: string
           owner_id?: string
