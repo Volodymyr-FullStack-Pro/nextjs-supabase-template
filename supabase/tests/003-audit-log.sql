@@ -3,6 +3,9 @@
 begin;
 select plan(9);
 
+-- Локальная база общая с e2e, и журнал уже не пуст: тест начинает с чистого, rollback вернёт строки.
+delete from audit.log;
+
 select tests.create_supabase_user('erin');
 
 select tests.authenticate_as('erin');
