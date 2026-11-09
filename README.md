@@ -105,8 +105,8 @@ src/proxy.ts                     обновление сессии и редир
 ### Как проходит запрос
 
 1. **Чтение.** `page.tsx` рендерит статическую оболочку и оборачивает динамику в `<Suspense>`. Серверный компонент из `ui/` берёт сессию (`verifySession`) и вызывает use case из `server.ts`; use case ходит в порт, порт реализован на user-scoped клиенте Supabase (RLS применяется). Наружу уходит модель домена, не строка таблицы.
-2. **Запись.** Форма (`useHookFormAction` + Zod-схема из `domain`) вызывает action из `ui/actions.ts`. `authActionClient` проверяет сессию в middleware и валидирует вход той же схемой; action вызывает use case, получает `Result`, при ошибке домена делает `fail(error)` (текст уходит пользователю), затем обновляет данные: `updateTag(tag)` для кэшированных, `refresh()` или `revalidatePath` для динамических на текущей странице.
-3. **Ошибки.** Ожидаемые (`NotFoundError`, `ForbiddenError`, `ConflictError`, `RuleViolationError`) возвращаются из use case как `Result`. Неожиданные (сеть, база) бросаются и превращаются в общую фразу в `handleServerError`; причина уходит строкой JSON в лог и в Sentry (`src/shared/infrastructure/monitoring.ts`; Sentry включается переменной `SENTRY_DSN`, `docs/release.md`).
+2. **Запись.** Форма (`useHookFormAction` + Zod-схема из `domain`) вызывает action из `ui/actions.ts`. `authActionClient` проверяет сессию в middleware и валидирует вход той же схемой; action вызывает use case, получает `Result`, при ошибке домена делает `fail(error)` (клиенту уходит код ошибки и правило, не текст), затем обновляет данные: `updateTag(tag)` для кэшированных, `refresh()` для динамических на текущей странице.
+3. **Ошибки.** Ожидаемые (`NotFoundError`, `ForbiddenError`, `ConflictError`, `RuleViolationError`) возвращаются из use case как `Result` с кодом (`code`, у правила ещё `rule`); `domain` и `application` текстов для пользователя не содержат, сообщения Zod — тоже ключи. Тексты — в словаре модуля `ui/messages.ts` (`satisfies Record<ключ | код, string>`, неполный словарь — ошибка типов), общие — в `src/shared/ui/form/messages.ts`; форма показывает их через `failureMessage` и `TextField messages={…}`. Язык один — `DEFAULT_LOCALE` (`src/shared/domain/locale.ts`: `lang`, деньги, даты); второй язык — next-intl по тем же ключам. Неожиданные (сеть, база) бросаются и превращаются в общую фразу в `handleServerError`; причина уходит строкой JSON в лог и в Sentry (`src/shared/infrastructure/monitoring.ts`; Sentry включается переменной `SENTRY_DSN`, `docs/release.md`).
 4. **Кэш.** Данные пользователя читаются динамически под Suspense. Справочники и редко меняющиеся данные — компоненты и функции с `'use cache'`, `cacheLife`, `cacheTag`; инвалидация — `updateTag(tag)` (или `revalidateTag(tag, 'max')`, в Next 16 второй аргумент обязателен) в action, который их меняет. Внутри `'use cache'` нельзя читать cookies и сессию.
 
 ### Новый модуль
@@ -137,7 +137,7 @@ npm run new:module businesses business
 
 | Нужно                                   | Что делать                                                                                                                                                                              |
 | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Адрес с языком                          | `src/app/[locale]` и `next-intl`; модули не меняются                                                                                                                                    |
+| Второй язык интерфейса                  | `next-intl` без языка в адресе: язык из профиля или cookie; словари `ui/messages.ts` уже по ключам и кодам и переносятся как есть, модули не меняются                                   |
 | API для мобильного приложения           | Route Handlers в `src/app/api/...` вызывают те же use cases; вход по токену `Authorization: Bearer` — отдельный клиент Supabase и проверка в `proxy.ts` (сейчас сессия только в cookie) |
 | Другая база или внешний сервис          | новая реализация порта в `infrastructure` модуля; `domain`, `application` и `ui` не меняются                                                                                            |
 | Другой способ входа                     | `src/shared/lib/session.ts` и `src/proxy.ts`; use cases получают `userId` как раньше                                                                                                    |
@@ -225,14 +225,14 @@ npm run new:module businesses business
 
 ## Что добавлять по мере надобности
 
-| Нужда                             | Что ставить                                                      |
-| --------------------------------- | ---------------------------------------------------------------- |
-| Графики                           | `npx shadcn@latest add chart` (Recharts)                         |
-| Таблицы с сортировкой и фильтрами | `npx shadcn@latest add table` + `@tanstack/react-table`          |
-| Несколько языков интерфейса       | `next-intl` (маршруты с локалью, словари, форматы чисел и дат)   |
-| Внешние HTTP-API в тестах         | `msw`                                                            |
-| Клиентский стор                   | `zustand`; серверные данные на клиенте — `@tanstack/react-query` |
-| Письма                            | `resend` + `react-email`                                         |
+| Нужда                             | Что ставить                                                                                        |
+| --------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Графики                           | `npx shadcn@latest add chart` (Recharts)                                                           |
+| Таблицы с сортировкой и фильтрами | `npx shadcn@latest add table` + `@tanstack/react-table`                                            |
+| Несколько языков интерфейса       | `next-intl` без языка в адресе (язык из профиля или cookie), словари по ключам из `ui/messages.ts` |
+| Внешние HTTP-API в тестах         | `msw`                                                                                              |
+| Клиентский стор                   | `zustand`; серверные данные на клиенте — `@tanstack/react-query`                                   |
+| Письма                            | `resend` + `react-email`                                                                           |
 
 Официальные компоненты shadcn импортируют `cn` из пакета `cn`; сторонним реестрам с `@/lib/utils` нужен файл `src/shared/lib/utils.ts` с `export { cn } from 'cn'`. Если `npx shadcn add` падает с `EALLOWSCRIPTS` (настройка `allow-scripts` в `~/.npmrc`), запустите с чистым пользовательским конфигом: `NPM_CONFIG_USERCONFIG=/dev/null npx shadcn@latest add <имя>`.
 

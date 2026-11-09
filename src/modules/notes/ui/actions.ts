@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { refresh } from 'next/cache'
 
 import { authActionClient, fail } from '@/shared/lib/safe-action'
 
@@ -12,6 +12,6 @@ export const addNote = authActionClient
   .action(async ({ parsedInput, ctx }) => {
     const result = await notes.create(parsedInput, { userId: ctx.session.userId })
     if (!result.ok) fail(result.error)
-    revalidatePath('/notes')
+    refresh()
     return { id: result.value.id }
   })

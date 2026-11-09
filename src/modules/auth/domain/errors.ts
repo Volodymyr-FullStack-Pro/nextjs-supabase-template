@@ -19,3 +19,7 @@ export class SecondFactorMissingError extends DomainError {
   override readonly name = 'SecondFactorMissingError'
   readonly code = 'SECOND_FACTOR_MISSING'
 }
+
+export type AuthErrorCode = (
+  InvalidCredentialsError | TooManyAttemptsError | InvalidTotpCodeError | SecondFactorMissingError
+)['code']

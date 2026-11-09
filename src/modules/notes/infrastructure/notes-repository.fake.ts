@@ -3,6 +3,8 @@ import type { Note } from '../domain/note'
 
 type StoredNote = Note & { ownerId: string }
 
+const DEFAULT_AMOUNT = '0.00'
+
 export function fakeNotesRepository(seed: StoredNote[] = []) {
   const rows: StoredNote[] = [...seed]
   const repository: NotesRepository = {
@@ -15,18 +17,20 @@ export function fakeNotesRepository(seed: StoredNote[] = []) {
               note.ownerId === userId && (!search || note.title.toLowerCase().includes(search)),
           )
           .toSorted((left, right) => right.createdAt.localeCompare(left.createdAt))
-          .map(({ id, title, createdAt }) => ({ id, title, createdAt })),
+          .map(({ id, title, amount, createdAt }) => ({ id, title, amount, createdAt })),
       )
     },
     insert: (data) => {
       const note: StoredNote = {
         id: `note-${String(rows.length + 1)}`,
         title: data.title,
+        amount: DEFAULT_AMOUNT,
         createdAt: new Date(rows.length).toISOString(),
         ownerId: data.ownerId,
       }
       rows.push(note)
-      return Promise.resolve({ id: note.id, title: note.title, createdAt: note.createdAt })
+      const { id, title, amount, createdAt } = note
+      return Promise.resolve({ id, title, amount, createdAt })
     },
   }
   return { repository, rows }

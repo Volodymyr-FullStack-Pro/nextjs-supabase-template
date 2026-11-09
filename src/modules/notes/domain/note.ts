@@ -1,12 +1,25 @@
 import { z } from 'zod'
 
+import { decimalPattern, SCALE } from '@/shared/domain/decimal-input'
 import { normalizeText } from '@/shared/domain/text'
 
 export const NOTE_TITLE_MAX = 200
 export const NOTES_LIST_LIMIT = 100
 export const NOTE_SEARCH_MAX = 100
 
-export const NoteSchema = z.object({ id: z.string(), title: z.string(), createdAt: z.string() })
+export const NOTE_MESSAGE_KEYS = {
+  titleRequired: 'note.title.required',
+  titleTooLong: 'note.title.tooLong',
+  titleMeaningless: 'note.title.meaningless',
+} as const
+export type NoteMessageKey = (typeof NOTE_MESSAGE_KEYS)[keyof typeof NOTE_MESSAGE_KEYS]
+
+export const NoteSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  amount: z.string().regex(decimalPattern(SCALE.fiat)),
+  createdAt: z.string(),
+})
 export type Note = z.infer<typeof NoteSchema>
 
 export const CreateNoteInput = z.object({
@@ -16,8 +29,8 @@ export const CreateNoteInput = z.object({
     .pipe(
       z
         .string()
-        .min(1, 'Введите заголовок')
-        .max(NOTE_TITLE_MAX, `Не длиннее ${String(NOTE_TITLE_MAX)} символов`),
+        .min(1, NOTE_MESSAGE_KEYS.titleRequired)
+        .max(NOTE_TITLE_MAX, NOTE_MESSAGE_KEYS.titleTooLong),
     ),
 })
 export type CreateNoteInput = z.infer<typeof CreateNoteInput>

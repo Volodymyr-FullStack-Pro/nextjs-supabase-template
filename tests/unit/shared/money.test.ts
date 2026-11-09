@@ -1,13 +1,23 @@
 import { describe, expect, it } from 'vitest'
 
-import { formatMoney, money, parseDecimalInput, shareOf } from '@/shared/domain/money'
+import { decimalPattern, parseDecimalInput, SCALE } from '@/shared/domain/decimal-input'
+import { formatMoney, money, shareOf } from '@/shared/domain/money'
 
 const NBSP = ' '
 
 describe('money helpers', () => {
   it('multiplies a value by a fraction exactly', () => {
-    expect(shareOf('3080000', '0.6')).toBe('1848000.00')
-    expect(shareOf('1760000', '0.35')).toBe('616000.00')
+    expect(shareOf('3080000', '0.6')).toBe('1848000')
+    expect(shareOf('1760000', '0.35')).toBe('616000')
+  })
+
+  it('keeps the full precision of a share instead of rounding to cents', () => {
+    expect(shareOf('1000.01', '0.3333333333')).toBe('333.336666633333')
+    expect(shareOf('1234567890123456.78', '0.1234567890')).toBe('152415787517146.78763907942')
+  })
+
+  it('adds amounts with more than 15 significant digits exactly', () => {
+    expect(money('1234567890123456.78').plus('0.01').toFixed()).toBe('1234567890123456.79')
   })
 
   it('adds decimals without floating point drift', () => {
@@ -40,6 +50,28 @@ describe('formatMoney', () => {
   it('puts a letter currency code after the number', () => {
     expect(formatMoney('1250.49', { currency: 'AED' })).toBe(`1${NBSP}250${NBSP}AED`)
   })
+
+  it('shows an amount with more than 15 significant digits exactly', () => {
+    expect(formatMoney('1234567890123456.78', { fractionDigits: 2 })).toBe(
+      `€1${NBSP}234${NBSP}567${NBSP}890${NBSP}123${NBSP}456,78`,
+    )
+  })
+
+  it('writes a crypto ticker after the number with up to eight decimals', () => {
+    expect(formatMoney('1000.12345678', { currency: 'USDT' })).toBe(
+      `1${NBSP}000,12345678${NBSP}USDT`,
+    )
+    expect(formatMoney('0.5', { currency: 'BTC' })).toBe(`0,5${NBSP}BTC`)
+    expect(formatMoney('-0.123456789', { currency: 'BTC' })).toBe(`−0,12345679${NBSP}BTC`)
+  })
+
+  it('keeps the requested decimals for a ticker', () => {
+    expect(formatMoney('1.5', { currency: 'ETH', fractionDigits: 4 })).toBe(`1,5000${NBSP}ETH`)
+  })
+
+  it('drops the sign of a ticker amount that rounds to zero', () => {
+    expect(formatMoney('-0.000000001', { currency: 'BTC' })).toBe(`0${NBSP}BTC`)
+  })
 })
 
 describe('parseDecimalInput', () => {
@@ -69,5 +101,35 @@ describe('parseDecimalInput', () => {
 
   it('rejects text that is not a number', () => {
     expect(parseDecimalInput('12,5 евро')).toBeNull()
+  })
+
+  it('allows two decimals for a fiat amount by default', () => {
+    expect(parseDecimalInput('10,25')).toBe('10.25')
+    expect(parseDecimalInput('10,255')).toBeNull()
+  })
+
+  it('takes the allowed scale of a quantity, price or whole number', () => {
+    expect(parseDecimalInput('0,12345678', SCALE.quantity)).toBe('0.12345678')
+    expect(parseDecimalInput('0,123456789', SCALE.quantity)).toBeNull()
+    expect(parseDecimalInput('1,0000000001', SCALE.price)).toBe('1.0000000001')
+    expect(parseDecimalInput('12', 0)).toBe('12')
+    expect(parseDecimalInput('12,5', 0)).toBeNull()
+  })
+
+  it('reads an amount with more than 15 significant digits as typed', () => {
+    expect(parseDecimalInput('1 234 567 890 123 456,78')).toBe('1234567890123456.78')
+  })
+})
+
+describe('decimalPattern', () => {
+  it('matches a decimal string from an API with up to the given decimals', () => {
+    expect(decimalPattern(SCALE.rate).test('-1.0000000001')).toBe(true)
+    expect(decimalPattern().test('1.001')).toBe(false)
+  })
+
+  it('refuses a scale outside 0 to 10', () => {
+    expect(() => decimalPattern(11)).toThrow(RangeError)
+    expect(() => decimalPattern(-1)).toThrow(RangeError)
+    expect(() => decimalPattern(1.5)).toThrow(RangeError)
   })
 })

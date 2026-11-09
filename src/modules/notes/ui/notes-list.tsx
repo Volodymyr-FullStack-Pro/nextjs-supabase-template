@@ -1,5 +1,7 @@
 import type { SearchParams } from 'nuqs/server'
 
+import { SCALE } from '@/shared/domain/decimal-input'
+import { formatMoney } from '@/shared/domain/money'
 import { formatDate } from '@/shared/domain/time'
 import { verifySession } from '@/shared/lib/session'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
@@ -20,8 +22,11 @@ export async function NotesList({ searchParams }: { searchParams: Promise<Search
             <CardHeader>
               <CardTitle>{note.title}</CardTitle>
             </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              {formatDate(note.createdAt)}
+            <CardContent className="flex justify-between gap-4 text-sm text-muted-foreground">
+              <span>{formatDate(note.createdAt)}</span>
+              <span className="text-foreground tabular-nums">
+                {formatMoney(note.amount, { fractionDigits: SCALE.fiat })}
+              </span>
             </CardContent>
           </Card>
         </li>

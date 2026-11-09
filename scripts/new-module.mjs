@@ -170,3 +170,6 @@ execFileSync('npx', ['prettier', '--write', '--log-level', 'warn', ...written], 
 console.log(
   `\nМодуль ${name} создан. Дальше: npm run lint && npm run typecheck && npm test, затем domain → use cases → репозиторий.`,
 )
+console.log(
+  'Таблица — миграцией по образцу notes: политики владельца, ограничивающая политика второго фактора и триггер журнала (.claude/rules/db.md); деньги — numeric и выбор текстом (amount::text). Тексты ошибок — ui/messages.ts по кодам.',
+)

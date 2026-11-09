@@ -1,5 +1,7 @@
 'use client'
 
+import { DEFAULT_LOCALE } from '@/shared/domain/locale'
+
 const MESSAGE_MAX_WIDTH_PX = 560
 
 export default function GlobalError({
@@ -9,7 +11,7 @@ export default function GlobalError({
   reset: () => void
 }) {
   return (
-    <html lang="ru">
+    <html lang={DEFAULT_LOCALE}>
       <body>
         <main
           style={{ maxWidth: MESSAGE_MAX_WIDTH_PX, margin: '48px auto', fontFamily: 'system-ui' }}
