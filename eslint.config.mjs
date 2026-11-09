@@ -1,5 +1,8 @@
+import eslintComments from '@eslint-community/eslint-plugin-eslint-comments/configs'
+import vitest from '@vitest/eslint-plugin'
 import { defineConfig, globalIgnores } from 'eslint/config'
 import nextVitals from 'eslint-config-next/core-web-vitals'
+import playwright from 'eslint-plugin-playwright'
 import nextTs from 'eslint-config-next/typescript'
 import tseslint from 'typescript-eslint'
 import eslintConfigPrettier from 'eslint-config-prettier/flat'
@@ -268,6 +271,15 @@ const codeStyleConfig = {
     'sonarjs/prefer-immediate-return': 'error',
     'sonarjs/no-redundant-boolean': 'error',
     'sonarjs/no-inverted-boolean-check': 'error',
+    // явные ошибки логики: одинаковые ветки и условия, перезапись элемента, проигнорированный результат
+    'sonarjs/no-all-duplicated-branches': 'error',
+    'sonarjs/no-identical-conditions': 'error',
+    'sonarjs/no-identical-expressions': 'error',
+    'sonarjs/no-element-overwrite': 'error',
+    'sonarjs/no-ignored-return': 'error',
+    'sonarjs/no-use-of-empty-return-value': 'error',
+    'sonarjs/no-collection-size-mischeck': 'error',
+    'sonarjs/no-gratuitous-expressions': 'error',
     // имена
     'id-length': ['error', { min: 2, exceptions: ['_', 'z', 't'], properties: 'never' }], // ключи данных (q в URL) не считаем
     'unicorn/filename-case': ['error', { case: 'kebabCase' }],
@@ -365,6 +377,71 @@ const codeStyleTsConfig = {
     ],
     '@typescript-eslint/no-import-type-side-effects': 'error',
     '@typescript-eslint/switch-exhaustiveness-check': 'error',
+    // 0 — настоящее значение (сумма 0, количество 0): `||` и `if (amount)` его теряют, нужны `??` и явное сравнение.
+    // Пустая строка и «нет значения» для строк обычно одно и то же (пустой поиск, не заданная переменная) — строки разрешены.
+    '@typescript-eslint/prefer-nullish-coalescing': 'error',
+    '@typescript-eslint/prefer-optional-chain': 'error',
+    '@typescript-eslint/strict-boolean-expressions': [
+      'error',
+      {
+        allowString: true,
+        allowNumber: false,
+        allowNullableObject: true,
+        allowNullableBoolean: true,
+        allowNullableString: true,
+        allowNullableNumber: false,
+        allowAny: false,
+      },
+    ],
+    // логи — одна строка JSON через console.info / console.error (docs/release.md, «Логи»); console.log — отладка, не в код
+    'no-console': ['error', { allow: ['info', 'warn', 'error'] }],
+  },
+}
+// React: {count && <X/>} при count = 0 рисует «0»; ключ-индекс путает строки при сортировке; кнопка без type в форме — submit
+const reactSafetyConfig = {
+  files: ['src/**/*.tsx'],
+  ignores: ['src/shared/ui/**', '!src/shared/ui/form/**'],
+  rules: {
+    'react/jsx-no-leaked-render': ['error', { validStrategies: ['ternary', 'coerce'] }],
+    'react/no-array-index-key': 'error',
+    'react/button-has-type': 'error',
+  },
+}
+// eslint-disable — только с именем правила и причиной после «--»; лишняя директива — ошибка
+const disableDirectivesConfig = {
+  ...eslintComments.recommended,
+  files: ['src/**/*.{ts,tsx}', 'scripts/**/*.mjs', 'tests/**/*.{ts,tsx}'],
+  ignores: ['src/shared/ui/**', '!src/shared/ui/form/**'],
+  rules: {
+    ...eslintComments.recommended.rules,
+    '@eslint-community/eslint-comments/disable-enable-pair': ['error', { allowWholeFile: true }],
+    '@eslint-community/eslint-comments/require-description': 'error',
+  },
+}
+// Тесты: забытый .only, тест без проверки, одинаковые названия, ожидание по таймеру и пропущенный await — ошибки
+const unitTestsConfig = {
+  files: ['tests/unit/**/*.{ts,tsx}'],
+  plugins: { vitest },
+  rules: {
+    ...vitest.configs.recommended.rules,
+    'vitest/no-focused-tests': 'error',
+    'vitest/no-disabled-tests': 'error',
+  },
+}
+const e2eTestsConfig = {
+  ...playwright.configs['flat/recommended'],
+  files: ['tests/e2e/**/*.ts'],
+  rules: {
+    ...playwright.configs['flat/recommended'].rules,
+    'playwright/no-skipped-test': ['error', { allowConditional: true }],
+    'playwright/no-focused-test': 'error',
+    'playwright/no-wait-for-timeout': 'error',
+    'playwright/missing-playwright-await': 'error',
+    // signIn сам ждёт адрес после входа — это проверка
+    'playwright/expect-expect': ['error', { assertFunctionNames: ['signIn'] }],
+    // проверки от параметра теста (тема светлая или тёмная) — не случайная логика, а таблица случаев
+    'playwright/no-conditional-in-test': 'off',
+    'playwright/no-conditional-expect': 'off',
   },
 }
 
@@ -510,6 +587,7 @@ const sharedLibConfig = {
 }
 
 export default defineConfig([
+  { linterOptions: { reportUnusedDisableDirectives: 'error' } },
   globalIgnores([
     '.next/**',
     'out/**',
@@ -529,6 +607,10 @@ export default defineConfig([
   componentLengthConfig,
   testsConfig,
   codeStyleTsConfig,
+  reactSafetyConfig,
+  disableDirectivesConfig,
+  unitTestsConfig,
+  e2eTestsConfig,
   boundaryOnlyTypesConfig,
   a11yConfig,
   envAccessConfig,

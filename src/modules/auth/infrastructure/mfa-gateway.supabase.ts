@@ -32,7 +32,7 @@ export const supabaseMfaGateway: MfaGateway = {
     const supabase = await createClient()
     const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId, code })
     if (!error) return 'verified'
-    if (error.code && INVALID_CODE_ERRORS.has(error.code)) return 'invalid-code'
+    if (error.code !== undefined && INVALID_CODE_ERRORS.has(error.code)) return 'invalid-code'
     if (error.code === 'over_request_rate_limit' || error.status === HTTP_TOO_MANY_REQUESTS) {
       return 'too-many-attempts'
     }
