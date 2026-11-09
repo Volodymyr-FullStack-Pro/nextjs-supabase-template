@@ -153,7 +153,7 @@ npm run new:module businesses business
 
 Бюджет на маршрут: TTFB ≤ 200 мс с кэшем, LCP ≤ 1,5 с, TBT ≤ 200 мс, CLS ≤ 0,1, Lighthouse Performance ≥ 90, JavaScript начальной загрузки ≤ 300 КБ gzip. Проверки:
 
-- **Лаборатория, на каждом PR:** Lighthouse на компьютере и на телефоне (`lighthouserc.cjs`, `lighthouserc.mobile.cjs` с эмуляцией телефона и порогом LCP 2,5 с; `npm run perf`), `npm run budget` (сумма gzip-скриптов из HTML каждой страницы, без префетча; сравнивает с базой `perf-baseline.json` — рост даже внутри лимита красный, пока базу не обновили осознанно: `npm run budget -- --update-baseline` в том же PR с объяснением), e2e-замер TTFB главной, `npm run analyze` для разбора бандла.
+- **Лаборатория, на каждом PR:** Lighthouse на компьютере и на телефоне (`lighthouserc.cjs`, `lighthouserc.mobile.cjs` с эмуляцией телефона, порогами LCP 2,5 с и TBT 400 мс (на раннере CI телефон даёт 200–235 мс); `npm run perf`), `npm run budget` (сумма gzip-скриптов из HTML каждой страницы, без префетча; сравнивает с базой `perf-baseline.json` — рост даже внутри лимита красный, пока базу не обновили осознанно: `npm run budget -- --update-baseline` в том же PR с объяснением), e2e-замер TTFB главной, `npm run analyze` для разбора бандла.
 - **Лимит — граница, не цель.** Цель каждой задачи — не ухудшить метрики, а при возможности улучшить; улучшение тоже фиксируется в базе.
 - **Поле, в проде:** Web Vitals реальных пользователей (`src/app/web-vitals.tsx` → `/api/vitals`): LCP, INP, CLS, FCP, TTFB с оценкой good / needs-improvement / poor. Сейчас пишутся в лог структурированной строкой; в проекте подключить Sentry или аналитику в `src/app/api/vitals/route.ts`.
 
