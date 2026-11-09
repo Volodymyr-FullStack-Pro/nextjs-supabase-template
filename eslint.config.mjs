@@ -8,7 +8,7 @@ import sonarjs from 'eslint-plugin-sonarjs'
 import unicorn from 'eslint-plugin-unicorn'
 import simpleImportSort from 'eslint-plugin-simple-import-sort'
 
-// Порядок: правила Next.js (core-web-vitals даёт лишь шесть правил jsx-a11y; полный плагин ждёт поддержки ESLint 10)
+// Порядок: правила Next.js (набор strict из jsx-a11y включается ниже, в a11yConfig)
 // → строгий TypeScript с проверкой типов → Prettier последним, чтобы снять конфликты форматирования.
 
 // Архитектурные границы (см. .claude/rules/architecture.md): модули с четырьмя слоями, shared и app.
@@ -59,7 +59,11 @@ const boundariesConfig = {
       { type: 'shared-infrastructure', pattern: 'src/shared/infrastructure', partialMatch: false },
       { type: 'shared-lib', pattern: 'src/shared/lib', partialMatch: false },
       { type: 'shared-ui', pattern: 'src/shared/ui', partialMatch: false },
-      { type: 'root', pattern: 'src/proxy.ts', mode: 'file' },
+      {
+        type: 'root',
+        pattern: 'src/{proxy,instrumentation,instrumentation-client}.ts',
+        mode: 'file',
+      },
     ],
     'import/resolver': { typescript: { alwaysTryTypes: true, project: './tsconfig.json' } },
   },
@@ -329,6 +333,7 @@ const codeStyleTsConfig = {
         ignoreTypeIndexes: true,
         ignoreReadonlyClassProperties: true,
         enforceConst: true,
+        detectObjects: true,
       },
     ],
     '@typescript-eslint/naming-convention': [
@@ -475,6 +480,39 @@ const vendorUiConfig = {
   },
 }
 
+// Прямое подключение к базе (db()) обходит RLS: только в shared/infrastructure и в файлах *.admin.ts
+// (служебные задачи, миграции данных). shared/lib — техника Next.js для ui и app: инфраструктуру видят
+// только сессия и actions, иначе db() просочился бы в ui через реэкспорт.
+const DIRECT_DB = {
+  group: ['@/shared/infrastructure/db', '@/shared/infrastructure/db/*'],
+  message:
+    'db() обходит RLS: только в shared/infrastructure и *.admin.ts; данные пользователя — через клиент Supabase',
+}
+const directDbConfig = {
+  files: ['src/**/*.{ts,tsx}'],
+  ignores: ['src/shared/infrastructure/**', 'src/**/*.admin.ts'],
+  rules: { 'no-restricted-imports': ['error', { patterns: [DIRECT_DB] }] },
+}
+const sharedLibConfig = {
+  files: ['src/shared/lib/**/*.ts'],
+  ignores: ['src/shared/lib/session.ts', 'src/shared/lib/safe-action.ts'],
+  rules: {
+    'no-restricted-imports': [
+      'error',
+      {
+        patterns: [
+          DIRECT_DB,
+          {
+            group: ['@/shared/infrastructure/*', '@/shared/infrastructure/**'],
+            message:
+              'shared/lib доступен из ui: инфраструктура — только в session.ts и safe-action.ts',
+          },
+        ],
+      },
+    ],
+  },
+}
+
 export default defineConfig([
   globalIgnores([
     '.next/**',
@@ -498,6 +536,8 @@ export default defineConfig([
   a11yConfig,
   envAccessConfig,
   vendorUiConfig,
+  directDbConfig,
+  sharedLibConfig,
   {
     files: ['**/*.{ts,tsx,mts}'],
     languageOptions: {

@@ -2,7 +2,9 @@ import { defineConfig, devices } from '@playwright/test'
 
 import { APP_LOCALE, APP_TIME_ZONE } from './src/shared/domain/time'
 
-const baseURL = process.env['PLAYWRIGHT_BASE_URL'] ?? 'http://localhost:3000'
+// Свой порт: локальный dev-сервер на 3000 не подменяет production-сборку
+const E2E_PORT = 3100
+const baseURL = process.env['PLAYWRIGHT_BASE_URL'] ?? `http://localhost:${String(E2E_PORT)}`
 const isCI = Boolean(process.env['CI'])
 
 // E2E против production-сборки (next build && next start), как рекомендует Next.js.
@@ -13,6 +15,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,
+  failOnFlakyTests: isCI, // тест, прошедший только с повтора, — красный, а не тихо зелёный
   reporter: isCI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL,
@@ -33,7 +36,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run build && npm run start',
+    command: `npm run build && npm run start -- -p ${String(E2E_PORT)}`,
     url: baseURL,
     reuseExistingServer: !isCI,
     timeout: 180_000,

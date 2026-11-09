@@ -19,15 +19,16 @@ jobs:
   rls:
     name: Advisors and pgTAP
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
-      - uses: supabase/setup-cli@v3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
         with:
           version: 2.119.0 # та же версия, что на машинах разработчиков (supabase --version); обновлять вместе
       - name: Start local Supabase (applies supabase/migrations)
         run: supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector
       - name: Security and performance advisors
-        run: supabase db advisors --local
+        run: supabase db advisors --local --fail-on warn # без флага команда всегда завершается успешно
       - name: pgTAP
         run: supabase test db
       - if: always()

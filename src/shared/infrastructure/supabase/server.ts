@@ -5,11 +5,13 @@ import { createServerClient } from '@supabase/ssr'
 
 import { env } from '@/shared/infrastructure/env'
 
+import { sessionCookieOptions } from './cookie-options'
 import type { Database } from './types'
 
 export async function createClient() {
   const cookieStore = await cookies()
   return createServerClient<Database>(env.supabaseUrl(), env.supabasePublishableKey(), {
+    cookieOptions: sessionCookieOptions,
     cookies: {
       getAll() {
         return cookieStore.getAll()

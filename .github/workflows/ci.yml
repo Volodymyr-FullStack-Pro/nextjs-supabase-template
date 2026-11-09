@@ -7,7 +7,7 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }} # прогоны main доходят до конца
 
 permissions:
   contents: read
@@ -17,6 +17,7 @@ jobs:
   quality:
     name: Lint, types, unit, dead code, build
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -24,6 +25,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - run: npm audit signatures # подписи и provenance пакетов из реестра
       - run: npm audit --omit=dev --audit-level=high # production-зависимости без известных уязвимостей; dev — через Dependabot
       - run: npm run lint
       - run: npm run typecheck
@@ -38,6 +40,7 @@ jobs:
   e2e:
     name: Playwright
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: quality
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -62,6 +65,7 @@ jobs:
   security:
     name: Secrets
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       pull-requests: read # gitleaks читает коммиты PR через API; без этого 403 на любом pull_request
@@ -79,6 +83,7 @@ jobs:
   semgrep:
     name: Semgrep
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     # semgrep/semgrep-action заархивирован; официальный путь — CLI в контейнере. Образ закреплён на digest.
     container:
       image: semgrep/semgrep:1.182.1@sha256:451b3d875c00dac7ed5db5293e584a07de11449a409c10b3c2d2652f429630b6

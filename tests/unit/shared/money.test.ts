@@ -47,8 +47,20 @@ describe('parseDecimalInput', () => {
     expect(parseDecimalInput('1 234,56')).toBe('1234.56')
   })
 
-  it('reads an English amount with thousands commas', () => {
-    expect(parseDecimalInput('1,234.56', '.')).toBe('1234.56')
+  it('reads a decimal point typed on a phone keypad of another region', () => {
+    expect(parseDecimalInput('1234.56')).toBe('1234.56')
+    expect(parseDecimalInput('0.5')).toBe('0.5')
+  })
+
+  it('reads grouping typed with apostrophes or narrow spaces', () => {
+    expect(parseDecimalInput("1'234,5")).toBe('1234.5')
+    expect(parseDecimalInput('1\u202F234\u202F567')).toBe('1234567')
+  })
+
+  it('rejects an amount with both a comma and a point instead of guessing', () => {
+    expect(parseDecimalInput('1,234.56')).toBeNull()
+    expect(parseDecimalInput('1.234,56')).toBeNull()
+    expect(parseDecimalInput('1.2.3')).toBeNull()
   })
 
   it('reads a negative amount typed with a minus sign', () => {

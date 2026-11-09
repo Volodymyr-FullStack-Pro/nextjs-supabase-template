@@ -1,7 +1,7 @@
 import './globals.css'
 
 import { Geist, Geist_Mono } from 'next/font/google'
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { ThemeProvider } from 'next-themes'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
 
@@ -24,6 +24,12 @@ export const metadata: Metadata = {
   description: 'Стартовый проект: Next.js 16, Supabase, Drizzle, строгий TypeScript',
 }
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+}
+
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html
@@ -31,7 +37,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col">
+      <body className="flex min-h-dvh flex-col">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

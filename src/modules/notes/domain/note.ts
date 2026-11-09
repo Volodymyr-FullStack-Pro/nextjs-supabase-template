@@ -3,6 +3,8 @@ import { z } from 'zod'
 import { normalizeText } from '@/shared/domain/text'
 
 export const NOTE_TITLE_MAX = 200
+export const NOTES_LIST_LIMIT = 100
+export const NOTE_SEARCH_MAX = 100
 
 export const NoteSchema = z.object({ id: z.string(), title: z.string(), createdAt: z.string() })
 export type Note = z.infer<typeof NoteSchema>

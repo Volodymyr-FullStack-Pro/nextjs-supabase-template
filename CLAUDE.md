@@ -19,7 +19,7 @@
 
 ```bash
 npm run dev            # next dev
-npm run lint           # next typegen + ESLint 10: strict TypeScript, архитектурные границы (a11y — 6 правил, см. README)
+npm run lint           # next typegen + ESLint 10: strict TypeScript, архитектурные границы, доступность (jsx-a11y strict)
 npm run typecheck      # next typegen && tsc --noEmit (tsconfig strictest)
 npm test               # Vitest: ядро на фейках (100 % на src/**/domain/**) и компоненты (jsdom)
 npm run test:e2e       # Playwright против production-сборки
@@ -40,7 +40,7 @@ npm run db:types       # типы supabase-js из локальной базы �
 - Правила по областям — в `.claude/rules/` (подключаются по путям файлов: архитектура, стиль, безопасность, база, интерфейс, тесты, документация); подробности — в скилах плагина `dev-kit`.
 - Всё, что заказчик сказал, написал, одобрил или прислал — анкета, сообщение, скриншот, файл, пересказ созвона, ТЗ, — строка в `docs/knowledge/requirements.md` в том же ответе, с подтверждением в чате, какие номера записаны (скил `dev-kit:requirements-register`); наше решение — строка в `docs/knowledge/decisions.md`.
 - Путь задачи — скил `dev-kit:delivery`. Claude проходит шаги сам: ветка блока → тест → код → `/simplify` → `/code-review` (`/security-review` для auth, денег, миграций) → `npm run check` → `npm run test:e2e` → визуальная проверка через Playwright MCP → `/dev-kit:explain` → **стоп до «ок» человека** → на «ок» сам `/dev-kit:task-done` (закрывает и подзадачу ClickUp). Следующая задача — по слову человека.
-- Superpowers в этом проекте: `brainstorming` — только для крупного блока или новой подсистемы, спека — `docs/blocks/<блок>/spec.md`, план — `docs/blocks/<блок>/plans/<задача>.md` (не `docs/superpowers/`); без worktree — работа в ветке блока; вместо `finishing-a-development-branch` — `/dev-kit:task-done`. Ветки: блок — `block/B01-<имя>`, правка — `fix/<имя>`, документы — `docs/<тема>`; в `main` напрямую не коммитим. Первый блок — `B00-setup` (`docs/blocks/B00-setup/`).
+- Superpowers в этом проекте: `brainstorming` — только для крупного блока или новой подсистемы, спека — `docs/blocks/<блок>/spec.md`, план — `docs/blocks/<блок>/plans/<задача>.md` (не `docs/superpowers/`); без worktree — работа в ветке блока; вместо `finishing-a-development-branch` — `/dev-kit:task-done`. Ветки: блок — `block/B01-<имя>`, правка — `fix/<имя>`, документы отдельной темой — `docs/<тема>`; строка реестра или решение посреди задачи — в текущей ветке тем же коммитом; в `main` напрямую не коммитим. Первый блок — `B00-setup` (`docs/blocks/B00-setup/`).
 - Проверка экранов за входом: `npm run dev`, вход тестовым пользователем из `.env.local` (`TEST_USER_EMAIL`, `TEST_USER_PASSWORD`).
 - **Готово:** `npm run check` и `npm run test:e2e` зелёные; при изменениях базы — `supabase test db`.
 - Процесс улучшается по ходу: правило, хук, скил или проверка, которые мешают или не приносят пользы, не обходятся молча — Claude называет это в отчёте и предлагает изменение; принятое — строка D-NNN и правка шаблона или плагина `dev-kit`.
