@@ -13,8 +13,10 @@
 ## Как проверено
 
 - [ ] `npm run check`
-- [ ] `npm run test:e2e`
+- [ ] `npm run test:e2e:db` (компьютер и iPhone)
 - [ ] `supabase test db` (если менялась база)
+- [ ] Закрытие блока: `/code-review high`, `/simplify`, `/security-review` — итоги ниже
+- [ ] Закрытие блока: `npm run req:check -- --strict`
 
 ## Что отложено
 

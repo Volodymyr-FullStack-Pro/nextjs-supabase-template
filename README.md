@@ -14,7 +14,7 @@ supabase start               # локальный Supabase (нужен Supabase 
 npm run dev
 ```
 
-Затем: заменить `<Проект>` в `CLAUDE.md` и `docs/knowledge/`, записать первое решение в `docs/knowledge/decisions.md`, завести первый модуль `npm run new:module <модуль> <запись>`, при работе с ClickUp переименовать `.claude/rules/clickup.md.example` в `clickup.md`.
+Затем: заменить `<Проект>` в `CLAUDE.md` и `docs/knowledge/`, записать первое решение в `docs/knowledge/decisions.md`, первый модуль `npm run new:module <модуль> <запись>` — после разбиения ТЗ на блоки, при работе с ClickUp переименовать `.claude/rules/clickup.md.example` в `clickup.md`.
 
 Безопасность: в Supabase выключить саморегистрацию (Authentication → «Allow new users to sign up» = off; пользователи заводятся приглашением), а если приложение закрыто Cloudflare Access — проверять его JWT в `proxy.ts` или закрыть `*.vercel.app`, иначе периметр обходится (`.claude/rules/security.md`). В репозитории включить оповещения Dependabot и автоматические security-PR (`gh api -X PUT repos/<org>/<проект>/vulnerability-alerts` и `.../automated-security-fixes`), защитить `main` (PR и зелёный CI обязательны). Версия Supabase CLI в `.github/workflows/db.yml` закреплена и должна совпадать с `supabase --version` на машинах разработчиков: обновлять обе вместе.
 
@@ -211,7 +211,7 @@ npm run new:module businesses business
 - `tests/unit` (зеркалит `src`), `tests/e2e`.
 - `scripts/` — `new-module.mjs` (каркас модуля), `requirements-check.mjs` (реестр требований), `bundle-budget.mjs` (бюджет JS; страница без HTML — ошибка), `check-lock.mjs` (lock-файл для npm 11, как в CI и на Vercel), `with-local-supabase.mjs` (команда с адресом и ключами локального Supabase).
 - `.claude/` — `settings.json` (маркетплейс `claude-kit`, плагин `dev-kit`, разрешения: команды проверок и удаление на GitHub веток, уже слитых в `main`; запреты: чтение `.env*` с ключами, удаление в ClickUp), `rules/` (архитектура, безопасность, база, интерфейс, тесты, документация).
-- `docs/knowledge` — статус, реестр требований заказчика (`requirements.md`), индекс решений (`decisions.md`) и ADR крупных решений (`decisions/D-NNN-*.md`), открытые вопросы; `docs/roadmap.md` и `docs/blocks/` — поставка: спринты, блоки, задачи; `docs/glossary.md` — понятия.
+- `docs/knowledge` — статус, реестр требований заказчика (`requirements.md`), индекс решений (`decisions.md`) и ADR крупных решений (`decisions/D-NNN.md`), открытые вопросы; `docs/roadmap.md` и `docs/blocks/` — поставка: спринты, блоки, задачи; `docs/glossary.md` — понятия.
 - `.github/workflows` — `ci.yml` (lint, typecheck, тесты, knip, jscpd, build, e2e с локальным Supabase, Lighthouse, gitleaks, Semgrep), `db.yml` (advisors, pgTAP и свежесть типов при изменениях базы), `deploy-db.yml` (миграции и настройки Auth: `main` → staging, `production` → production с подтверждением).
 - `vercel.json` — регион функций `fra1`; `src/instrumentation.ts` — Sentry на сервере.
 
