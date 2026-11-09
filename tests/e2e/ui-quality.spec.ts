@@ -1,7 +1,10 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 
+import { hasDatabase, NEEDS_DATABASE, storageStatePath } from './support/users'
+
 const PUBLIC_PAGES = ['/', '/login']
+const SIGNED_IN_PAGES = ['/notes']
 const WCAG_AA = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 const COLOR_SCHEMES = ['light', 'dark'] as const
 const TOUCH_TARGET_PX = 44
@@ -10,11 +13,12 @@ const CONTROLS =
 const NARROWEST_SCREEN = { width: 320, height: 640 }
 const DARK_CLASS = /\bdark\b/
 
-for (const path of PUBLIC_PAGES) {
+function checkPageQuality(path: string) {
   for (const colorScheme of COLOR_SCHEMES) {
     test(`${path} meets WCAG 2.2 AA in the ${colorScheme} theme`, async ({ page }, testInfo) => {
       await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
       await page.goto(path)
+      await expect(page).toHaveURL(new RegExp(`${path}$`, 'u'))
       const html = page.locator('html')
       await (colorScheme === 'dark'
         ? expect(html).toHaveClass(DARK_CLASS)
@@ -70,3 +74,11 @@ for (const path of PUBLIC_PAGES) {
     expect(small, 'элементы меньше 44 px').toEqual([])
   })
 }
+
+for (const path of PUBLIC_PAGES) checkPageQuality(path)
+
+test.describe('signed in', () => {
+  test.skip(!hasDatabase, NEEDS_DATABASE)
+  test.use({ storageState: storageStatePath('alice') })
+  for (const path of SIGNED_IN_PAGES) checkPageQuality(path)
+})

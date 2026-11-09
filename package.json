@@ -26,7 +26,8 @@
     "db:studio": "drizzle-kit studio",
     "db:types": "supabase gen types typescript --local --schema public > src/shared/infrastructure/supabase/types.ts && prettier --write src/shared/infrastructure/supabase/types.ts",
     "test:e2e": "playwright test",
-    "perf": "lhci autorun",
+    "test:e2e:db": "node scripts/with-local-supabase.mjs playwright test",
+    "perf": "lhci autorun && lhci autorun --config=lighthouserc.mobile.cjs",
     "new:module": "node scripts/new-module.mjs",
     "prepare": "simple-git-hooks || true"
   },
@@ -34,6 +35,7 @@
     "@base-ui/react": "^1.9.0",
     "@hookform/resolvers": "^7.0.3",
     "@next-safe-action/adapter-react-hook-form": "^2.1.0",
+    "@sentry/nextjs": "^11.11.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.119.0",
     "class-variance-authority": "^0.7.1",

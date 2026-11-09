@@ -44,6 +44,7 @@ next-env.d.ts
 # тесты и отчёты
 playwright-report/
 test-results/
+playwright/.auth/
 coverage/
 
 # Claude Code

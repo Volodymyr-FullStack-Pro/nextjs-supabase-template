@@ -1,4 +1,5 @@
-// Бюджет производительности (см. README «Производительность»). Запуск: npm run perf (после npm run build).
+// Бюджет производительности (см. README «Производительность»), компьютер; телефон — lighthouserc.mobile.cjs.
+// Запуск обоих: npm run perf (после npm run build).
 // В CI выполняется после Playwright в том же job: production-сборка уже есть.
 module.exports = {
   ci: {

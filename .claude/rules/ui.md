@@ -14,6 +14,6 @@ paths:
 - Суммы — `formatMoney` и `parseDecimalInput` из `src/shared/domain/money.ts`, ввод — `TextField` с `inputMode="decimal"`. Даты — `formatDate` из `src/shared/domain/time.ts` в `APP_TIME_ZONE`, не в часовом поясе сервера.
 - С next-intl в разметке нет текста, который нельзя перевести; длинный английский не обрезается.
 - Таблицы: числа вправо, `tabular-nums`, одинаковое число знаков в колонке, единица (валюта, %) — в заголовке, не в ячейке; `<caption>` или `aria-label`, `th scope`, `aria-sort` у сортируемых колонок, липкий заголовок у длинных; на телефоне — прокрутка внутри контейнера (`tabIndex={0}` и подпись) или карточки; отрицательное — со знаком, не только цветом.
-- Новая публичная страница — в `PUBLIC_PAGES` `tests/e2e/ui-quality.spec.ts`; страницы за входом — через setup-проект со `storageState`, когда в CI появится Supabase с тестовым пользователем.
+- Новая страница — в `tests/e2e/ui-quality.spec.ts`: публичная в `PUBLIC_PAGES`, за входом в `SIGNED_IN_PAGES` (пользователь `alice` из setup-проекта `tests/e2e/auth.setup.ts`, `storageState`).
 
 Подробно: скилы `dev-kit:design-system`, `dev-kit:performance-budget`, `dev-kit:money-decimal`.

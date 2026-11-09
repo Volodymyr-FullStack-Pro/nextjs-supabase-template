@@ -5,12 +5,14 @@ on:
     paths:
       - 'supabase/**'
       - 'src/shared/infrastructure/db/**'
+      - 'src/shared/infrastructure/supabase/types.ts'
       - '.github/workflows/db.yml'
   push:
     branches: [main]
     paths:
       - 'supabase/**'
       - 'src/shared/infrastructure/db/**'
+      - 'src/shared/infrastructure/supabase/types.ts'
 
 permissions:
   contents: read
@@ -31,5 +33,17 @@ jobs:
         run: supabase db advisors --local --fail-on warn # без флага команда всегда завершается успешно
       - name: pgTAP
         run: supabase test db
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Database types match the migrations
+        run: |
+          npm run db:types
+          git diff --exit-code -- src/shared/infrastructure/supabase/types.ts || {
+            echo "::error file=src/shared/infrastructure/supabase/types.ts::Типы устарели: supabase start, npm run db:types и закоммитить файл"
+            exit 1
+          }
       - if: always()
         run: supabase stop

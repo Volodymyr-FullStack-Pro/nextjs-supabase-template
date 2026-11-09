@@ -224,11 +224,7 @@ const IMPORT_GROUPS = [
 
 const codeStyleConfig = {
   files: ['src/**/*.{ts,tsx}', 'scripts/**/*.mjs', 'tests/**/*.{ts,tsx}'],
-  ignores: [
-    'src/shared/ui/**',
-    '!src/shared/ui/form/**',
-    'src/shared/infrastructure/supabase/types.ts',
-  ],
+  ignores: ['src/shared/ui/**', '!src/shared/ui/form/**'],
   plugins: {
     unicorn,
     sonarjs,
@@ -321,11 +317,7 @@ const testsConfig = {
 }
 const codeStyleTsConfig = {
   files: ['src/**/*.{ts,tsx}'],
-  ignores: [
-    'src/shared/ui/**',
-    '!src/shared/ui/form/**',
-    'src/shared/infrastructure/supabase/types.ts',
-  ],
+  ignores: ['src/shared/ui/**', '!src/shared/ui/form/**'],
   rules: {
     '@typescript-eslint/max-params': ['error', { max: 3 }],
     '@typescript-eslint/no-magic-numbers': [
@@ -527,6 +519,7 @@ export default defineConfig([
     'playwright-report/**',
     'test-results/**',
     'coverage/**',
+    'src/shared/infrastructure/supabase/types.ts', // генерирует npm run db:types
   ]),
   ...nextVitals,
   ...nextTs,

@@ -25,14 +25,19 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   projects: [
+    // Вход тестовых пользователей (alice, bob) через admin API и форму входа → playwright/.auth/*.json.
+    // Без локального Supabase (npm run test:e2e без :db) пропускается вместе со сценариями за входом.
+    { name: 'setup', testMatch: /\.setup\.ts$/ },
     {
       name: 'desktop',
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+      dependencies: ['setup'],
     },
     {
       name: 'mobile',
       use: { ...devices['iPhone 15'] },
       testIgnore: /build\.spec\.ts/, // проверки сборки и TTFB не зависят от устройства
+      dependencies: ['setup'],
     },
   ],
   webServer: {
