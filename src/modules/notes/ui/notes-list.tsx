@@ -19,11 +19,11 @@ export async function NotesList({ searchParams }: { searchParams: Promise<Search
         <li key={note.id}>
           <Card>
             <CardHeader>
-              <CardTitle>{note.title}</CardTitle>
+              <CardTitle className="wrap-anywhere">{note.title}</CardTitle>
             </CardHeader>
-            <CardContent className="flex justify-between gap-4 text-sm text-muted-foreground">
-              <span>{formatDate(note.createdAt)}</span>
-              <span className="text-foreground tabular-nums">
+            <CardContent className="flex flex-wrap justify-between gap-x-4 gap-y-1 text-sm text-muted-foreground">
+              <span className="whitespace-nowrap">{formatDate(note.createdAt)}</span>
+              <span className="ml-auto text-right wrap-anywhere text-foreground tabular-nums">
                 {formatMoney(note.amount, { currency: note.currency })}
               </span>
             </CardContent>
