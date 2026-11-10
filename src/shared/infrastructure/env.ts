@@ -24,7 +24,7 @@ export const env = {
   },
   supabaseSecretKey: () => required('SUPABASE_SECRET_KEY', process.env.SUPABASE_SECRET_KEY),
   sentryDsn: () => process.env.SENTRY_DSN,
-  cronSecret: () => process.env['CRON_SECRET'],
+  cronSecret: () => process.env.CRON_SECRET,
   authRequireMfa: () => {
     const value = process.env.AUTH_REQUIRE_MFA
     return process.env.NODE_ENV === 'production' ? value !== 'false' : value === 'true'
