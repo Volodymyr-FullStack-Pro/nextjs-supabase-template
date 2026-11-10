@@ -5,8 +5,8 @@ export async function adminClient() {
   return createAdminClient()
 }
 
-export async function directConnection() {
-  return import('../../../shared/infrastructure/db') // expect: local/dynamic-import
+export async function adminClientByRelativePath() {
+  return import('../../../../../../../src/shared/infrastructure/supabase/admin') // expect: local/dynamic-import
 }
 
 export async function rawClient(url: string, key: string) {
