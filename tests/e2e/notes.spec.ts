@@ -86,6 +86,40 @@ test('saves one note when the response is lost and the form is submitted again',
   await expect(noteCards(page, title)).toHaveCount(1)
 })
 
+test('refuses a corrected amount sent with the request id of a lost response', async ({ page }) => {
+  const title = `Правка ${randomUUID()}`
+  const notSaved = page.getByRole('alert').filter({ hasText: 'Что-то пошло не так' })
+  const savedWithOldData = page
+    .getByRole('alert')
+    .filter({ hasText: 'Заметка уже сохранена с прежними данными' })
+  await openNotes(page)
+  await loseFirstSaveResponse(page)
+  await expect(async () => {
+    await submitNote(page, { title, amount: '1000' })
+    await expect(notSaved).toBeVisible({ timeout: SAVE_TIMEOUT_MS })
+  }).toPass()
+
+  await page.getByLabel('Сумма').fill('10000')
+  await page.getByRole('button', { name: 'Добавить' }).click()
+  await expect(savedWithOldData).toBeVisible({ timeout: SAVE_TIMEOUT_MS })
+  await expect(noteCards(page, title).getByText(`€1${NBSP}000,00`)).toBeVisible()
+
+  const secondTab = await page.context().newPage()
+  await openNotes(secondTab)
+  await expect(noteCards(secondTab, title)).toHaveCount(1)
+  await expect(noteCards(secondTab, title).getByText(`€1${NBSP}000,00`)).toBeVisible()
+  await secondTab.close()
+
+  await page.getByRole('button', { name: 'Добавить' }).click()
+  await expect(noteCards(page, title).getByText(`€10${NBSP}000,00`)).toBeVisible({
+    timeout: SAVE_TIMEOUT_MS,
+  })
+  await expect(savedWithOldData).toBeHidden()
+  await page.reload()
+  await expect(noteCards(page, title)).toHaveCount(2)
+  await expect(noteCards(page, title).getByText(`€1${NBSP}000,00`)).toBeVisible()
+})
+
 test('shows a rule violation from the server at the form', async ({ page }) => {
   const title = `Иены ${randomUUID()}`
   await openNotes(page)

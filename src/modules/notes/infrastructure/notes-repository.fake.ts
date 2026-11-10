@@ -30,14 +30,14 @@ export function fakeNotesRepository(seed: StoredNote[] = []) {
       const existing = rows.find(
         (row) => row.ownerId === data.ownerId && row.clientRequestId === data.clientRequestId,
       )
-      if (existing) return Promise.resolve(toNote(existing))
+      if (existing) return Promise.resolve({ note: toNote(existing), repeatedRequest: true })
       const stored: StoredNote = {
         ...data,
         id: `note-${String(rows.length + 1)}`,
         createdAt: new Date(rows.length).toISOString(),
       }
       rows.push(stored)
-      return Promise.resolve(toNote(stored))
+      return Promise.resolve({ note: toNote(stored), repeatedRequest: false })
     },
   }
   return { repository, rows }

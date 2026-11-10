@@ -16,6 +16,7 @@ export const NOTE_MESSAGE_KEYS = {
   amountInvalid: 'note.amount.invalid',
   amountTooPrecise: 'note.amount.tooPrecise',
   currencyInvalid: 'note.currency.invalid',
+  requestReused: 'note.request.reused',
 } as const
 export type NoteMessageKey = (typeof NOTE_MESSAGE_KEYS)[keyof typeof NOTE_MESSAGE_KEYS]
 

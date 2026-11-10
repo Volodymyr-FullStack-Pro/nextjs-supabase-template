@@ -1,12 +1,13 @@
 import 'server-only'
 
+import { violatesUniqueConstraint } from '@/shared/infrastructure/supabase/postgres-errors'
 import { createClient } from '@/shared/infrastructure/supabase/server'
 
 import type { NotesRepository } from '../application/notes-repository'
 import { type Note, NOTE_SEARCH_MAX, NOTES_LIST_LIMIT, NoteSchema } from '../domain/note'
 
 const NOTE_COLUMNS = 'id, title, amount::text, currency, created_at'
-const UNIQUE_VIOLATION = '23505'
+const REQUEST_KEY_CONSTRAINT = 'notes_owner_id_client_request_id_key'
 
 type NoteRow = { id: string; title: string; amount: string; currency: string; created_at: string }
 
@@ -64,8 +65,11 @@ export const supabaseNotesRepository: NotesRepository = {
       })
       .select(NOTE_COLUMNS)
       .single()
-    if (error?.code === UNIQUE_VIOLATION) return findByRequest(data.ownerId, data.clientRequestId)
+    if (violatesUniqueConstraint(error, REQUEST_KEY_CONSTRAINT)) {
+      const note = await findByRequest(data.ownerId, data.clientRequestId)
+      return { note, repeatedRequest: true }
+    }
     if (error) throw new Error(`notes.insert: ${error.message}`)
-    return toNote(row)
+    return { note: toNote(row), repeatedRequest: false }
   },
 }

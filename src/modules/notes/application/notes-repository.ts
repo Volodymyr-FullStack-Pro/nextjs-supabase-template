@@ -10,7 +10,9 @@ export type NewNote = {
   clientRequestId: string
 }
 
+export type InsertedNote = { note: Note; repeatedRequest: boolean }
+
 export interface NotesRepository {
   listForUser(userId: string, filter: NotesFilter): Promise<Note[]>
-  insert(data: NewNote): Promise<Note>
+  insert(data: NewNote): Promise<InsertedNote>
 }

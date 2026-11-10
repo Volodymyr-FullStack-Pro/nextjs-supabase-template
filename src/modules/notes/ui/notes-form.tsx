@@ -8,7 +8,12 @@ import { failureMessage } from '@/shared/ui/form/messages'
 import { SubmitButton } from '@/shared/ui/form/submit-button'
 import { TextField } from '@/shared/ui/form/text-field'
 
-import { CreateNoteInput, NOTE_CURRENCY_LENGTH, NOTE_TITLE_MAX } from '../domain/note'
+import {
+  CreateNoteInput,
+  NOTE_CURRENCY_LENGTH,
+  NOTE_MESSAGE_KEYS,
+  NOTE_TITLE_MAX,
+} from '../domain/note'
 import { addNote } from './actions'
 import { notesMessages } from './messages'
 
@@ -26,8 +31,10 @@ export function NotesForm() {
           resetFormAndAction()
         },
         onError: ({ error }) => {
-          if (error.validationErrors === undefined) {
-            toast.error(failureMessage(error.serverError, notesMessages))
+          if (error.validationErrors !== undefined) return
+          toast.error(failureMessage(error.serverError, notesMessages))
+          if (error.serverError?.rule === NOTE_MESSAGE_KEYS.requestReused) {
+            form.setValue('clientRequestId', '')
           }
         },
       },
