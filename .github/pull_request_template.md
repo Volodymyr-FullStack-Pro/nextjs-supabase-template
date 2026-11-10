@@ -12,9 +12,7 @@
 
 ## Как проверено
 
-- [ ] `npm run check`
-- [ ] `npm run test:e2e:db` (компьютер и iPhone)
-- [ ] `supabase test db` (если менялась база)
+- [ ] `npm run gate` — `check`, проверки базы (advisors, `db lint`, pgTAP, Squawk) и весь e2e на компьютере и iPhone
 - [ ] Закрытие блока: `/code-review high`, `/simplify`, `/security-review` — итоги ниже
 - [ ] Закрытие блока: `npm run req:check -- --strict` (с первого блока продукта; B00 — без `--strict`)
 
