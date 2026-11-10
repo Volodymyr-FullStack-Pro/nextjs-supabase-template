@@ -2,6 +2,8 @@ import 'server-only'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 
+import { databaseError } from '@/shared/infrastructure/supabase/postgres-errors'
+
 const ENTRY_COLUMNS = 'id, title'
 
 type EntryRow = { id: string; title: string }
@@ -33,6 +35,6 @@ export async function listLater(supabase: SupabaseClient): Promise<EntryRow[]> {
 export async function listCheckedTooLate(supabase: SupabaseClient): Promise<EntryRow[]> {
   const result = await supabase.from('entries').select(ENTRY_COLUMNS).overrideTypes<EntryRow[]>()
   const rows = result.data ?? [] // expect: local/no-unchecked-response
-  if (result.error) throw new Error(`entries.list: ${result.error.message}`)
+  if (result.error) throw databaseError('entries.list', result.error)
   return rows
 }

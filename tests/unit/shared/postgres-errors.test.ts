@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { violatesUniqueConstraint } from '@/shared/infrastructure/supabase/postgres-errors'
+import {
+  databaseError,
+  violatesUniqueConstraint,
+} from '@/shared/infrastructure/supabase/postgres-errors'
 
 vi.mock('server-only', () => ({}))
 
@@ -25,5 +28,31 @@ describe('violatesUniqueConstraint', () => {
     ['no error', null],
   ])('does not take %s for it', (_case, error) => {
     expect(violatesUniqueConstraint(error, REQUEST_KEY)).toBe(false)
+  })
+})
+
+describe('databaseError', () => {
+  const rejected = {
+    code: '22P02',
+    message: 'invalid input syntax for type numeric: "12 345,67"',
+    details: 'Failing row contains (7, Аренда, 12 345,67).',
+    hint: 'Проверьте сумму 12 345,67',
+  }
+
+  it('names the operation and the code of the database error', () => {
+    expect(databaseError('notes.insert', rejected).message).toBe('notes.insert: 22P02')
+  })
+
+  it('carries neither the text of the database error nor the error itself', () => {
+    const failure = databaseError('notes.insert', rejected)
+
+    expect(failure.cause).toBeUndefined()
+    expect(JSON.stringify(Object.entries(failure))).toBe('[]')
+    expect(`${String(failure)} ${failure.stack ?? ''}`).not.toContain('12 345,67')
+  })
+
+  it('still names the operation when the error has no code', () => {
+    expect(databaseError('notes.list', { code: '' }).message).toBe('notes.list: unknown')
+    expect(databaseError('notes.list', {}).message).toBe('notes.list: unknown')
   })
 })

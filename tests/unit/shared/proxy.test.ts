@@ -168,7 +168,10 @@ describe('proxy', () => {
 
     setAuthState(AUTH_OUTAGE)
     await visit(PROTECTED.page)
-    expect(reportUnexpectedError).toHaveBeenCalledWith('auth.listFactors', AUTH_OUTAGE.factorsError)
+    expect(reportUnexpectedError).toHaveBeenCalledWith(
+      'auth.listFactors',
+      new Error('auth.listFactors: (503)'),
+    )
   })
 
   it.each([

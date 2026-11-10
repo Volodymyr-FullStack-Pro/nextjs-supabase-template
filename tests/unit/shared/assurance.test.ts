@@ -56,6 +56,9 @@ describe('readAssurance', () => {
     const supabase = clientWith({ data: null, error })
 
     await expect(readAssurance(supabase, 'aal1')).resolves.toBeNull()
-    expect(reportUnexpectedError).toHaveBeenCalledWith('auth.listFactors', error)
+    expect(reportUnexpectedError).toHaveBeenCalledWith(
+      'auth.listFactors',
+      new Error('auth.listFactors: (503)'),
+    )
   })
 })

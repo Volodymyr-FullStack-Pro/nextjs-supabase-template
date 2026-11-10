@@ -10,6 +10,7 @@ export const SECRETS = {
   filter: 'secret-filter',
   token: 'secret-token',
   logged: 'secret-log-line',
+  rejected: 'secret-rejected-amount',
 } as const
 
 export const VISITOR_REQUEST = {

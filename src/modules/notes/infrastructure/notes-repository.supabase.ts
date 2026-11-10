@@ -1,6 +1,9 @@
 import 'server-only'
 
-import { violatesUniqueConstraint } from '@/shared/infrastructure/supabase/postgres-errors'
+import {
+  databaseError,
+  violatesUniqueConstraint,
+} from '@/shared/infrastructure/supabase/postgres-errors'
 import { createClient } from '@/shared/infrastructure/supabase/server'
 
 import type { NotesRepository } from '../application/notes-repository'
@@ -29,7 +32,7 @@ async function findByRequest(ownerId: string, clientRequestId: string): Promise<
     .eq('owner_id', ownerId)
     .eq('client_request_id', clientRequestId)
     .single()
-  if (error) throw new Error(`notes.findByRequest: ${error.message}`)
+  if (error) throw databaseError('notes.findByRequest', error)
   return toNote(row)
 }
 
@@ -48,7 +51,7 @@ export const supabaseNotesRepository: NotesRepository = {
       .replace(/[%_\\]/g, '\\$&')
     if (search) query = query.ilike('title', `%${search}%`)
     const { data, error } = await query
-    if (error) throw new Error(`notes.list: ${error.message}`)
+    if (error) throw databaseError('notes.list', error)
     return data.map(toNote)
   },
 
@@ -69,7 +72,7 @@ export const supabaseNotesRepository: NotesRepository = {
       const note = await findByRequest(data.ownerId, data.clientRequestId)
       return { note, repeatedRequest: true }
     }
-    if (error) throw new Error(`notes.insert: ${error.message}`)
+    if (error) throw databaseError('notes.insert', error)
     return { note: toNote(row), repeatedRequest: false }
   },
 }

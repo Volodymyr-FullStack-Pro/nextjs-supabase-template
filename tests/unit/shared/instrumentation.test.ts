@@ -1,6 +1,8 @@
 import * as Sentry from '@sentry/nextjs'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { reportUnexpectedError } from '@/shared/infrastructure/monitoring'
+import { databaseError } from '@/shared/infrastructure/supabase/postgres-errors'
 import {
   register,
   sentryOptions,
@@ -33,7 +35,21 @@ const COLLECTED_BY_SDK_DEFAULTS = [
 
 vi.spyOn(console, 'info').mockImplementation(() => undefined)
 
-async function sentDuringRequest(options: SentryOptions, request: object): Promise<string> {
+const REJECTED_BY_DATABASE = {
+  code: '22P02',
+  message: `invalid input syntax for type numeric: "${SECRETS.rejected}"`,
+  details: `Failing row contains (${SECRETS.rejected}).`,
+  hint: '',
+}
+const captureFailure = () => {
+  Sentry.captureException(new Error(FAILURE))
+}
+
+async function sentDuringRequest(
+  options: SentryOptions,
+  request: object,
+  fail: () => void = captureFailure,
+): Promise<string> {
   const envelopes: unknown[] = []
   Sentry.init({
     ...options,
@@ -49,7 +65,7 @@ async function sentDuringRequest(options: SentryOptions, request: object): Promi
     scope.setSDKProcessingMetadata({ normalizedRequest: request, ipAddress: SECRETS.address })
     await queryFakePostgrest()
     console.info(JSON.stringify({ type: 'payment-imported', amount: SECRETS.logged }))
-    Sentry.captureException(new Error(FAILURE))
+    fail()
   })
   await Sentry.close(FLUSH_TIMEOUT_MS)
   return JSON.stringify(envelopes)
@@ -77,6 +93,36 @@ describe('Sentry events', () => {
 
     expect(sent).toContain(FAILURE)
     expect(leakedIn(sent)).toEqual([])
+  })
+
+  it('name a refusal of the database by operation and code, in the event and in the log line', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    const sent = await sentDuringRequest(sentryOptions(DSN), VISITOR_REQUEST, () => {
+      reportUnexpectedError('action-error', databaseError('notes.insert', REJECTED_BY_DATABASE))
+    })
+    const lines = logged.mock.calls.map(([line]) => String(line))
+    logged.mockRestore()
+
+    expect(sent).toContain('notes.insert: 22P02')
+    expect(leakedIn(sent)).toEqual([])
+    expect(lines).toEqual([
+      '{"type":"action-error","error":"Error","message":"notes.insert: 22P02"}',
+    ])
+  })
+
+  it('would carry the rejected value if the text of the database error or the error itself were attached', async () => {
+    const provider = Object.assign(new Error(REJECTED_BY_DATABASE.message), REJECTED_BY_DATABASE)
+
+    const withText = await sentDuringRequest(sentryOptions(DSN), VISITOR_REQUEST, () => {
+      Sentry.captureException(new Error(`notes.insert: ${provider.message}`))
+    })
+    const withCause = await sentDuringRequest(sentryOptions(DSN), VISITOR_REQUEST, () => {
+      Sentry.captureException(new Error('notes.insert: 22P02', { cause: provider }))
+    })
+
+    expect(leakedIn(withText)).toEqual(['rejected'])
+    expect(leakedIn(withCause)).toEqual(['rejected'])
   })
 
   it('would carry them under the SDK defaults, so the checks above are not vacuous', async () => {

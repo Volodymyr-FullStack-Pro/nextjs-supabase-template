@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { reportAuthFailure } from '@/shared/infrastructure/monitoring'
+import { authError } from '@/shared/infrastructure/supabase/auth-errors'
 import { createClient } from '@/shared/infrastructure/supabase/server'
 
 import type { MfaGateway } from '../application/mfa-gateway'
@@ -12,20 +13,20 @@ export const supabaseMfaGateway: MfaGateway = {
   async enrollTotp() {
     const supabase = await createClient()
     const { data: factors, error: listError } = await supabase.auth.mfa.listFactors()
-    if (listError) throw new Error(`mfa.listFactors: ${listError.message}`, { cause: listError })
+    if (listError) throw authError('mfa.listFactors', listError)
     const unfinished = factors.all.filter(
       (factor) => factor.factor_type === 'totp' && factor.status !== 'verified',
     )
     await Promise.all(unfinished.map(({ id }) => supabase.auth.mfa.unenroll({ factorId: id })))
     const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' })
-    if (error) throw new Error(`mfa.enroll: ${error.message}`, { cause: error })
+    if (error) throw authError('mfa.enroll', error)
     return { factorId: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret }
   },
 
   async verifiedTotpFactorId() {
     const supabase = await createClient()
     const { data, error } = await supabase.auth.mfa.listFactors()
-    if (error) throw new Error(`mfa.listFactors: ${error.message}`, { cause: error })
+    if (error) throw authError('mfa.listFactors', error)
     return data.totp[0]?.id ?? null
   },
 
@@ -41,6 +42,6 @@ export const supabaseMfaGateway: MfaGateway = {
       reportAuthFailure('too-many-totp-attempts')
       return 'too-many-attempts'
     }
-    throw new Error(`mfa.verify: ${error.message}`, { cause: error })
+    throw authError('mfa.verify', error)
   },
 }

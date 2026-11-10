@@ -478,7 +478,7 @@ const dataAccess = syntaxRule('Репозиторий проверяет error �
     selector:
       'VariableDeclarator[init.type="AwaitExpression"] > ObjectPattern:has(> Property[key.name=/^(data|count)$/]):not(:has(> Property[key.name="error"]))',
     message:
-      'ответ Supabase: const { data, error } = await …; if (error) throw new Error(`модуль.действие: ${error.message}`) — иначе отказ базы выглядит как пустой список',
+      "ответ Supabase: const { data, error } = await …; if (error) throw databaseError('модуль.действие', error) — иначе отказ базы выглядит как пустой список",
   },
   {
     selector:
@@ -512,7 +512,7 @@ const noUncheckedResponse = {
     docs: { description: 'data и count ответа Supabase читаются после проверки error' },
     messages: {
       unchecked:
-        'ответ Supabase прочитан без проверки error: сначала if (result.error) throw new Error(`модуль.действие: ${result.error.message}`) или const { data, error } = await … — иначе отказ базы выглядит как пустой список',
+        "ответ Supabase прочитан без проверки error: сначала if (result.error) throw databaseError('модуль.действие', result.error) или const { data, error } = await … — иначе отказ базы выглядит как пустой список",
     },
     schema: [],
   },
@@ -544,6 +544,45 @@ const noUncheckedResponse = {
         )
         if (names.includes('error') || !names.some((name) => RESPONSE_FIELDS.has(name))) return
         if (mayHaveFailed(node)) context.report({ node, messageId: 'unchecked' })
+      },
+    }
+  },
+}
+
+// Текст ошибки уходит в лог и в Sentry (reportUnexpectedError). Postgres цитирует в message введённое значение
+// (invalid input syntax for type numeric: "…"), в details бывает вся строка с суммами, сообщение Auth называет почту —
+// поэтому ошибка провайдера сообщается операцией и кодом, а сам её объект не бросается и не прикладывается как cause.
+const PROVIDER_ERROR = /^(Postgrest|Auth\w*)Error$/
+const errorByCode = {
+  meta: {
+    type: 'problem',
+    docs: { description: 'Ошибка базы и Auth сообщается операцией и кодом' },
+    messages: {
+      text: "ошибка базы и Auth сообщается операцией и кодом: throw databaseError('модуль.действие', error) (@/shared/infrastructure/supabase/postgres-errors) или authError('auth.действие', error) (…/auth-errors); message, details и hint несут значения — сумму, строку таблицы, почту, — а текст ошибки уходит в лог и в Sentry",
+      cause:
+        'cause прикладывает объект ошибки провайдера вместе с его message и details — они уйдут в Sentry: ошибка сообщается операцией и кодом (databaseError, authError)',
+      rethrown:
+        "ошибка базы или Auth брошена как есть — её message и details уйдут в лог и в Sentry: throw databaseError('модуль.действие', error) или authError('auth.действие', error)",
+    },
+    schema: [],
+  },
+  create(context) {
+    const services = context.sourceCode.parserServices
+    const isProviderError = (node) =>
+      typeParts(services.getTypeAtLocation(node)).some((part) =>
+        PROVIDER_ERROR.test(part.getSymbol()?.getName() ?? ''),
+      )
+    return {
+      'NewExpression[callee.name=/Error$/] MemberExpression[property.name=/^(message|details|hint)$/]'(
+        node,
+      ) {
+        context.report({ node, messageId: 'text' })
+      },
+      'NewExpression[callee.name=/Error$/] Property[key.name="cause"]'(node) {
+        context.report({ node, messageId: 'cause' })
+      },
+      ThrowStatement(node) {
+        if (isProviderError(node.argument)) context.report({ node, messageId: 'rethrown' })
       },
     }
   },
@@ -599,6 +638,7 @@ const local = {
     'dynamic-import': dynamicImport,
     'data-access': dataAccess,
     'no-unchecked-response': noUncheckedResponse,
+    'error-by-code': errorByCode,
     'cron-secret': cronSecret,
     'no-enum': noEnum,
   },
@@ -656,7 +696,7 @@ const repositoryConfig = {
   files: ['src/modules/*/infrastructure/**'],
   ignores: ['src/**/*.fake.ts'],
   plugins: { local },
-  rules: { 'local/data-access': 'error' },
+  rules: { 'local/data-access': 'error', 'local/error-by-code': 'error' },
 }
 const cronRouteConfig = {
   files: ['src/app/api/cron/**/route.ts'],
