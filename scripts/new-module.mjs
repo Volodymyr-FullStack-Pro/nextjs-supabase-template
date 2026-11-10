@@ -94,12 +94,12 @@ export const ${camel} = {
   list: makeList${Pascal}({ repository: supabase${Pascal}Repository }),
 }
 `,
-  [`${moduleRoot}/ui/${name}-list.tsx`]: `import { verifySession } from '@/shared/lib/session'
+  [`${moduleRoot}/ui/${name}-list.tsx`]: `import { requireVerifiedSession } from '@/shared/lib/session'
 
 import { ${camel} } from '../server'
 
 export async function ${Pascal}List() {
-  const session = await verifySession()
+  const session = await requireVerifiedSession()
   const items = await ${camel}.list({ userId: session.userId })
   if (items.length === 0) return <p className="text-sm text-muted-foreground">Пока пусто</p>
   return (
@@ -118,7 +118,7 @@ import { ${Pascal}List } from '@/modules/${name}/ui/${name}-list'
 export default function ${Pascal}Page() {
   return (
     <main className="mx-auto flex max-w-xl flex-col gap-6 p-6">
-      <h1 className="text-2xl font-semibold">${Pascal}</h1>
+      <h1 className="text-2xl font-semibold">Название раздела</h1>
       <Suspense fallback={<p className="text-sm text-muted-foreground">Загружаю…</p>}>
         <${Pascal}List />
       </Suspense>
@@ -168,7 +168,7 @@ execFileSync('npx', ['prettier', '--write', '--log-level', 'warn', ...written], 
   stdio: 'inherit',
 })
 console.log(
-  `\nМодуль ${name} создан. Дальше: npm run lint && npm run typecheck && npm test, затем domain → use cases → репозиторий.`,
+  `\nМодуль ${name} создан. Дальше: заголовок «Название раздела» в ${pageRoot}/page.tsx — на название раздела; npm run lint && npm run typecheck && npm test, затем domain → use cases → репозиторий.`,
 )
 console.log(
   'Таблица — миграцией по образцу из скила dev-kit:supabase-rls-drizzle (в шаблоне — notes): политики владельца, ограничивающая политика второго фактора, триггер журнала, check (amount <> NaN); деньги — numeric рядом с currency, выбор текстом (amount::text), ввод через parseDecimalInput (скил dev-kit:money-decimal). Тексты ошибок — ui/messages.ts по кодам.',
