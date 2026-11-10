@@ -15,7 +15,7 @@ export const NEEDS_DATABASE = 'нужен локальный Supabase: supabase 
 
 export type TestUser = { id: string; email: string; password: string }
 type Credentials = Pick<TestUser, 'email' | 'password'>
-export type SignedInUser = 'alice' | 'bob'
+export type SignedInUser = 'alice' | 'bob' | 'carol'
 
 export const storageStatePath = (user: SignedInUser) => `playwright/.auth/${user}.json`
 export const afterSignInUrl = new RegExp(`${AFTER_SIGN_IN_PATH}$`, 'u')

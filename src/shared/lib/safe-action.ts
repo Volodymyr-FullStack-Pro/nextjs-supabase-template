@@ -44,7 +44,7 @@ export const mfaActionClient = actionClient.use(async ({ next }) => {
 })
 
 export const setupActionClient = mfaActionClient.use(async ({ next, ctx }) => {
-  if (sessionMfaStep(ctx.session) === 'verify') fail(new ForbiddenError())
+  if (ctx.session.hasVerifiedFactor) fail(new ForbiddenError())
   return next()
 })
 

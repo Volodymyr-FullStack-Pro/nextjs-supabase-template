@@ -11,6 +11,7 @@ import {
   hasDatabase,
   NEEDS_DATABASE,
   signIn,
+  storageStatePath,
   submitLoginUntil,
 } from './support/users'
 
@@ -36,6 +37,15 @@ test('enrolls TOTP and asks for the code at the next sign-in', async ({ page }) 
   } finally {
     await deleteTestUser(user)
   }
+})
+
+test.describe('confirmed factor', () => {
+  test.use({ storageState: storageStatePath('alice') })
+
+  test('sends a user with a confirmed factor away from the setup screen', async ({ page }) => {
+    await page.goto('/mfa/setup')
+    await expect(page).toHaveURL(afterSignInUrl)
+  })
 })
 
 test.describe('second factor required', () => {

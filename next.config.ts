@@ -10,8 +10,9 @@ const isDev = process.env.NODE_ENV === 'development'
 // каждую страницу на сервере на каждый запрос (await connection()) и отказаться от статической оболочки
 // Cache Components; SRI (experimental.sri) инлайн-скрипты не покрывает — проверено в шаблоне (D-075 Finance Hub).
 // Проект, где все экраны за входом, может выбрать nonce: см. docs/blocks/B00-setup/tasks.md, B00-T07.
-// В dev React требует 'unsafe-eval' для отладки. form-action не задан: вход через OAuth уходит редиректом
-// на домен Supabase. connect-src 'self': браузер ходит только к своему серверу (Server Actions, /api/vitals).
+// В dev React требует 'unsafe-eval' для отладки. form-action 'self': формы уходят только на свой сервер; при
+// входе через OAuth браузер применяет form-action и к редиректу на провайдера — добавить origin Supabase (B00-T04).
+// connect-src 'self': браузер ходит только к своему серверу (Server Actions, /api/vitals).
 const scriptSources = ["'self'", "'unsafe-inline'", ...(isDev ? ["'unsafe-eval'"] : [])].join(' ')
 const contentSecurityPolicy = [
   "default-src 'self'",
@@ -20,6 +21,7 @@ const contentSecurityPolicy = [
   "img-src 'self' blob: data:",
   "font-src 'self'",
   "connect-src 'self'",
+  "form-action 'self'",
   "object-src 'none'",
   "base-uri 'none'",
   "frame-ancestors 'none'",

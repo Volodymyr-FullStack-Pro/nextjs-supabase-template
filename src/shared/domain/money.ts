@@ -11,12 +11,12 @@ const MoneyDecimal = Decimal.clone({
   rounding: Decimal.ROUND_HALF_EVEN,
 })
 
-export const money = (value: string | Decimal): Decimal => {
+export type Money = Decimal
+
+export const money = (value: string | Decimal): Money => {
   const result = new MoneyDecimal(value)
   if (!result.isFinite()) {
-    throw new RangeError(
-      `money: \u043E\u0436\u0438\u0434\u0430\u0435\u0442\u0441\u044F \u043A\u043E\u043D\u0435\u0447\u043D\u043E\u0435 \u0447\u0438\u0441\u043B\u043E, \u043F\u043E\u043B\u0443\u0447\u0435\u043D\u043E ${String(value)}`,
-    )
+    throw new RangeError(`money: ожидается конечное число, получено ${String(value)}`)
   }
   return result
 }

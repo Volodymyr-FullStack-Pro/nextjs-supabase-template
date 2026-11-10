@@ -26,7 +26,7 @@ export const env = {
   sentryDsn: () => process.env.SENTRY_DSN,
   authRequireMfa: () => {
     const value = process.env.AUTH_REQUIRE_MFA
-    return value === undefined ? process.env.NODE_ENV === 'production' : value === 'true'
+    return process.env.NODE_ENV === 'production' ? value !== 'false' : value === 'true'
   },
   hasSupabase: () =>
     Boolean(

@@ -5,8 +5,10 @@ import type { MfaStep } from '@/shared/domain/mfa'
 import { actionClient, authActionClient, fail, setupActionClient } from '@/shared/lib/safe-action'
 
 const captureException = vi.hoisted(() => vi.fn())
+type Session = { userId: string; aal: 'aal1' | 'aal2'; hasVerifiedFactor: boolean }
+
 const session = vi.hoisted(() => ({
-  verifySession: vi.fn(() =>
+  verifySession: vi.fn((): Promise<Session> =>
     Promise.resolve({ userId: 'user-1', aal: 'aal1', hasVerifiedFactor: false }),
   ),
   sessionMfaStep: vi.fn((): MfaStep | null => null),
@@ -69,7 +71,25 @@ describe('actionClient', () => {
   })
 
   it('refuses to start a new second-factor setup while the existing one is unconfirmed', async () => {
-    session.sessionMfaStep.mockReturnValueOnce('verify')
+    session.verifySession.mockResolvedValueOnce({
+      userId: 'user-1',
+      aal: 'aal1',
+      hasVerifiedFactor: true,
+    })
+    const run = vi.fn(() => Promise.resolve('secret'))
+
+    const result = await setupActionClient.action(run)()
+
+    expect(result.serverError).toEqual({ code: 'FORBIDDEN' })
+    expect(run).not.toHaveBeenCalled()
+  })
+
+  it('refuses a second factor on top of a confirmed one even in an aal2 session', async () => {
+    session.verifySession.mockResolvedValueOnce({
+      userId: 'user-1',
+      aal: 'aal2',
+      hasVerifiedFactor: true,
+    })
     const run = vi.fn(() => Promise.resolve('secret'))
 
     const result = await setupActionClient.action(run)()

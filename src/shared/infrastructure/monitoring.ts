@@ -13,9 +13,11 @@ export function reportUnexpectedError(type: string, error: unknown): void {
 }
 
 const AUTH_FAILURE = 'auth-failure'
+const RATE_LIMITED = 'too-many-'
 
 export function reportAuthFailure(code: string): void {
   console.warn(JSON.stringify({ type: AUTH_FAILURE, code }))
+  if (!code.startsWith(RATE_LIMITED)) return
   Sentry.captureMessage(AUTH_FAILURE, {
     level: 'warning',
     tags: { code },

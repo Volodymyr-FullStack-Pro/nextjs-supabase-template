@@ -142,9 +142,21 @@ describe('parseDecimalInput', () => {
     expect(parseDecimalInput('1 234 567 890 123 456,78')).toBe('1234567890123456.78')
   })
 
-  it('refuses more than 16 integer digits instead of overflowing the database column', () => {
+  it('refuses more than 16 integer digits of a fiat amount instead of overflowing numeric(18,2)', () => {
     expect(parseDecimalInput('9'.repeat(16))).toBe('9'.repeat(16))
     expect(parseDecimalInput('9'.repeat(17))).toBeNull()
+  })
+
+  it('allows 20 integer digits for quantities, prices and rates (numeric(38,18))', () => {
+    expect(parseDecimalInput('9'.repeat(20), SCALE.quantity)).toBe('9'.repeat(20))
+    expect(parseDecimalInput('9'.repeat(21), SCALE.quantity)).toBeNull()
+    expect(parseDecimalInput('9'.repeat(17), SCALE.price)).toBe('9'.repeat(17))
+  })
+
+  it('keeps a share within two integer digits of numeric(12,10)', () => {
+    expect(parseDecimalInput('0,3333333333', SCALE.share)).toBe('0.3333333333')
+    expect(parseDecimalInput('99,5', SCALE.share)).toBe('99.5')
+    expect(parseDecimalInput('100', SCALE.share)).toBeNull()
   })
 })
 

@@ -554,31 +554,42 @@ const vendorUiConfig = {
 }
 
 // Прямое подключение к базе (db(), локально и в CI) и клиент Supabase на секретном ключе (createAdminClient,
-// серверные задачи без сессии) обходят RLS: только в shared/infrastructure, в файлах *.admin.ts и в плановых
-// задачах src/app/api/cron. shared/lib — техника Next.js для ui и app: инфраструктуру видят только сессия
-// и actions, иначе обход RLS просочился бы в ui через реэкспорт.
+// серверные задачи без сессии) обходят RLS: только в shared/infrastructure и в файлах *.admin.ts инфраструктуры
+// модуля (плановая задача в src/app/api/cron зовёт server.ts модуля). Паттерны ловят и алиас, и относительный путь.
+// shared/lib — техника Next.js для ui и app: инфраструктуру видят только сессия и actions, иначе обход RLS
+// просочился бы в ui через реэкспорт.
 const BYPASSES_RLS = {
   group: [
     '@/shared/infrastructure/db',
     '@/shared/infrastructure/db/*',
     '@/shared/infrastructure/supabase/admin',
+    '**/infrastructure/db',
+    '**/infrastructure/db/*',
+    '**/infrastructure/supabase/admin',
   ],
   message:
-    'db() и createAdminClient() обходят RLS: только в shared/infrastructure, *.admin.ts и src/app/api/cron; данные пользователя — через клиент Supabase с сессией',
+    'db() и createAdminClient() обходят RLS: только в shared/infrastructure и *.admin.ts; данные пользователя — через клиент Supabase с сессией',
 }
 // Глобальный Decimal из decimal.js считает с точностью 20 и округляет от нуля, а money() — клон с точностью 64
 // и округлением к чётному: смешение двух классов теряет цифры. Расчёты денег — только через money().
+// Во flat config позднее правило перетирает опции целиком, поэтому запрет decimal.js повторяется в каждом объекте,
+// который задаёт no-restricted-imports, а для файлов вне bypassesRlsConfig задан отдельно.
 const GLOBAL_DECIMAL = {
   name: 'decimal.js',
   message:
     'Расчёты денег — через money() из @/shared/domain/money: у глобального Decimal другая точность и округление',
 }
+const RLS_BYPASS_ALLOWED = ['src/shared/infrastructure/**', 'src/**/*.admin.ts']
 const bypassesRlsConfig = {
   files: ['src/**/*.{ts,tsx}'],
-  ignores: ['src/shared/infrastructure/**', 'src/**/*.admin.ts', 'src/app/api/cron/**'],
+  ignores: RLS_BYPASS_ALLOWED,
   rules: {
     'no-restricted-imports': ['error', { paths: [GLOBAL_DECIMAL], patterns: [BYPASSES_RLS] }],
   },
+}
+const globalDecimalConfig = {
+  files: RLS_BYPASS_ALLOWED,
+  rules: { 'no-restricted-imports': ['error', { paths: [GLOBAL_DECIMAL] }] },
 }
 const moneyConfig = {
   files: ['src/shared/domain/money.ts'],
@@ -636,6 +647,7 @@ export default defineConfig([
   vendorUiConfig,
   bypassesRlsConfig,
   moneyConfig,
+  globalDecimalConfig,
   sharedLibConfig,
   {
     files: ['**/*.{ts,tsx,mts}'],
