@@ -5,10 +5,10 @@
 -- Функции, доступные анониму, проверяет 006-default-privileges.sql.
 --
 -- Осознанное исключение — строка в convention_exceptions ниже: имя таблицы (или функции), ключ соглашения и
--- причина с номером решения D-NNN. Ключи: permissive_policy, second_factor, audit, truncate, id, anon, grants,
--- cascade, fk_index, float, nan, currency, rpc_numeric. Включённый RLS исключений не имеет.
+-- причина с номером решения D-NNN. Ключи: permissive_policy, open_policy, second_factor, audit, truncate, id,
+-- anon, grants, cascade, fk_index, float, nan, currency, rpc_numeric. Включённый RLS исключений не имеет.
 begin;
-select plan(15);
+select plan(16);
 
 create temp table convention_exceptions (
   object_name text not null,
@@ -52,7 +52,16 @@ select is_empty(
 );
 
 select is_empty(
-  $q$ select format('%s — добавить: create policy "%1$s: second factor when enrolled" on public.%1$I as restrictive for all to authenticated using ((select private.mfa_ok())) with check ((select private.mfa_ok()));', t.name)
+  $q$ select format('%s: политика "%s" открывает все строки любому вошедшему — заменить условие на владельца или право: using ((select auth.uid()) = owner_id)', t.name, p.polname)
+      from pg_policy p join public_tables t on t.oid = p.polrelid
+      where p.polpermissive and p.polcmd <> 'a'
+        and coalesce(pg_get_expr(p.polqual, p.polrelid), 'true') = 'true'
+        and not pg_temp.excepted(t.name, 'open_policy') $q$,
+  'ни одна разрешающая политика чтения, правки и удаления не написана как using (true)'
+);
+
+select is_empty(
+  $q$ select format('%s — добавить: create policy %1$s_second_factor on public.%1$I as restrictive for all to authenticated using ((select private.mfa_ok())) with check ((select private.mfa_ok()));', t.name)
       from public_tables t
       where not exists (
           select 1 from pg_policy p
@@ -201,8 +210,8 @@ select is_empty(
 select is_empty(
   $q$ select format('%s / %s', e.object_name, e.convention)
       from convention_exceptions e
-      where e.convention not in ('permissive_policy', 'second_factor', 'audit', 'truncate', 'id', 'anon', 'grants',
-                                 'cascade', 'fk_index', 'float', 'nan', 'currency', 'rpc_numeric')
+      where e.convention not in ('permissive_policy', 'open_policy', 'second_factor', 'audit', 'truncate', 'id', 'anon',
+                                 'grants', 'cascade', 'fk_index', 'float', 'nan', 'currency', 'rpc_numeric')
         or e.reason !~ 'D-\d+'
         or not exists (
           select 1 from pg_class c where c.relnamespace = 'public'::regnamespace and c.relname = e.object_name
