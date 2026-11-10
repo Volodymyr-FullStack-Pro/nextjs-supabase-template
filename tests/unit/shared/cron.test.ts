@@ -32,6 +32,10 @@ describe('isCronRequest', () => {
       'Bearer another-secret',
       `Bearer ${SECRET}x`,
       `Bearer ${SECRET.slice(1)}`,
+      `Bearer ${SECRET.slice(0, -1)}`,
+      `Bearer ${SECRET.charAt(0)}`,
+      'Bearer ',
+      'Bearer',
     ]
     for (const authorization of rejected) {
       expect(

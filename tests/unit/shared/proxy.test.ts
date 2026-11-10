@@ -20,7 +20,7 @@ import {
   SIGNED_OUT,
 } from '../support/supabase-auth'
 
-type ClientOptions = { cookies: CookieMethods }
+type ClientOptions = { cookies: CookieMethods; cookieOptions: Record<string, unknown> }
 
 const ORIGIN = 'http://localhost:3100'
 const SESSION_COOKIE = 'sb-test-auth-token'
@@ -34,7 +34,7 @@ vi.mock('@supabase/ssr', async () => {
   const { fakeSupabase } = await import('../support/supabase-auth')
   return {
     createServerClient: (_url: string, _key: string, options: ClientOptions) =>
-      fakeSupabase(options.cookies),
+      fakeSupabase(options.cookies, options.cookieOptions),
   }
 })
 
@@ -152,6 +152,15 @@ describe('proxy', () => {
     await expect(outcomeOf(await visit('/api/vitals/raw'))).resolves.toBe(UNAUTHORIZED)
   })
 
+  it('does not treat a path that merely contains a public prefix as public', async () => {
+    setAuthState(SIGNED_OUT)
+
+    await expect(outcomeOf(await visit('/reports/api/cron/daily'))).resolves.toBe('redirect /login')
+    await expect(outcomeOf(await visit('/api/reports/api/webhooks/bank'))).resolves.toBe(
+      UNAUTHORIZED,
+    )
+  })
+
   it('reports an Auth outage but not a revoked session', async () => {
     setAuthState(REVOKED_SESSION)
     await visit(PROTECTED.page)
@@ -164,6 +173,8 @@ describe('proxy', () => {
 
   it.each([
     ['a page it serves', AAL2, PROTECTED.page, PASS],
+    ['a public page', AAL2, '/login', PASS],
+    ['a public API route', SIGNED_OUT, '/api/cron/daily', PASS],
     [
       'a redirect to the second-factor step',
       AAL1_WITH_FACTOR,
@@ -178,11 +189,34 @@ describe('proxy', () => {
 
       const response = await visit(path)
 
-      expect(response.cookies.get(SESSION_COOKIE)?.value).toBe('refreshed')
+      expect(response.cookies.get(SESSION_COOKIE)).toMatchObject({
+        value: 'refreshed',
+        path: '/',
+        httpOnly: true,
+        sameSite: 'lax',
+      })
       expect(response.headers.get('cache-control')).toBe(NO_STORE)
       await expect(outcomeOf(response)).resolves.toBe(expected)
     },
   )
+
+  it.each([
+    ['https://app.example', true],
+    ['http://localhost:3100', false],
+  ])('in production marks the session cookie of %s secure: %s', async (origin, secure) => {
+    vi.stubEnv('NODE_ENV', 'production')
+    setAuthState({ ...AAL1_WITH_FACTOR, refreshedCookie: REFRESHED })
+
+    const served = await proxy(new NextRequest(`${origin}${PROTECTED.verify}`))
+    const redirected = await proxy(new NextRequest(`${origin}${PROTECTED.page}`))
+
+    expect(Boolean(served.cookies.get(SESSION_COOKIE)?.secure)).toBe(secure)
+    expect(Boolean(redirected.cookies.get(SESSION_COOKIE)?.secure)).toBe(secure)
+    expect(redirected.cookies.get(SESSION_COOKIE)).toMatchObject({
+      httpOnly: true,
+      sameSite: 'lax',
+    })
+  })
 
   it('reads the session from the cookies of the request', async () => {
     setAuthState(AAL2)

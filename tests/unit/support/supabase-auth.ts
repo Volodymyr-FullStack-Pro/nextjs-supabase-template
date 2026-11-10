@@ -1,4 +1,5 @@
-type Cookie = { name: string; value: string; options: Record<string, unknown> }
+type CookieOptions = Record<string, unknown>
+type Cookie = { name: string; value: string; options: CookieOptions }
 type SetAllCookies = (cookies: Cookie[], headers: Record<string, string>) => void
 export type CookieMethods = { getAll?: () => unknown; setAll?: SetAllCookies }
 type AuthError = { message: string; status: number }
@@ -49,13 +50,19 @@ function authState(): AuthState {
   return current
 }
 
-export function fakeSupabase({ getAll, setAll }: CookieMethods = {}) {
+export function fakeSupabase(
+  { getAll, setAll }: CookieMethods = {},
+  cookieOptions: CookieOptions = {},
+) {
   return {
     auth: {
       getClaims: () => {
         const { claims, claimsError, refreshedCookie } = authState()
         seenCookies = getAll?.()
-        if (refreshedCookie) setAll?.([refreshedCookie], { 'Cache-Control': NO_STORE })
+        if (refreshedCookie) {
+          const options = { ...refreshedCookie.options, ...cookieOptions }
+          setAll?.([{ ...refreshedCookie, options }], { 'Cache-Control': NO_STORE })
+        }
         return Promise.resolve(
           claims ? { data: { claims }, error: null } : { data: null, error: claimsError },
         )
