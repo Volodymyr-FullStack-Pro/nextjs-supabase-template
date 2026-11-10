@@ -12,6 +12,7 @@
     "budget": "node scripts/bundle-budget.mjs",
     "start": "next start",
     "check": "npm run lint && npm run typecheck && npm run req:check && npm run licenses && npm run test:coverage && npm run knip && npm run jscpd && npm run format:check && npm run build && npm run budget",
+    "gate": "npm run check && supabase db advisors --fail-on warn && supabase db lint --fail-on warning && supabase test db && npm run db:check-migrations && npm run test:e2e:db",
     "lint": "next typegen && eslint . --max-warnings=0",
     "lint:fix": "next typegen && eslint . --fix --max-warnings=0",
     "typecheck": "next typegen && tsc --noEmit",
@@ -31,6 +32,7 @@
     "new:module": "node scripts/new-module.mjs",
     "prepare": "simple-git-hooks || true",
     "db:check-migrations": "node scripts/check-migrations.mjs",
+    "db:new": "node scripts/db-new.mjs",
     "licenses": "node scripts/check-licenses.mjs",
     "seed:test-user": "node scripts/with-local-supabase.mjs node scripts/seed-test-user.mjs",
     "totp": "node scripts/totp-code.mjs"
