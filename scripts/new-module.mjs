@@ -171,5 +171,5 @@ console.log(
   `\nМодуль ${name} создан. Дальше: заголовок «Название раздела» в ${pageRoot}/page.tsx — на название раздела; npm run lint && npm run typecheck && npm test, затем domain → use cases → репозиторий.`,
 )
 console.log(
-  'Таблица — миграцией по образцу из скила dev-kit:supabase-rls-drizzle (в шаблоне — notes): политики владельца, ограничивающая политика второго фактора, триггер журнала, check (amount <> NaN); деньги — numeric рядом с currency, выбор текстом (amount::text), ввод через parseDecimalInput (скил dev-kit:money-decimal). Тексты ошибок — ui/messages.ts по кодам.',
+  'Таблица — миграцией по образцу из .claude/rules/db.md (в шаблоне — notes; образцы SQL — examples.md скила dev-kit:supabase-rls): политики владельца, ограничивающая политика второго фактора, триггер журнала, check (amount <> NaN); деньги — numeric рядом с currency, выбор текстом (amount::text), ввод через parseDecimalInput (скил dev-kit:money-decimal). Тексты ошибок — ui/messages.ts по кодам.',
 )

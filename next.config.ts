@@ -44,7 +44,7 @@ const nextConfig: NextConfig = {
   partialPrefetching: true, // Next 16.4 рекомендует включать вместе с cacheComponents
   typedRoutes: true, // href в Link и redirect проверяются по сгенерированным типам маршрутов
   // next dev по умолчанию создаёт и переписывает AGENTS.md для ИИ-агентов; инструкции агенту здесь — только CLAUDE.md
-  // и .claude/rules/. Полезная часть того файла (документация установленной версии — node_modules/next/dist/docs) — в правилах.
+  // и .claude/rules/. Полезная часть того файла (документация установленной версии — node_modules/next/dist/docs) — в CLAUDE.md.
   agentRules: false,
   turbopack: {
     rules: {
