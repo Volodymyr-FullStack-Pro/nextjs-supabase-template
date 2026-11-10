@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process'
-import { writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 
 import postgres from 'postgres'
 
 const OUTPUT = 'src/shared/infrastructure/supabase/types.ts'
+const CONVENTIONS_TEST = 'supabase/tests/900-table-conventions.sql'
 const TABLE_INDENT = '      '
 const SECTION_INDENT = `${TABLE_INDENT}  `
 const WRITE_SECTIONS = ['Insert', 'Update']
+const NUMBER_TYPE = String.raw`number((?:\[\])*)( \| null)?`
 
 const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl) {
@@ -23,15 +25,47 @@ const formatted = execFileSync('npx', ['prettier', '--stdin-filepath', OUTPUT], 
   input: generated,
 })
 const sql = postgres(databaseUrl, { max: 1 })
+const numericTypes = sql`
+  with recursive resolved as (
+    select t.oid as root, t.oid, t.typbasetype, t.typelem, t.typcategory
+    from pg_type t
+    union all
+    select r.root, t.oid, t.typbasetype, t.typelem, t.typcategory
+    from resolved r
+    join pg_type t
+      on t.oid = case when r.typbasetype <> 0 then r.typbasetype when r.typcategory = 'A' then r.typelem end
+  )
+  select distinct root from resolved where oid = 'numeric'::regtype
+`
 const numericColumns = await sql`
-  select table_name, column_name
-  from information_schema.columns
-  where table_schema = 'public' and data_type = 'numeric'
+  select c.relname as table_name, a.attname as column_name
+  from pg_attribute a
+  join pg_class c on c.oid = a.attrelid
+  where c.relnamespace = 'public'::regnamespace
+    and c.relkind in ('r', 'p', 'v', 'm', 'f')
+    and a.attnum > 0
+    and not a.attisdropped
+    and a.atttypid in (${numericTypes})
+`
+const numericFunctions = await sql`
+  select p.proname as name, p.oid::regprocedure::text as signature
+  from pg_proc p
+  where p.pronamespace = 'public'::regnamespace
+    and exists (
+      select 1
+      from unnest(p.prorettype || p.proargtypes::oid[] || coalesce(p.proallargtypes, '{}')) as used (type_oid)
+      where used.type_oid in (${numericTypes})
+    )
 `
 await sql.end()
 
-const columnLine = (column, type) =>
-  new RegExp(`^(\\s+${RegExp.escape(column)}\\??: )${type}$`, 'mu')
+const quoted = (name) => `['"]?${RegExp.escape(name)}['"]?`
+const columnLine = (column, type) => new RegExp(`^(\\s+${quoted(column)}\\??: )${type}$`, 'mu')
+
+function tableStart(output, table) {
+  const found = new RegExp(`\\n${TABLE_INDENT}${quoted(table)}: \\{`, 'u').exec(output)
+  return found ? found.index : -1
+}
 
 function sectionRange(block, name) {
   const start = block.indexOf(`\n${SECTION_INDENT}${name}: {`)
@@ -40,7 +74,7 @@ function sectionRange(block, name) {
 }
 
 function numericToString(section, column) {
-  const rewritten = section.replace(columnLine(column, 'number( \\| null)?'), '$1string$2')
+  const rewritten = section.replace(columnLine(column, NUMBER_TYPE), '$1string$2$3')
   if (rewritten !== section) return rewritten
   return columnLine(column, 'never').test(section) ? section : null
 }
@@ -62,8 +96,7 @@ function rewriteTable(block, columns) {
   const row = sectionRange(block, 'Row')
   const rowSection = row ? block.slice(row.start, row.end) : ''
   for (const column of columns) {
-    if (!columnLine(column, 'number( \\| null)?').test(rowSection))
-      unmatched.push(`${column} (Row)`)
+    if (!columnLine(column, NUMBER_TYPE).test(rowSection)) unmatched.push(`${column} (Row)`)
   }
   let rewritten = block
   for (const name of WRITE_SECTIONS) {
@@ -72,12 +105,33 @@ function rewriteTable(block, columns) {
   return { block: rewritten, unmatched }
 }
 
+const exceptedFunctions = new Set(
+  readFileSync(CONVENTIONS_TEST, 'utf8')
+    .matchAll(/^\s*\(\s*'(?<name>[^']+)'\s*,\s*'rpc_numeric'/gmu)
+    .map((match) => match.groups.name),
+)
+const forbiddenFunctions = numericFunctions.filter(({ name }) => !exceptedFunctions.has(name))
+if (forbiddenFunctions.length > 0) {
+  console.error(
+    [
+      'Функции public с numeric в аргументах или результате (в том числе под доменом и в массиве):',
+      ...forbiddenFunctions.map(({ signature }) => `  ${signature}`),
+      'В types.ts такой аргумент и результат — number: деньги через rpc передаются и возвращаются text.',
+      `Осознанное исключение — строка с ключом rpc_numeric и D-NNN в ${CONVENTIONS_TEST}.`,
+    ].join('\n'),
+  )
+  process.exit(1)
+}
+
 const columnsByTable = Map.groupBy(numericColumns, (column) => column.table_name)
 let output = formatted
 const failures = []
 for (const [table, columns] of columnsByTable) {
-  const start = output.indexOf(`\n${TABLE_INDENT}${table}: {`)
-  if (start < 0) continue
+  const start = tableStart(output, table)
+  if (start < 0) {
+    failures.push(`${table} (таблица или представление не найдены)`)
+    continue
+  }
   const end = output.indexOf(`\n${TABLE_INDENT}}`, start)
   const { block, unmatched } = rewriteTable(
     output.slice(start, end),
@@ -88,11 +142,15 @@ for (const [table, columns] of columnsByTable) {
 }
 if (failures.length > 0) {
   console.error(
-    `numeric-колонки не найдены в ${OUTPUT} (формат вывода изменился?): ${failures.join(', ')}`,
+    `numeric-колонки не переписаны в ${OUTPUT}: ${failures.join(', ')} — в выводе supabase gen types тип колонки не number (массив доменов он описывает как unknown[]: объявите колонку numeric[]) или формат вывода изменился`,
   )
   process.exit(1)
 }
 writeFileSync(OUTPUT, output)
+const kept = numericFunctions.map(({ signature }) => signature)
 console.log(
-  `${OUTPUT}: numeric в Row — number (так отдаёт PostgREST без ::text), в Insert и Update — string; колонок ${String(numericColumns.length)}`,
+  `${OUTPUT}: numeric в Row — number (так отдаёт PostgREST без ::text), в Insert и Update — string; колонок ${String(numericColumns.length)}` +
+    (kept.length > 0
+      ? `; функции с numeric по исключению rpc_numeric остаются number: ${kept.join(', ')}`
+      : ''),
 )
