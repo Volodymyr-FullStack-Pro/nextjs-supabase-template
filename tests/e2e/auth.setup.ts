@@ -10,9 +10,9 @@ import {
   storageStatePath,
 } from './support/users'
 
-const SIGNED_IN_USERS: SignedInUser[] = ['alice', 'bob']
+const USERS_WITH_TOTP: SignedInUser[] = ['alice', 'bob']
 
-for (const name of SIGNED_IN_USERS) {
+for (const name of USERS_WITH_TOTP) {
   setup(`signs in ${name}`, async ({ page }) => {
     setup.skip(!hasDatabase, NEEDS_DATABASE)
     const user = await createTestUser(name)
@@ -21,3 +21,10 @@ for (const name of SIGNED_IN_USERS) {
     await page.context().storageState({ path: storageStatePath(name) })
   })
 }
+
+setup('signs in carol without a second factor', async ({ page }) => {
+  setup.skip(!hasDatabase, NEEDS_DATABASE)
+  const user = await createTestUser('carol')
+  await signIn(page, user)
+  await page.context().storageState({ path: storageStatePath('carol') })
+})

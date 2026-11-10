@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { decimalPattern, SCALE } from '@/shared/domain/decimal-input'
+import { decimalPattern, parseDecimalInput, SCALE } from '@/shared/domain/decimal-input'
 import { normalizeText } from '@/shared/domain/text'
 
 export const NOTE_TITLE_MAX = 200
@@ -11,6 +11,7 @@ export const NOTE_MESSAGE_KEYS = {
   titleRequired: 'note.title.required',
   titleTooLong: 'note.title.tooLong',
   titleMeaningless: 'note.title.meaningless',
+  amountInvalid: 'note.amount.invalid',
 } as const
 export type NoteMessageKey = (typeof NOTE_MESSAGE_KEYS)[keyof typeof NOTE_MESSAGE_KEYS]
 
@@ -32,5 +33,13 @@ export const CreateNoteInput = z.object({
         .min(1, NOTE_MESSAGE_KEYS.titleRequired)
         .max(NOTE_TITLE_MAX, NOTE_MESSAGE_KEYS.titleTooLong),
     ),
+  amount: z.string().transform((raw, ctx) => {
+    const parsed = parseDecimalInput(raw, SCALE.fiat)
+    if (parsed === null) {
+      ctx.addIssue({ code: 'custom', message: NOTE_MESSAGE_KEYS.amountInvalid })
+      return z.NEVER
+    }
+    return parsed
+  }),
 })
 export type CreateNoteInput = z.infer<typeof CreateNoteInput>

@@ -15,6 +15,6 @@ export function makeCreateNote({ notes }: { notes: NotesRepository }) {
     if (!hasLettersOrDigits(input.title)) {
       return err(new RuleViolationError(NOTE_MESSAGE_KEYS.titleMeaningless))
     }
-    return ok(await notes.insert({ ownerId: ctx.userId, title: input.title }))
+    return ok(await notes.insert({ ownerId: ctx.userId, title: input.title, amount: input.amount }))
   }
 }

@@ -22,8 +22,12 @@ export const env = {
     const cert = process.env.DATABASE_CA_CERT
     return cert ? cert.replaceAll(String.raw`\n`, '\n') : undefined
   },
+  supabaseSecretKey: () => required('SUPABASE_SECRET_KEY', process.env.SUPABASE_SECRET_KEY),
   sentryDsn: () => process.env.SENTRY_DSN,
-  authRequireMfa: () => process.env.AUTH_REQUIRE_MFA === 'true',
+  authRequireMfa: () => {
+    const value = process.env.AUTH_REQUIRE_MFA
+    return process.env.NODE_ENV === 'production' ? value !== 'false' : value === 'true'
+  },
   hasSupabase: () =>
     Boolean(
       process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,

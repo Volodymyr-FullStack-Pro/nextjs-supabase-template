@@ -16,7 +16,7 @@
 - [ ] `npm run test:e2e:db` (компьютер и iPhone)
 - [ ] `supabase test db` (если менялась база)
 - [ ] Закрытие блока: `/code-review high`, `/simplify`, `/security-review` — итоги ниже
-- [ ] Закрытие блока: `npm run req:check -- --strict`
+- [ ] Закрытие блока: `npm run req:check -- --strict` (с первого блока продукта; B00 — без `--strict`)
 
 ## Требования блока → чем проверено
 

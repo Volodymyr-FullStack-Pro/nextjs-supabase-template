@@ -41,7 +41,7 @@ export const supabaseNotesRepository: NotesRepository = {
     const supabase = await createClient()
     const { data: row, error } = await supabase
       .from('notes')
-      .insert({ title: data.title, owner_id: data.ownerId })
+      .insert({ title: data.title, owner_id: data.ownerId, amount: data.amount })
       .select(NOTE_COLUMNS)
       .single()
     if (error) throw new Error(`notes.insert: ${error.message}`)

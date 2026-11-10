@@ -6,7 +6,7 @@ import { AFTER_SIGN_IN_PATH } from '@/shared/domain/routes'
 import { hasDatabase, NEEDS_DATABASE, storageStatePath } from './support/users'
 
 const PUBLIC_PAGES = ['/', '/login']
-const SIGNED_IN_PAGES = [AFTER_SIGN_IN_PATH, '/mfa/setup', '/mfa/verify']
+const SIGNED_IN_PAGES = [AFTER_SIGN_IN_PATH, '/mfa/verify']
 const WCAG_AA = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 const COLOR_SCHEMES = ['light', 'dark'] as const
 const TOUCH_TARGET_PX = 44
@@ -14,6 +14,8 @@ const CONTROLS =
   'button, input, select, textarea, summary, [role="button"], [role="checkbox"], [role="radio"], [role="switch"], [role="tab"]'
 const NARROWEST_SCREEN = { width: 320, height: 640 }
 const DARK_CLASS = /\bdark\b/
+const CSP_VIOLATION = /Content Security Policy/u
+const LOG_SLICE = 200
 
 function checkPageQuality(path: string) {
   for (const colorScheme of COLOR_SCHEMES) {
@@ -41,6 +43,17 @@ function checkPageQuality(path: string) {
       expect(summary, 'нарушения доступности').toEqual([])
     })
   }
+
+  test(`${path} loads without Content Security Policy violations`, async ({ page }) => {
+    const violations: string[] = []
+    page.on('console', (message) => {
+      if (CSP_VIOLATION.test(message.text())) violations.push(message.text().slice(0, LOG_SLICE))
+    })
+    const response = await page.goto(path)
+    expect(response?.headers()['content-security-policy']).toContain("default-src 'self'")
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    expect(violations, 'браузер заблокировал ресурс по CSP').toEqual([])
+  })
 
   test(`${path} fits the screen without horizontal scroll`, async ({ page }) => {
     await page.goto(path)
@@ -83,4 +96,10 @@ test.describe('signed in', () => {
   test.skip(!hasDatabase, NEEDS_DATABASE)
   test.use({ storageState: storageStatePath('alice') })
   for (const path of SIGNED_IN_PAGES) checkPageQuality(path)
+})
+
+test.describe('signed in without a second factor', () => {
+  test.skip(!hasDatabase, NEEDS_DATABASE)
+  test.use({ storageState: storageStatePath('carol') })
+  checkPageQuality('/mfa/setup')
 })
