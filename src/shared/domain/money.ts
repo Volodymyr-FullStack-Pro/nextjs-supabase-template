@@ -26,9 +26,19 @@ const LETTER_CODE = /^[A-Z]{3}$/u
 const DECIMAL_PROBE = 1.5
 const ISO_CURRENCIES = new Set(Intl.supportedValuesOf('currency'))
 
-function currencyFractionDigits(currency: string, locale: string): number | undefined {
-  return new Intl.NumberFormat(locale, { style: 'currency', currency }).resolvedOptions()
+export function isIsoCurrency(code: string): boolean {
+  return ISO_CURRENCIES.has(code)
+}
+
+export function currencyFractionDigits(currency: string): number | undefined {
+  if (!isIsoCurrency(currency)) return undefined
+  return new Intl.NumberFormat(DEFAULT_LOCALE, { style: 'currency', currency }).resolvedOptions()
     .maximumFractionDigits
+}
+
+export function exceedsCurrencyPrecision(amount: string, currency: string): boolean {
+  const fractionDigits = currencyFractionDigits(currency)
+  return fractionDigits !== undefined && money(amount).decimalPlaces() > fractionDigits
 }
 
 export function shareOf(value: string, fraction: string): string {
@@ -70,14 +80,14 @@ export function formatMoney(
   amount: string,
   { currency = 'EUR', locale = DEFAULT_LOCALE, fractionDigits }: MoneyFormat = {},
 ): string {
-  if (!ISO_CURRENCIES.has(currency)) {
+  if (!isIsoCurrency(currency)) {
     const { sign, digits } = signedDigits(amount, locale, fractionDigits)
     return `${sign}${digits}${NBSP}${currency}`
   }
   const { sign, digits } = signedDigits(
     amount,
     locale,
-    fractionDigits ?? currencyFractionDigits(currency, locale),
+    fractionDigits ?? currencyFractionDigits(currency),
   )
   const symbol = currencySymbol(currency, locale)
   return LETTER_CODE.test(symbol) ? `${sign}${digits}${NBSP}${symbol}` : `${sign}${symbol}${digits}`

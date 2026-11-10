@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
 import { decimalPattern, parseDecimalInput, SCALE } from '@/shared/domain/decimal-input'
-import { formatMoney, money, shareOf } from '@/shared/domain/money'
+import {
+  currencyFractionDigits,
+  exceedsCurrencyPrecision,
+  formatMoney,
+  isIsoCurrency,
+  money,
+  shareOf,
+} from '@/shared/domain/money'
 
 const NBSP = ' '
 
@@ -170,5 +177,51 @@ describe('decimalPattern', () => {
     expect(() => decimalPattern(19)).toThrow(RangeError)
     expect(() => decimalPattern(-1)).toThrow(RangeError)
     expect(() => decimalPattern(1.5)).toThrow(RangeError)
+  })
+})
+
+describe('isIsoCurrency', () => {
+  it('accepts an ISO 4217 code and rejects a ticker, an unknown or a lowercase code', () => {
+    expect(isIsoCurrency('EUR')).toBe(true)
+    expect(isIsoCurrency('JPY')).toBe(true)
+    expect(isIsoCurrency('BTC')).toBe(false)
+    expect(isIsoCurrency('ZZZ')).toBe(false)
+    expect(isIsoCurrency('eur')).toBe(false)
+  })
+})
+
+describe('currencyFractionDigits', () => {
+  it('tells how many decimals the currency has', () => {
+    expect(currencyFractionDigits('EUR')).toBe(2)
+    expect(currencyFractionDigits('JPY')).toBe(0)
+    expect(currencyFractionDigits('KWD')).toBe(3)
+  })
+
+  it('knows no minor unit for a ticker', () => {
+    expect(currencyFractionDigits('BTC')).toBeUndefined()
+    expect(currencyFractionDigits('USDT')).toBeUndefined()
+  })
+})
+
+describe('exceedsCurrencyPrecision', () => {
+  it('rejects an amount more precise than the currency: 100.50 yen would be shown as ¥100', () => {
+    expect(exceedsCurrencyPrecision('100.50', 'JPY')).toBe(true)
+    expect(exceedsCurrencyPrecision('100.505', 'EUR')).toBe(true)
+    expect(exceedsCurrencyPrecision('-0.0001', 'KWD')).toBe(true)
+  })
+
+  it('accepts an amount within the precision of the currency', () => {
+    expect(exceedsCurrencyPrecision('100', 'JPY')).toBe(false)
+    expect(exceedsCurrencyPrecision('100.50', 'EUR')).toBe(false)
+    expect(exceedsCurrencyPrecision('1.234', 'KWD')).toBe(false)
+  })
+
+  it('ignores trailing zeros: 100.00 yen is a whole amount', () => {
+    expect(exceedsCurrencyPrecision('100.00', 'JPY')).toBe(false)
+    expect(exceedsCurrencyPrecision('100.500', 'EUR')).toBe(false)
+  })
+
+  it('leaves the precision of a ticker to the scale of the column', () => {
+    expect(exceedsCurrencyPrecision('0.00000001', 'BTC')).toBe(false)
   })
 })

@@ -7,7 +7,7 @@ type DateFormat = { locale?: string; timeZone?: string }
 const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/u
 const DAY_LENGTH = 10
 
-function isCalendarDay(day: string): boolean {
+export function isCalendarDay(day: string): boolean {
   if (!DAY_PATTERN.test(day)) return false
   const parsed = new Date(`${day}T00:00:00Z`)
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, DAY_LENGTH) === day
