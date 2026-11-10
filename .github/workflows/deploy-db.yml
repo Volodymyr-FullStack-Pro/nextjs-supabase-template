@@ -14,19 +14,21 @@ permissions:
   contents: read
 
 concurrency:
-  group: deploy-db-${{ github.ref_name }}
+  group: deploy-db-${{ github.ref }}
   cancel-in-progress: false # миграцию не обрываем на середине
 
 jobs:
   deploy:
-    name: Supabase ${{ github.ref_name == 'production' && 'production' || 'staging' }}
-    # В самом шаблоне (репозиторий-шаблон) не запускается; в проекте — только из main и production.
-    if: ${{ !github.event.repository.is_template && (github.ref_name == 'main' || github.ref_name == 'production') }}
+    name: Supabase ${{ github.ref == 'refs/heads/production' && 'production' || 'staging' }}
+    # В самом шаблоне (репозиторий-шаблон) не запускается; в проекте — только из веток main и production.
+    # Сравнивается полный ref: короткое имя у тега «main» или «production» то же, что у ветки, а ручной запуск
+    # (workflow_dispatch) можно начать и с тега — с произвольного коммита.
+    if: ${{ !github.event.repository.is_template && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # Секреты и переменные — в GitHub Environment; у production обязательное подтверждение (required reviewers).
     # Секрет получает только шаг, которому он нужен (env шага): сторонние actions — checkout, setup-cli — их не видят.
-    environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
+    environment: ${{ github.ref == 'refs/heads/production' && 'production' || 'staging' }}
     steps:
       - name: Check environment secrets
         id: secrets
@@ -40,7 +42,7 @@ jobs:
             [ -n "${!name}" ] || missing="$missing $name"
           done
           if [ -n "$missing" ]; then
-            echo "::warning::Выкладка базы пропущена: в окружении ${{ github.ref_name == 'production' && 'production' || 'staging' }} не заданы секреты:$missing (docs/release.md)"
+            echo "::warning::Выкладка базы пропущена: в окружении ${{ github.ref == 'refs/heads/production' && 'production' || 'staging' }} не заданы секреты:$missing (docs/release.md)"
             echo "ready=false" >> "$GITHUB_OUTPUT"
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"
@@ -81,9 +83,14 @@ jobs:
           fi
           supabase network-restrictions get --remote="$SUPABASE_PROJECT_REF" --experimental -o json > "$current"
           jq -e '.config | type == "object"' "$current" > /dev/null
+          # Переменная SUPABASE_NETWORK_RESTRICTED=true говорит «порт закрыт». Проект, где ограничения не применены
+          # и список пуст, этому противоречит при любом эталоне: порт открыт всем либо список ещё применяется.
+          # Идти дальше нельзя — выкладка прошла бы зелёной при открытом порте, а возврат к эталону не выполнился бы.
           if jq -e '.status != "applied" and ([.config.dbAllowedCidrs[]?, .config.dbAllowedCidrsV6[]?] | length == 0)' "$current" > /dev/null; then
-            echo "::notice::Сетевые ограничения не применены: порт базы и так открыт"
-            exit 0
+            echo "::error::SUPABASE_NETWORK_RESTRICTED=true, но сетевые ограничения в проекте не применены и список пуст: порт базы открыт не по эталону. Примените эталон в Database → Network Restrictions (пустой эталон — «Restrict all access») и повторите запуск; если ограничения только что меняли — повторите через минуту; если порт должен быть открыт — снимите переменную SUPABASE_NETWORK_RESTRICTED."
+            echo "В проекте: $(jq -c '{status, config}' "$current")"
+            echo "Эталон:    $(jq -c . "$reference")"
+            exit 1
           fi
           if ! jq -e --slurpfile reference "$reference" \
             '[.config.dbAllowedCidrs, .config.dbAllowedCidrsV6 | . // [] | unique] == [$reference[0].dbAllowedCidrs, $reference[0].dbAllowedCidrsV6]' \
@@ -108,10 +115,11 @@ jobs:
           echo "opened=true" >> "$GITHUB_OUTPUT"
           supabase network-restrictions update --remote="$SUPABASE_PROJECT_REF" --db-allow-cidr "$runner_ip/32" --append --experimental --yes
           for _ in $(seq 1 30); do
-            supabase network-restrictions get --remote="$SUPABASE_PROJECT_REF" --experimental -o json | jq -e '.status == "applied"' > /dev/null && exit 0
+            supabase network-restrictions get --remote="$SUPABASE_PROJECT_REF" --experimental -o json \
+              | jq -e --arg runner "$runner_ip/32" '.status == "applied" and ((.config.dbAllowedCidrs // []) | index($runner) != null)' > /dev/null && exit 0
             sleep 2
           done
-          echo "::error::Supabase не применил временное правило за минуту"
+          echo "::error::Supabase не применил временное правило за минуту (адреса раннера нет в применённом списке)"
           exit 1
       - name: Link project
         if: steps.secrets.outputs.ready == 'true'
@@ -134,7 +142,9 @@ jobs:
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: |
           reference="$RUNNER_TEMP/network-reference.json"
-          curl -fsS -X POST "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/network-restrictions/apply" \
+          # Запрос ставит ровно эталон, поэтому повтор безопасен: при сбое сети адрес раннера не остаётся в списке.
+          curl -fsS --max-time 30 --retry 3 --retry-all-errors --retry-delay 2 \
+            -X POST "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/network-restrictions/apply" \
             -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H 'Content-Type: application/json' \
             -d "$(jq -c . "$reference")" > "$RUNNER_TEMP/network-restrictions-restored.json"
           if ! jq -e --slurpfile reference "$reference" \
