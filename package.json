@@ -122,5 +122,10 @@
       "prettier --write"
     ],
     "package-lock.json": "node scripts/check-lock.mjs"
+  },
+  "allowScripts": {
+    "esbuild": false,
+    "fsevents": false,
+    "simple-git-hooks": false
   }
 }
