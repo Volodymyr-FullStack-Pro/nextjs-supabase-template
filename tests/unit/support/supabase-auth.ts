@@ -1,5 +1,6 @@
 type Cookie = { name: string; value: string; options: Record<string, unknown> }
-export type SetAllCookies = (cookies: Cookie[], headers: Record<string, string>) => void
+type SetAllCookies = (cookies: Cookie[], headers: Record<string, string>) => void
+export type CookieMethods = { getAll?: () => unknown; setAll?: SetAllCookies }
 type AuthError = { message: string; status: number }
 
 export type AuthState = {
@@ -34,21 +35,26 @@ export const AAL1_UNCONFIRMED_FACTOR = aal1({ factors: [{ status: 'unverified' }
 export const AAL2 = signedOut({ claims: { sub: USER_ID, aal: 'aal2' } })
 
 let current: AuthState | undefined
+let seenCookies: unknown
 
 export function setAuthState(state: AuthState | undefined): void {
   current = state
+  seenCookies = undefined
 }
+
+export const cookiesSeenBySupabase = () => seenCookies
 
 function authState(): AuthState {
   if (!current) throw new Error('Тест не задал состояние Supabase Auth: setAuthState(...)')
   return current
 }
 
-export function fakeSupabase(setAll?: SetAllCookies) {
+export function fakeSupabase({ getAll, setAll }: CookieMethods = {}) {
   return {
     auth: {
       getClaims: () => {
         const { claims, claimsError, refreshedCookie } = authState()
+        seenCookies = getAll?.()
         if (refreshedCookie) setAll?.([refreshedCookie], { 'Cache-Control': NO_STORE })
         return Promise.resolve(
           claims ? { data: { claims }, error: null } : { data: null, error: claimsError },

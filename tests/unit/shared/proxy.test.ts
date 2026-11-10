@@ -11,15 +11,16 @@ import {
   AAL2,
   AUTH_OUTAGE,
   type AuthState,
+  type CookieMethods,
+  cookiesSeenBySupabase,
   NO_STORE,
   REJECTED_TOKEN,
   REVOKED_SESSION,
-  type SetAllCookies,
   setAuthState,
   SIGNED_OUT,
 } from '../support/supabase-auth'
 
-type ClientOptions = { cookies: { setAll: SetAllCookies } }
+type ClientOptions = { cookies: CookieMethods }
 
 const ORIGIN = 'http://localhost:3100'
 const SESSION_COOKIE = 'sb-test-auth-token'
@@ -33,7 +34,7 @@ vi.mock('@supabase/ssr', async () => {
   const { fakeSupabase } = await import('../support/supabase-auth')
   return {
     createServerClient: (_url: string, _key: string, options: ClientOptions) =>
-      fakeSupabase(options.cookies.setAll),
+      fakeSupabase(options.cookies),
   }
 })
 
@@ -182,6 +183,18 @@ describe('proxy', () => {
       await expect(outcomeOf(response)).resolves.toBe(expected)
     },
   )
+
+  it('reads the session from the cookies of the request', async () => {
+    setAuthState(AAL2)
+
+    await proxy(
+      new NextRequest(`${ORIGIN}${PROTECTED.page}`, {
+        headers: { cookie: `${SESSION_COOKIE}=from-browser` },
+      }),
+    )
+
+    expect(cookiesSeenBySupabase()).toEqual([{ name: SESSION_COOKIE, value: 'from-browser' }])
+  })
 
   it('hands the refreshed session cookie to the page it serves', async () => {
     setAuthState({ ...AAL2, refreshedCookie: REFRESHED })
