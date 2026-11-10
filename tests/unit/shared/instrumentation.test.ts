@@ -1,15 +1,81 @@
-import type { ErrorEvent } from '@sentry/nextjs'
-import { describe, expect, it, vi } from 'vitest'
+import * as Sentry from '@sentry/nextjs'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { withoutRequestDetails } from '@/instrumentation'
+import { register, sentryOptions, withoutRequestDetails } from '@/instrumentation'
+
+import {
+  queryFakePostgrest,
+  SECRETS,
+  VISITOR_REQUEST,
+  VISITOR_REQUEST_WITH_BODY,
+} from '../support/sentry-request'
 
 vi.mock('server-only', () => ({}))
-vi.mock('@sentry/nextjs', () => ({ init: vi.fn(), captureRequestError: vi.fn() }))
+
+type SentryOptions = NonNullable<Parameters<typeof Sentry.init>[0]>
+
+const DSN = 'http://public@127.0.0.1:9/1'
+const FLUSH_TIMEOUT_MS = 2000
+const FAILURE = 'notes.insert: connection reset'
+const COLLECTED_BY_SDK_DEFAULTS = ['address', 'header', 'query', 'filter', 'body'] as const
+
+async function sentDuringRequest(options: SentryOptions, request: object): Promise<string> {
+  const envelopes: unknown[] = []
+  Sentry.init({
+    ...options,
+    transport: () => ({
+      send: (envelope: unknown) => {
+        envelopes.push(envelope)
+        return Promise.resolve({})
+      },
+      flush: () => Promise.resolve(true),
+    }),
+  })
+  await Sentry.withIsolationScope(async (scope) => {
+    scope.setSDKProcessingMetadata({ normalizedRequest: request, ipAddress: SECRETS.address })
+    await queryFakePostgrest()
+    Sentry.captureException(new Error(FAILURE))
+  })
+  await Sentry.close(FLUSH_TIMEOUT_MS)
+  return JSON.stringify(envelopes)
+}
+
+const leakedIn = (sent: string) =>
+  Object.entries(SECRETS)
+    .filter(([, secret]) => sent.includes(secret))
+    .map(([kind]) => kind)
+
+describe('Sentry events', () => {
+  it('leave the server without the visitor address, cookies, headers, body or query', async () => {
+    const sent = await sentDuringRequest(sentryOptions(DSN), VISITOR_REQUEST_WITH_BODY)
+
+    expect(sent).toContain(FAILURE)
+    expect(sent).toContain('"request":{"method":"POST","url":"https://app.example/notes"}')
+    expect(sent).toContain('/rest/v1/notes"')
+    expect(leakedIn(sent)).toEqual([])
+  })
+
+  it('are collected without them even before the beforeSend filter runs', async () => {
+    const { dsn, dataCollection } = sentryOptions(DSN)
+
+    const sent = await sentDuringRequest({ dsn, dataCollection }, VISITOR_REQUEST)
+
+    expect(sent).toContain(FAILURE)
+    expect(leakedIn(sent)).toEqual([])
+  })
+
+  it('would carry them under the SDK defaults, so the checks above are not vacuous', async () => {
+    const sent = await sentDuringRequest({ dsn: DSN }, VISITOR_REQUEST_WITH_BODY)
+
+    expect(leakedIn(sent)).toEqual(expect.arrayContaining([...COLLECTED_BY_SDK_DEFAULTS]))
+  })
+})
 
 describe('withoutRequestDetails', () => {
-  it('keeps the request method and path but drops headers, cookies, body and query', () => {
+  it('keeps the request method and path but drops the user, headers, cookies, body and query', () => {
     const event = {
       type: undefined,
+      user: { ip_address: '203.0.113.77', id: 'user-1' },
       request: {
         method: 'POST',
         url: 'https://app.example/notes?q=secret%20search',
@@ -18,7 +84,7 @@ describe('withoutRequestDetails', () => {
         cookies: { 'sb-token': '…' },
         data: { amount: '1234.56' },
       },
-    } as unknown as ErrorEvent
+    } as unknown as Sentry.ErrorEvent
 
     expect(withoutRequestDetails(event)).toEqual({
       type: undefined,
@@ -26,9 +92,50 @@ describe('withoutRequestDetails', () => {
     })
   })
 
-  it('returns an event without request data unchanged', () => {
-    const event = { type: undefined, message: 'auth-failure' } as unknown as ErrorEvent
+  it('keeps an event without request data as it is', () => {
+    const event = { type: undefined, message: 'auth-failure' } as unknown as Sentry.ErrorEvent
 
-    expect(withoutRequestDetails(event)).toBe(event)
+    expect(withoutRequestDetails(event)).toEqual(event)
+  })
+})
+
+describe('register', () => {
+  afterEach(async () => {
+    vi.unstubAllEnvs()
+    await Sentry.close(FLUSH_TIMEOUT_MS)
+  })
+
+  it('does not start Sentry without SENTRY_DSN', () => {
+    vi.stubEnv('SENTRY_DSN', '')
+
+    register()
+
+    expect(Sentry.isEnabled()).toBe(false)
+  })
+
+  it('starts Sentry with every data collection option off and without tracing', () => {
+    vi.stubEnv('SENTRY_DSN', DSN)
+
+    register()
+
+    const client = Sentry.getClient()
+    expect(Sentry.isEnabled()).toBe(true)
+    expect(client?.getDsn()?.host).toBe('127.0.0.1')
+    expect(client?.getOptions().beforeSend).toBe(withoutRequestDetails)
+    expect(client?.getOptions().tracesSampleRate).toBeUndefined()
+    expect(client?.getDataCollectionOptions()).toEqual({
+      userInfo: false,
+      cookies: false,
+      httpHeaders: { request: false, response: false },
+      httpBodies: [],
+      urlQueryParams: false,
+      graphQL: { document: false, variables: false },
+      genAI: { inputs: false, outputs: false },
+      mcp: { inputs: false, outputs: false },
+      databaseQueryData: false,
+      queues: false,
+      stackFrameVariables: false,
+      frameContextLines: 5,
+    })
   })
 })
