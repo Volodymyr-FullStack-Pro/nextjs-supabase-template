@@ -1,16 +1,9 @@
 {
-  "extraKnownMarketplaces": {
-    "claude-kit": {
-      "source": { "source": "github", "repo": "Volodymyr-FullStack-Pro/claude-kit" }
-    }
-  },
-  "enabledPlugins": {
-    "dev-kit@claude-kit": true
-  },
   "permissions": {
     "allow": [
       "Bash(npm test:*)",
       "Bash(npm run check:*)",
+      "Bash(npm run gate:*)",
       "Bash(npm run lint:*)",
       "Bash(npm run typecheck:*)",
       "Bash(npm run test:*)",
@@ -22,11 +15,13 @@
       "Bash(npm run budget:*)",
       "Bash(npm run db:types:*)",
       "Bash(npm run db:check-migrations:*)",
+      "Bash(npm run db:new:*)",
       "Bash(npm run totp:*)",
       "Bash(supabase test db:*)",
       "Bash(supabase db advisors:*)",
       "Bash(supabase db lint:*)",
       "Bash(supabase status:*)",
+      "Bash(supabase migration up:*)",
       "Bash(git status:*)",
       "Bash(git diff:*)",
       "Bash(git log:*)",
@@ -44,6 +39,8 @@
       "Read(./.env.development*)",
       "Read(./.env.staging*)",
       "Read(./.env.production*)",
+      "Read(./.vercel/**)",
+      "Read(./supabase/.env*)",
       "mcp__clickup__clickup_delete_task",
       "mcp__clickup__clickup_delete_comment",
       "mcp__clickup__clickup_delete_chat_message"
