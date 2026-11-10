@@ -19,6 +19,7 @@ export async function countAll(): Promise<number> {
   const embedded = await admin.from('entries').select('id, owner(*)') // expect: local/data-access
   const inserted = await admin.from('entries').insert({ amount: '1' }).select() // expect: local/data-access
   const session = await admin.auth.getSession() // expect: local/data-access
+  // expect: local/no-unchecked-response
   const found = [everything.data, embedded.data, inserted.data, session.data.session]
   return (count ?? 0) + found.length
 }

@@ -7,6 +7,12 @@ declare function listEntries(userId: string): Promise<Entry[]>
 
 export const clients = Object.keys(safeAction)
 
+export async function currentUser() {
+  const { verifySession: readSession } = await import('@/shared/lib/session') // expect: local/behind-sign-in
+  const { actionClient } = await import('@/shared/lib/safe-action') // expect: local/behind-sign-in
+  return { session: await readSession(), actionClient }
+}
+
 export async function EntriesList() {
   const session = await verifySession()
   const entries = await listEntries(session.userId)

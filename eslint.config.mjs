@@ -220,8 +220,9 @@ const noComments = {
 // Защита денег и доступа (см. .claude/rules/code-style.md и architecture.md). Каждая группа — своё локальное правило:
 // в выводе видно, что сработало, и группы разных слоёв не перетирают друг друга (во flat config позднее правило
 // заменяет опции целиком). Сообщение правила говорит, как исправить. Пробы на каждое правило — tests/lint-rules
-// (npm run lint:rules). Комментарием эти правила не отключаются (disableDirectivesConfig): ложное срабатывание —
-// правка правила здесь и новая проба.
+// (npm run lint:rules). Отключение этих правил комментарием — ошибка (guardDirectivesConfig: eslint-disable защиты и
+// комментарий-конфигурация вида eslint правило: "off"), а отключение самих этих двух проверок ловит второй проход
+// npm run lint:rules, который линтует src без учёта комментариев. Ложное срабатывание — правка правила здесь и новая проба.
 const syntaxRule = (description, checks) => ({
   meta: { type: 'problem', docs: { description }, schema: [] },
   create: (context) =>
@@ -244,13 +245,15 @@ const MONEY_OPERATOR =
   'арифметика и сравнение сумм — через money(): money(a).plus(b), money(a).gt(b); операторы на строках сравнивают по буквам, на числах теряют копейки'
 const MONEY_CONVERSION =
   'Number(), parseFloat и унарный плюс теряют точность суммы: расчёт — money(a), на экран — formatMoney(a, { currency }), число для графика — money(a).toNumber() в ui'
+// number, number | null, number | undefined (и необязательное поле): сумма «может отсутствовать» — самая частая форма.
+const NUMBER_TYPE = ':matches(TSNumberKeyword, TSUnionType:has(> TSNumberKeyword))'
 const moneyAsNumber = syntaxRule('Суммы — строка или Money, не number', [
   {
-    selector: `TSPropertySignature[key.name=${MONEY_NAME}] > TSTypeAnnotation > TSNumberKeyword`,
+    selector: `:matches(TSPropertySignature, PropertyDefinition)[key.name=${MONEY_NAME}] > TSTypeAnnotation > ${NUMBER_TYPE}`,
     message: MONEY_AS_NUMBER,
   },
   {
-    selector: `Identifier[name=${MONEY_NAME}] > TSTypeAnnotation > TSNumberKeyword`,
+    selector: `Identifier[name=${MONEY_NAME}] > TSTypeAnnotation > ${NUMBER_TYPE}`,
     message: MONEY_AS_NUMBER,
   },
   {
@@ -359,6 +362,8 @@ const noIgnoredResult = {
 
 // Server Action — открытая точка входа (вызывается прямым POST): только цепочка safe-action, которая проверяет сессию,
 // второй фактор и вход; владелец записи — из сессии, а не из входа.
+// Клиенты actions — четыре имени из src/shared/lib/safe-action.ts; свой клиент модуль собрать не может (local/action-client).
+const ACTION_CLIENT = '/^(authActionClient|mfaActionClient|setupActionClient|actionClient)$/'
 const USE_SERVER_FILE = 'Program:has(> ExpressionStatement[directive="use server"])'
 const SERVER_ACTION =
   'Server Action — только цепочка safe-action: export const x = authActionClient.inputSchema(Schema).action(…) (@/shared/lib/safe-action); обычный экспорт не проверяет ни сессию, ни второй фактор, ни вход'
@@ -368,7 +373,7 @@ const serverAction = syntaxRule('Server Action — только через safe-
     message: SERVER_ACTION,
   },
   {
-    selector: `${USE_SERVER_FILE} > ExportNamedDeclaration > VariableDeclaration > VariableDeclarator:not(:has(CallExpression Identifier[name=/[aA]ctionClient$/]))`,
+    selector: `${USE_SERVER_FILE} > ExportNamedDeclaration > VariableDeclaration > VariableDeclarator:not(:has(CallExpression Identifier[name=${ACTION_CLIENT}]))`,
     message: SERVER_ACTION,
   },
   {
@@ -415,16 +420,55 @@ const behindSignIn = syntaxRule('За входом — requireVerifiedSession и
     selector: `ImportDeclaration[source.value=${SAFE_ACTION_FILE}] > ImportNamespaceSpecifier`,
     message: UNVERIFIED_ACTION,
   },
+  { selector: `ImportExpression[source.value=${SESSION_FILE}]`, message: UNVERIFIED_SESSION },
+  { selector: `ImportExpression[source.value=${SAFE_ACTION_FILE}]`, message: UNVERIFIED_ACTION },
+])
+
+// Клиент actions собирает только src/shared/lib/safe-action.ts: свой createSafeActionClient() в модуле — action без
+// сессии, второго фактора, замера и отчёта об ошибке. Хуки (next-safe-action/hooks) и типы пакета доступны всем.
+const OWN_ACTION_CLIENT =
+  'клиент actions собирает только src/shared/lib/safe-action.ts: action — цепочка authActionClient; нужна функция пакета next-safe-action — добавьте её экспорт туда'
+const actionClient = syntaxRule('next-safe-action импортирует только shared/lib/safe-action.ts', [
+  {
+    selector:
+      'ImportDeclaration[importKind!="type"][source.value="next-safe-action"]:has(> :matches(ImportSpecifier[importKind!="type"], ImportDefaultSpecifier, ImportNamespaceSpecifier))',
+    message: OWN_ACTION_CLIENT,
+  },
+  { selector: 'ImportExpression[source.value="next-safe-action"]', message: OWN_ACTION_CLIENT },
+  {
+    selector:
+      ':matches(ExportNamedDeclaration, ExportAllDeclaration)[exportKind!="type"][source.value="next-safe-action"]',
+    message: OWN_ACTION_CLIENT,
+  },
 ])
 
 // Клиент Supabase и подключение к базе создаёт только shared/infrastructure: свой createClient(url, secretKey)
 // или postgres(databaseUrl) в репозитории — тот же обход RLS, что и createAdminClient(), но мимо запрета BYPASSES_RLS.
+const RAW_CLIENT_PACKAGE = '/^(@supabase\\/(supabase-js|ssr)|postgres|drizzle-orm\\/postgres-js)$/'
+const RAW_CLIENT =
+  'клиент Supabase и подключение к базе создаёт только src/shared/infrastructure: в репозитории — createClient() из @/shared/infrastructure/supabase/server (тип можно: import type)'
 const rawClient = syntaxRule('Клиент базы создаёт только shared/infrastructure', [
   {
-    selector:
-      'ImportDeclaration[importKind!="type"][source.value=/^(@supabase\\/(supabase-js|ssr)|postgres|drizzle-orm\\/postgres-js)$/]',
+    selector: `ImportDeclaration[importKind!="type"][source.value=${RAW_CLIENT_PACKAGE}]`,
+    message: RAW_CLIENT,
+  },
+  { selector: `ImportExpression[source.value=${RAW_CLIENT_PACKAGE}]`, message: RAW_CLIENT },
+])
+
+// Динамический import() не виден no-restricted-imports: те же запреты обхода RLS повторены для него, а источник,
+// который не строка, проверить нельзя вовсе.
+const RLS_BYPASS_FILE =
+  '/(^|\\/)infrastructure\\/(db(\\/[^\\/]+)?|supabase\\/admin)(\\.[cm]?[jt]s)?$/'
+const dynamicImport = syntaxRule('Динамический import не обходит запреты импорта', [
+  {
+    selector: `ImportExpression[source.value=${RLS_BYPASS_FILE}]`,
     message:
-      'клиент Supabase и подключение к базе создаёт только src/shared/infrastructure: в репозитории — createClient() из @/shared/infrastructure/supabase/server (тип можно: import type)',
+      'db() и createAdminClient() обходят RLS: только в shared/infrastructure и *.admin.ts — и через import() тоже',
+  },
+  {
+    selector: 'ImportExpression:not([source.type="Literal"])',
+    message:
+      'import() — только со строкой-литералом: путь, собранный из частей, не проверить на обход RLS и границы слоёв',
   },
 ])
 
@@ -454,21 +498,82 @@ const dataAccess = syntaxRule('Репозиторий проверяет error �
   },
 ])
 
+// Тот же отказ базы, когда ответ не деструктурирован: result.data ?? [] или .then(({ data }) => …). Правило смотрит на тип:
+// у ответа PostgREST, в котором ещё возможен отказ (PostgrestResponseFailure), data и count читать нельзя; после
+// if (result.error) throw … компилятор сужает тип до успешного ответа, и обращение становится законным.
+const RESPONSE_FIELDS = new Set(['data', 'count'])
+const propertyName = (node) => {
+  if (node.type === 'Identifier') return node.name
+  return node.type === 'Literal' ? String(node.value) : undefined
+}
+const noUncheckedResponse = {
+  meta: {
+    type: 'problem',
+    docs: { description: 'data и count ответа Supabase читаются после проверки error' },
+    messages: {
+      unchecked:
+        'ответ Supabase прочитан без проверки error: сначала if (result.error) throw new Error(`модуль.действие: ${result.error.message}`) или const { data, error } = await … — иначе отказ базы выглядит как пустой список',
+    },
+    schema: [],
+  },
+  create(context) {
+    const services = context.sourceCode.parserServices
+    const mayHaveFailed = (node) =>
+      typeParts(services.getTypeAtLocation(node)).some(
+        (part) => part.getSymbol()?.getName() === 'PostgrestResponseFailure',
+      )
+    return {
+      MemberExpression(node) {
+        const name =
+          node.computed && node.property.type !== 'Literal'
+            ? undefined
+            : propertyName(node.property)
+        if (name !== undefined && RESPONSE_FIELDS.has(name) && mayHaveFailed(node.object)) {
+          context.report({ node, messageId: 'unchecked' })
+        }
+      },
+      ObjectPattern(node) {
+        // объявление const { data } = await … уже ловит local/data-access — здесь параметры и остальные формы
+        if (
+          node.parent.type === 'VariableDeclarator' &&
+          node.parent.init?.type === 'AwaitExpression'
+        )
+          return
+        const names = node.properties.map((property) =>
+          property.type === 'Property' ? propertyName(property.key) : undefined,
+        )
+        if (names.includes('error') || !names.some((name) => RESPONSE_FIELDS.has(name))) return
+        if (mayHaveFailed(node)) context.report({ node, messageId: 'unchecked' })
+      },
+    }
+  },
+}
+
 // /api/cron/* открыт в proxy.ts (сессии у планировщика нет): без проверки секрета это привилегированная операция по адресу без входа.
 const HTTP_HANDLER = '/^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)$/'
-const CRON_CHECK =
-  'IfStatement > UnaryExpression[operator="!"] > CallExpression[callee.name="isCronRequest"]'
+// Проверка — первый оператор тела и с выходом: проверка после работы или без return ничего не закрывает.
+const cronCheckFirst = (body) =>
+  `[${body}.0.type="IfStatement"][${body}.0.test.type="UnaryExpression"][${body}.0.test.operator="!"][${body}.0.test.argument.callee.name="isCronRequest"]:matches([${body}.0.consequent.type="ReturnStatement"], [${body}.0.consequent.body.0.type="ReturnStatement"])`
 const CRON_SECRET =
-  'маршрут /api/cron/* открыт в proxy.ts: обработчик начинается с if (!isCronRequest(request)) return new Response(null, { status: 401 }) — isCronRequest из @/shared/lib/cron'
+  'маршрут /api/cron/* открыт в proxy.ts: первая строка обработчика — if (!isCronRequest(request)) return new Response(null, { status: 401 }) — isCronRequest из @/shared/lib/cron'
+const CRON_HANDLER_IN_PLACE =
+  'обработчик плановой задачи объявляется в route.ts: export function GET(request) { if (!isCronRequest(request)) return … } — переэкспорт, деструктуризация и обёртка прячут обработчик от проверки секрета'
 const cronSecret = syntaxRule('Плановая задача проверяет секрет', [
   {
-    selector: `ExportNamedDeclaration > FunctionDeclaration[id.name=${HTTP_HANDLER}]:not(:has(${CRON_CHECK}))`,
+    selector: `ExportNamedDeclaration > FunctionDeclaration[id.name=${HTTP_HANDLER}]:not(${cronCheckFirst('body.body')})`,
     message: CRON_SECRET,
   },
   {
-    selector: `ExportNamedDeclaration > VariableDeclaration > VariableDeclarator[id.name=${HTTP_HANDLER}]:not(:has(${CRON_CHECK}))`,
+    selector: `ExportNamedDeclaration > VariableDeclaration > VariableDeclarator[id.name=${HTTP_HANDLER}]:not(${cronCheckFirst('init.body.body')})`,
     message: CRON_SECRET,
   },
+  {
+    selector:
+      'ExportNamedDeclaration > VariableDeclaration > VariableDeclarator > :matches(ObjectPattern, ArrayPattern)',
+    message: CRON_HANDLER_IN_PLACE,
+  },
+  { selector: 'ExportNamedDeclaration > ExportSpecifier', message: CRON_HANDLER_IN_PLACE },
+  { selector: 'ExportAllDeclaration', message: CRON_HANDLER_IN_PLACE },
 ])
 
 // enum: числовой принимает любое число, а значение не совпадает со строкой из базы и Zod — набор значений задаёт z.enum.
@@ -489,8 +594,11 @@ const local = {
     'no-ignored-result': noIgnoredResult,
     'server-action': serverAction,
     'behind-sign-in': behindSignIn,
+    'action-client': actionClient,
     'raw-client': rawClient,
+    'dynamic-import': dynamicImport,
     'data-access': dataAccess,
+    'no-unchecked-response': noUncheckedResponse,
     'cron-secret': cronSecret,
     'no-enum': noEnum,
   },
@@ -504,11 +612,23 @@ const guardsConfig = {
     'local/money-as-number': 'error',
     'local/no-money-operators': 'error',
     'local/no-ignored-result': 'error',
-    'local/server-action': 'error',
+    'local/no-unchecked-response': 'error',
     'local/no-enum': 'error',
     // as на границе — только после проверки: сужение типа без Zod пропускает чужую форму данных
     '@typescript-eslint/no-unsafe-type-assertion': 'error',
   },
+}
+// Защиты доступа действуют и в стороннем shadcn (src/shared/ui): исключение для его стиля их не снимает.
+const accessGuardsConfig = {
+  files: ['src/**/*.{ts,tsx}'],
+  plugins: { local },
+  rules: { 'local/server-action': 'error' },
+}
+const actionClientConfig = {
+  files: ['src/**/*.{ts,tsx}'],
+  ignores: ['src/shared/lib/safe-action.ts'],
+  plugins: { local },
+  rules: { 'local/action-client': 'error' },
 }
 const pureCoreConfig = {
   files: ['src/modules/*/domain/**', 'src/modules/*/application/**', 'src/shared/domain/**'],
@@ -528,7 +648,7 @@ const behindSignInConfig = {
 }
 const rawClientConfig = {
   files: ['src/**/*.{ts,tsx}'],
-  ignores: ['src/shared/infrastructure/**', 'src/proxy.ts', ...NOT_VENDOR_UI],
+  ignores: ['src/shared/infrastructure/**', 'src/proxy.ts'],
   plugins: { local },
   rules: { 'local/raw-client': 'error' },
 }
@@ -741,24 +861,48 @@ const reactSafetyConfig = {
   },
 }
 // eslint-disable — только с именем правила и причиной после «--»; лишняя директива — ошибка
+const DIRECTIVE_FILES = ['src/**/*.{ts,tsx}', 'scripts/**/*.mjs', 'tests/**/*.{ts,tsx}']
 const disableDirectivesConfig = {
   ...eslintComments.recommended,
-  files: ['src/**/*.{ts,tsx}', 'scripts/**/*.mjs', 'tests/**/*.{ts,tsx}'],
+  files: DIRECTIVE_FILES,
   ignores: ['src/shared/ui/**', '!src/shared/ui/form/**'],
   rules: {
     ...eslintComments.recommended.rules,
     '@eslint-community/eslint-comments/disable-enable-pair': ['error', { allowWholeFile: true }],
     '@eslint-community/eslint-comments/require-description': 'error',
-    // границы слоёв, обход RLS, деньги и точки входа комментарием не отключаются: иначе любая защита снимается одной строкой
-    '@eslint-community/eslint-comments/no-restricted-disable': [
+  },
+}
+// Границы слоёв, обход RLS, деньги и точки входа комментарием не снимаются — иначе любая защита отключается одной
+// строкой. Комментарий умеет это двумя способами, и оба — ошибка, в том числе в стороннем shadcn:
+//   eslint-disable <защита>          → no-restricted-disable (список ниже — он же список второго прохода);
+//   eslint <правило>: "off" (конфиг) → no-use: из комментариев ESLint разрешены только eslint-disable* и eslint-enable.
+// Эти два правила — тоже правила: их можно отключить тем же комментарием. Поэтому npm run lint:rules вторым проходом
+// линтует src с allowInlineConfig: false (комментарии не действуют вовсе) и падает на любом сообщении правил из
+// списка UNDISABLEABLE. npm run lint один такой двойной обход не видит — видит npm run check (и CI).
+export const UNDISABLEABLE = [
+  'boundaries/*',
+  'no-restricted-imports',
+  'no-restricted-properties',
+  'local/*',
+  '!local/no-comments',
+  '@typescript-eslint/no-explicit-any',
+  '@typescript-eslint/consistent-type-assertions',
+]
+const guardDirectivesConfig = {
+  ...eslintComments.recommended,
+  files: DIRECTIVE_FILES,
+  rules: {
+    '@eslint-community/eslint-comments/no-restricted-disable': ['error', ...UNDISABLEABLE],
+    '@eslint-community/eslint-comments/no-use': [
       'error',
-      'boundaries/*',
-      'no-restricted-imports',
-      'no-restricted-properties',
-      'local/*',
-      '!local/no-comments',
-      '@typescript-eslint/no-explicit-any',
-      '@typescript-eslint/consistent-type-assertions',
+      {
+        allow: [
+          'eslint-disable',
+          'eslint-disable-line',
+          'eslint-disable-next-line',
+          'eslint-enable',
+        ],
+      },
     ],
   },
 }
@@ -941,6 +1085,12 @@ const bypassesRlsConfig = {
     'no-restricted-imports': ['error', { paths: [GLOBAL_DECIMAL], patterns: [BYPASSES_RLS] }],
   },
 }
+const dynamicImportConfig = {
+  files: ['src/**/*.{ts,tsx}'],
+  ignores: RLS_BYPASS_ALLOWED,
+  plugins: { local },
+  rules: { 'local/dynamic-import': 'error' },
+}
 const globalDecimalConfig = {
   files: RLS_BYPASS_ALLOWED,
   rules: { 'no-restricted-imports': ['error', { paths: [GLOBAL_DECIMAL] }] },
@@ -994,10 +1144,13 @@ export default defineConfig([
   codeStyleTsConfig,
   reactSafetyConfig,
   disableDirectivesConfig,
+  guardDirectivesConfig,
   unitTestsConfig,
   e2eTestsConfig,
   boundaryOnlyTypesConfig,
   guardsConfig,
+  accessGuardsConfig,
+  actionClientConfig,
   pureCoreConfig,
   useCaseConfig,
   behindSignInConfig,
@@ -1008,6 +1161,7 @@ export default defineConfig([
   envAccessConfig,
   vendorUiConfig,
   bypassesRlsConfig,
+  dynamicImportConfig,
   moneyConfig,
   globalDecimalConfig,
   sharedLibConfig,

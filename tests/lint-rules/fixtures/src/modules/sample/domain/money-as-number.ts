@@ -9,6 +9,22 @@ export type Payment = {
   quantity: number // expect: local/money-as-number
 }
 
+export type Draft = {
+  amount: number | null // expect: local/money-as-number
+  fee?: number | undefined // expect: local/money-as-number
+  price?: number // expect: local/money-as-number
+  note: number | null
+}
+
+export class Position {
+  quantity: number | undefined = undefined // expect: local/money-as-number
+}
+
+// expect: local/money-as-number
+export function withOptionalFee(net: string, fee?: number | null): string {
+  return `${net}:${String(fee)}`
+}
+
 export const PaymentInput = z.object({
   fee: z.number(), // expect: local/money-as-number
   taxRate: z.coerce.number(), // expect: local/money-as-number
