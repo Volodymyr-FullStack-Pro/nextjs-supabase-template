@@ -9,6 +9,7 @@ export const SECRETS = {
   query: 'secret-search',
   filter: 'secret-filter',
   token: 'secret-token',
+  logged: 'secret-log-line',
 } as const
 
 export const VISITOR_REQUEST = {

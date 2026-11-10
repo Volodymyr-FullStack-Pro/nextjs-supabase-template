@@ -39,10 +39,15 @@ export function withoutRequestDetails(event: Sentry.ErrorEvent): Sentry.ErrorEve
   return safe
 }
 
+export function withoutConsoleOutput(breadcrumb: Sentry.Breadcrumb): Sentry.Breadcrumb | null {
+  return breadcrumb.category === 'console' ? null : breadcrumb
+}
+
 export function sentryOptions(dsn: string) {
   return {
     dsn,
     dataCollection: COLLECT_NOTHING,
+    beforeBreadcrumb: withoutConsoleOutput,
     beforeSend: withoutRequestDetails,
   } satisfies SentryOptions
 }

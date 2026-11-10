@@ -1,7 +1,12 @@
 import * as Sentry from '@sentry/nextjs'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { register, sentryOptions, withoutRequestDetails } from '@/instrumentation'
+import {
+  register,
+  sentryOptions,
+  withoutConsoleOutput,
+  withoutRequestDetails,
+} from '@/instrumentation'
 
 import {
   queryFakePostgrest,
@@ -17,7 +22,16 @@ type SentryOptions = NonNullable<Parameters<typeof Sentry.init>[0]>
 const DSN = 'http://public@127.0.0.1:9/1'
 const FLUSH_TIMEOUT_MS = 2000
 const FAILURE = 'notes.insert: connection reset'
-const COLLECTED_BY_SDK_DEFAULTS = ['address', 'header', 'query', 'filter', 'body'] as const
+const COLLECTED_BY_SDK_DEFAULTS = [
+  'address',
+  'header',
+  'query',
+  'filter',
+  'body',
+  'logged',
+] as const
+
+vi.spyOn(console, 'info').mockImplementation(() => undefined)
 
 async function sentDuringRequest(options: SentryOptions, request: object): Promise<string> {
   const envelopes: unknown[] = []
@@ -34,6 +48,7 @@ async function sentDuringRequest(options: SentryOptions, request: object): Promi
   await Sentry.withIsolationScope(async (scope) => {
     scope.setSDKProcessingMetadata({ normalizedRequest: request, ipAddress: SECRETS.address })
     await queryFakePostgrest()
+    console.info(JSON.stringify({ type: 'payment-imported', amount: SECRETS.logged }))
     Sentry.captureException(new Error(FAILURE))
   })
   await Sentry.close(FLUSH_TIMEOUT_MS)
@@ -46,7 +61,7 @@ const leakedIn = (sent: string) =>
     .map(([kind]) => kind)
 
 describe('Sentry events', () => {
-  it('leave the server without the visitor address, cookies, headers, body or query', async () => {
+  it('leave the server without the visitor address, cookies, headers, body, query or log lines', async () => {
     const sent = await sentDuringRequest(sentryOptions(DSN), VISITOR_REQUEST_WITH_BODY)
 
     expect(sent).toContain(FAILURE)
@@ -56,9 +71,9 @@ describe('Sentry events', () => {
   })
 
   it('are collected without them even before the beforeSend filter runs', async () => {
-    const { dsn, dataCollection } = sentryOptions(DSN)
+    const { dsn, dataCollection, beforeBreadcrumb } = sentryOptions(DSN)
 
-    const sent = await sentDuringRequest({ dsn, dataCollection }, VISITOR_REQUEST)
+    const sent = await sentDuringRequest({ dsn, dataCollection, beforeBreadcrumb }, VISITOR_REQUEST)
 
     expect(sent).toContain(FAILURE)
     expect(leakedIn(sent)).toEqual([])
@@ -68,6 +83,15 @@ describe('Sentry events', () => {
     const sent = await sentDuringRequest({ dsn: DSN }, VISITOR_REQUEST_WITH_BODY)
 
     expect(leakedIn(sent)).toEqual(expect.arrayContaining([...COLLECTED_BY_SDK_DEFAULTS]))
+  })
+})
+
+describe('withoutConsoleOutput', () => {
+  it('drops what the application logs and keeps the other breadcrumbs', () => {
+    const request = { category: 'http', data: { url: 'http://127.0.0.1/rest/v1/notes' } }
+
+    expect(withoutConsoleOutput({ category: 'console', message: 'log line' })).toBeNull()
+    expect(withoutConsoleOutput(request)).toBe(request)
   })
 })
 
@@ -122,6 +146,7 @@ describe('register', () => {
     expect(Sentry.isEnabled()).toBe(true)
     expect(client?.getDsn()?.host).toBe('127.0.0.1')
     expect(client?.getOptions().beforeSend).toBe(withoutRequestDetails)
+    expect(client?.getOptions().beforeBreadcrumb).toBe(withoutConsoleOutput)
     expect(client?.getOptions().tracesSampleRate).toBeUndefined()
     expect(client?.getDataCollectionOptions()).toEqual({
       userInfo: false,
