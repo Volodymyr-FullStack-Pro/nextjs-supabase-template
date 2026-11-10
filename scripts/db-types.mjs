@@ -6,6 +6,8 @@ import postgres from 'postgres'
 
 const OUTPUT = 'src/shared/infrastructure/supabase/types.ts'
 const TABLE_INDENT = '      '
+const SECTION_INDENT = `${TABLE_INDENT}  `
+const WRITE_SECTIONS = ['Insert', 'Update']
 
 const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl) {
@@ -28,30 +30,69 @@ const numericColumns = await sql`
 `
 await sql.end()
 
+const columnLine = (column, type) =>
+  new RegExp(`^(\\s+${RegExp.escape(column)}\\??: )${type}$`, 'mu')
+
+function sectionRange(block, name) {
+  const start = block.indexOf(`\n${SECTION_INDENT}${name}: {`)
+  if (start < 0) return null
+  return { start, end: block.indexOf(`\n${SECTION_INDENT}}`, start) }
+}
+
+function numericToString(section, column) {
+  const rewritten = section.replace(columnLine(column, 'number( \\| null)?'), '$1string$2')
+  if (rewritten !== section) return rewritten
+  return columnLine(column, 'never').test(section) ? section : null
+}
+
+function rewriteSection(block, name, columns, unmatched) {
+  const range = sectionRange(block, name)
+  if (!range) return block
+  let section = block.slice(range.start, range.end)
+  for (const column of columns) {
+    const rewritten = numericToString(section, column)
+    if (rewritten === null) unmatched.push(`${column} (${name})`)
+    else section = rewritten
+  }
+  return block.slice(0, range.start) + section + block.slice(range.end)
+}
+
+function rewriteTable(block, columns) {
+  const unmatched = []
+  const row = sectionRange(block, 'Row')
+  const rowSection = row ? block.slice(row.start, row.end) : ''
+  for (const column of columns) {
+    if (!columnLine(column, 'number( \\| null)?').test(rowSection))
+      unmatched.push(`${column} (Row)`)
+  }
+  let rewritten = block
+  for (const name of WRITE_SECTIONS) {
+    rewritten = rewriteSection(rewritten, name, columns, unmatched)
+  }
+  return { block: rewritten, unmatched }
+}
+
 const columnsByTable = Map.groupBy(numericColumns, (column) => column.table_name)
 let output = formatted
-const unmatched = []
+const failures = []
 for (const [table, columns] of columnsByTable) {
   const start = output.indexOf(`\n${TABLE_INDENT}${table}: {`)
   if (start < 0) continue
   const end = output.indexOf(`\n${TABLE_INDENT}}`, start)
-  let block = output.slice(start, end)
-  for (const { column_name: column } of columns) {
-    const pattern = new RegExp(`^(\\s+${RegExp.escape(column)}\\??: )number$`, 'gmu')
-    let replaced = 0
-    block = block.replaceAll(pattern, (_match, prefix) => {
-      replaced += 1
-      return `${prefix}string`
-    })
-    if (replaced === 0) unmatched.push(`${table}.${column}`)
-  }
+  const { block, unmatched } = rewriteTable(
+    output.slice(start, end),
+    columns.map((column) => column.column_name),
+  )
+  failures.push(...unmatched.map((place) => `${table}.${place}`))
   output = output.slice(0, start) + block + output.slice(end)
 }
-if (unmatched.length > 0) {
+if (failures.length > 0) {
   console.error(
-    `numeric-колонки не найдены в ${OUTPUT} (формат вывода изменился?): ${unmatched.join(', ')}`,
+    `numeric-колонки не найдены в ${OUTPUT} (формат вывода изменился?): ${failures.join(', ')}`,
   )
   process.exit(1)
 }
 writeFileSync(OUTPUT, output)
-console.log(`${OUTPUT}: numeric → string, колонок ${String(numericColumns.length)}`)
+console.log(
+  `${OUTPUT}: numeric в Row — number (так отдаёт PostgREST без ::text), в Insert и Update — string; колонок ${String(numericColumns.length)}`,
+)

@@ -5,7 +5,7 @@ export type Database = {
     Tables: {
       notes: {
         Row: {
-          amount: string
+          amount: number
           created_at: string
           id: string
           owner_id: string
