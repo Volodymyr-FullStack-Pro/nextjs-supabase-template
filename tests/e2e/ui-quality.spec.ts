@@ -14,6 +14,8 @@ const CONTROLS =
   'button, input, select, textarea, summary, [role="button"], [role="checkbox"], [role="radio"], [role="switch"], [role="tab"]'
 const NARROWEST_SCREEN = { width: 320, height: 640 }
 const DARK_CLASS = /\bdark\b/
+const CSP_VIOLATION = /Content Security Policy/u
+const LOG_SLICE = 200
 
 function checkPageQuality(path: string) {
   for (const colorScheme of COLOR_SCHEMES) {
@@ -41,6 +43,17 @@ function checkPageQuality(path: string) {
       expect(summary, 'нарушения доступности').toEqual([])
     })
   }
+
+  test(`${path} loads without Content Security Policy violations`, async ({ page }) => {
+    const violations: string[] = []
+    page.on('console', (message) => {
+      if (CSP_VIOLATION.test(message.text())) violations.push(message.text().slice(0, LOG_SLICE))
+    })
+    const response = await page.goto(path)
+    expect(response?.headers()['content-security-policy']).toContain("default-src 'self'")
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    expect(violations, 'браузер заблокировал ресурс по CSP').toEqual([])
+  })
 
   test(`${path} fits the screen without horizontal scroll`, async ({ page }) => {
     await page.goto(path)

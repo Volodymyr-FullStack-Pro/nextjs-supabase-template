@@ -7,10 +7,10 @@ import { type Assurance, toAssuranceLevel } from '@/shared/domain/mfa'
 export async function readAssurance(
   supabase: SupabaseClient,
   aalClaim: string | undefined,
-): Promise<Assurance> {
+): Promise<Assurance | null> {
   const aal = toAssuranceLevel(aalClaim)
   if (aal === 'aal2') return { aal, hasVerifiedFactor: true }
   const { data, error } = await supabase.auth.mfa.listFactors()
-  if (error) throw new Error(`auth.listFactors: ${error.message}`, { cause: error })
+  if (error) return null
   return { aal, hasVerifiedFactor: data.all.some((factor) => factor.status === 'verified') }
 }

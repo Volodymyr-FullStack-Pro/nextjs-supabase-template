@@ -17,7 +17,7 @@ export function NotesForm() {
     addNote,
     zodResolver(CreateNoteInput),
     {
-      formProps: { defaultValues: { title: '' } },
+      formProps: { defaultValues: { title: '', amount: '' } },
       actionProps: {
         onSuccess: () => {
           toast.success('Заметка сохранена')
@@ -39,6 +39,15 @@ export function NotesForm() {
         label="Новая заметка"
         placeholder="Заголовок"
         maxLength={NOTE_TITLE_MAX}
+      />
+      <TextField
+        control={form.control}
+        messages={notesMessages}
+        name="amount"
+        label="Сумма"
+        placeholder="0,00"
+        inputMode="decimal"
+        autoComplete="off"
       />
       <SubmitButton pending={action.isPending} pendingLabel="Сохраняю…">
         Добавить

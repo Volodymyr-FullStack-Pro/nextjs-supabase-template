@@ -11,3 +11,14 @@ export function reportUnexpectedError(type: string, error: unknown): void {
   console.error(JSON.stringify({ type, ...describe(error) }))
   Sentry.captureException(error)
 }
+
+const AUTH_FAILURE = 'auth-failure'
+
+export function reportAuthFailure(code: string): void {
+  console.warn(JSON.stringify({ type: AUTH_FAILURE, code }))
+  Sentry.captureMessage(AUTH_FAILURE, {
+    level: 'warning',
+    tags: { code },
+    fingerprint: [AUTH_FAILURE, code],
+  })
+}

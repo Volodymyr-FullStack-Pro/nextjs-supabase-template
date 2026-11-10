@@ -72,6 +72,7 @@ export async function proxy(request: NextRequest) {
   if (!claims) return deny(request, state, { pathname: '/login', status: HTTP_UNAUTHORIZED })
 
   const assurance = await readAssurance(supabase, claims.aal)
+  if (!assurance) return deny(request, state, { pathname: '/login', status: HTTP_UNAUTHORIZED })
   const step = pendingMfaStep(assurance, env.authRequireMfa())
   if (!step || pathname === MFA_PATHS[step]) return state.response
   return deny(request, state, { pathname: MFA_PATHS[step], status: HTTP_FORBIDDEN })

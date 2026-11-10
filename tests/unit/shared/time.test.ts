@@ -23,4 +23,10 @@ describe('formatDay', () => {
   it('refuses a value that is not a calendar date', () => {
     expect(() => formatDay('2026-03-01T10:00:00Z')).toThrow(RangeError)
   })
+
+  it('refuses a day that does not exist in the calendar instead of shifting it', () => {
+    expect(() => formatDay('2026-02-29')).toThrow(RangeError)
+    expect(() => formatDay('2026-13-01')).toThrow(RangeError)
+    expect(formatDay('2028-02-29')).toBe('29 февраля 2028 г.')
+  })
 })

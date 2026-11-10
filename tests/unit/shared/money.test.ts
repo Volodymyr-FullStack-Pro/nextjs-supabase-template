@@ -25,22 +25,42 @@ describe('money helpers', () => {
   })
 })
 
+describe('money', () => {
+  it('refuses NaN and infinity instead of carrying them into a total', () => {
+    expect(() => money('NaN')).toThrow(RangeError)
+    expect(() => money('Infinity')).toThrow(RangeError)
+  })
+})
+
 describe('formatMoney', () => {
-  it('formats EUR with non-breaking thousands separators and no decimals', () => {
-    expect(formatMoney('4218400')).toBe(`€4${NBSP}218${NBSP}400`)
+  it('formats EUR with non-breaking thousands separators and the cents of the currency', () => {
+    expect(formatMoney('4218400')).toBe(`€4${NBSP}218${NBSP}400,00`)
+    expect(formatMoney('1250.49')).toBe(`€1${NBSP}250,49`)
   })
 
   it('formats negative amounts with a real minus sign', () => {
-    expect(formatMoney('-8500')).toBe(`−€8${NBSP}500`)
+    expect(formatMoney('-8500')).toBe(`−€8${NBSP}500,00`)
   })
 
   it('drops the sign of an amount that rounds to zero', () => {
-    expect(formatMoney('-0.4')).toBe('€0')
+    expect(formatMoney('-0.004')).toBe('€0,00')
   })
 
   it('rounds half to even', () => {
-    expect(formatMoney('2.5')).toBe('€2')
-    expect(formatMoney('3.5')).toBe('€4')
+    expect(formatMoney('2.5', { fractionDigits: 0 })).toBe('€2')
+    expect(formatMoney('3.5', { fractionDigits: 0 })).toBe('€4')
+    expect(formatMoney('2.665')).toBe('€2,66')
+  })
+
+  it('shows no decimals for a currency without minor units', () => {
+    expect(formatMoney('1250000.49', { currency: 'KRW' })).toBe(`₩1${NBSP}250${NBSP}000`)
+    expect(formatMoney('10', { currency: 'JPY', locale: 'en-US' })).toBe('¥10')
+  })
+
+  it('distinguishes the dollars and yuan of different countries', () => {
+    expect(formatMoney('10', { currency: 'USD', locale: 'en-US' })).toBe('$10.00')
+    expect(formatMoney('10', { currency: 'CAD', locale: 'en-US' })).toBe('CA$10.00')
+    expect(formatMoney('10', { currency: 'CNY', locale: 'en-US' })).toBe('CN¥10.00')
   })
 
   it('follows the English locale and keeps the requested decimals', () => {
@@ -48,7 +68,7 @@ describe('formatMoney', () => {
   })
 
   it('puts a letter currency code after the number', () => {
-    expect(formatMoney('1250.49', { currency: 'AED' })).toBe(`1${NBSP}250${NBSP}AED`)
+    expect(formatMoney('1250.49', { currency: 'AED' })).toBe(`1${NBSP}250,49${NBSP}AED`)
   })
 
   it('shows an amount with more than 15 significant digits exactly', () => {
@@ -110,14 +130,21 @@ describe('parseDecimalInput', () => {
 
   it('takes the allowed scale of a quantity, price or whole number', () => {
     expect(parseDecimalInput('0,12345678', SCALE.quantity)).toBe('0.12345678')
-    expect(parseDecimalInput('0,123456789', SCALE.quantity)).toBeNull()
+    expect(parseDecimalInput('0,123456789012345678', SCALE.quantity)).toBe('0.123456789012345678')
+    expect(parseDecimalInput('0,1234567890123456789', SCALE.quantity)).toBeNull()
     expect(parseDecimalInput('1,0000000001', SCALE.price)).toBe('1.0000000001')
+    expect(parseDecimalInput('0,000000000049', SCALE.price)).toBe('0.000000000049')
     expect(parseDecimalInput('12', 0)).toBe('12')
     expect(parseDecimalInput('12,5', 0)).toBeNull()
   })
 
   it('reads an amount with more than 15 significant digits as typed', () => {
     expect(parseDecimalInput('1 234 567 890 123 456,78')).toBe('1234567890123456.78')
+  })
+
+  it('refuses more than 16 integer digits instead of overflowing the database column', () => {
+    expect(parseDecimalInput('9'.repeat(16))).toBe('9'.repeat(16))
+    expect(parseDecimalInput('9'.repeat(17))).toBeNull()
   })
 })
 
@@ -127,8 +154,8 @@ describe('decimalPattern', () => {
     expect(decimalPattern().test('1.001')).toBe(false)
   })
 
-  it('refuses a scale outside 0 to 10', () => {
-    expect(() => decimalPattern(11)).toThrow(RangeError)
+  it('refuses a scale outside 0 to 18', () => {
+    expect(() => decimalPattern(19)).toThrow(RangeError)
     expect(() => decimalPattern(-1)).toThrow(RangeError)
     expect(() => decimalPattern(1.5)).toThrow(RangeError)
   })

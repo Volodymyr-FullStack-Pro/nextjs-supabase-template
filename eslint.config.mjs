@@ -553,18 +553,36 @@ const vendorUiConfig = {
   },
 }
 
-// Прямое подключение к базе (db()) обходит RLS: только в shared/infrastructure и в файлах *.admin.ts
-// (служебные задачи, миграции данных). shared/lib — техника Next.js для ui и app: инфраструктуру видят
-// только сессия и actions, иначе db() просочился бы в ui через реэкспорт.
-const DIRECT_DB = {
-  group: ['@/shared/infrastructure/db', '@/shared/infrastructure/db/*'],
+// Прямое подключение к базе (db(), локально и в CI) и клиент Supabase на секретном ключе (createAdminClient,
+// серверные задачи без сессии) обходят RLS: только в shared/infrastructure, в файлах *.admin.ts и в плановых
+// задачах src/app/api/cron. shared/lib — техника Next.js для ui и app: инфраструктуру видят только сессия
+// и actions, иначе обход RLS просочился бы в ui через реэкспорт.
+const BYPASSES_RLS = {
+  group: [
+    '@/shared/infrastructure/db',
+    '@/shared/infrastructure/db/*',
+    '@/shared/infrastructure/supabase/admin',
+  ],
   message:
-    'db() обходит RLS: только в shared/infrastructure и *.admin.ts; данные пользователя — через клиент Supabase',
+    'db() и createAdminClient() обходят RLS: только в shared/infrastructure, *.admin.ts и src/app/api/cron; данные пользователя — через клиент Supabase с сессией',
 }
-const directDbConfig = {
+// Глобальный Decimal из decimal.js считает с точностью 20 и округляет от нуля, а money() — клон с точностью 64
+// и округлением к чётному: смешение двух классов теряет цифры. Расчёты денег — только через money().
+const GLOBAL_DECIMAL = {
+  name: 'decimal.js',
+  message:
+    'Расчёты денег — через money() из @/shared/domain/money: у глобального Decimal другая точность и округление',
+}
+const bypassesRlsConfig = {
   files: ['src/**/*.{ts,tsx}'],
-  ignores: ['src/shared/infrastructure/**', 'src/**/*.admin.ts'],
-  rules: { 'no-restricted-imports': ['error', { patterns: [DIRECT_DB] }] },
+  ignores: ['src/shared/infrastructure/**', 'src/**/*.admin.ts', 'src/app/api/cron/**'],
+  rules: {
+    'no-restricted-imports': ['error', { paths: [GLOBAL_DECIMAL], patterns: [BYPASSES_RLS] }],
+  },
+}
+const moneyConfig = {
+  files: ['src/shared/domain/money.ts'],
+  rules: { 'no-restricted-imports': ['error', { patterns: [BYPASSES_RLS] }] },
 }
 const sharedLibConfig = {
   files: ['src/shared/lib/**/*.ts'],
@@ -573,8 +591,9 @@ const sharedLibConfig = {
     'no-restricted-imports': [
       'error',
       {
+        paths: [GLOBAL_DECIMAL],
         patterns: [
-          DIRECT_DB,
+          BYPASSES_RLS,
           {
             group: ['@/shared/infrastructure/*', '@/shared/infrastructure/**'],
             message:
@@ -615,7 +634,8 @@ export default defineConfig([
   a11yConfig,
   envAccessConfig,
   vendorUiConfig,
-  directDbConfig,
+  bypassesRlsConfig,
+  moneyConfig,
   sharedLibConfig,
   {
     files: ['**/*.{ts,tsx,mts}'],

@@ -3,15 +3,29 @@ import { withSentryConfig } from '@sentry/nextjs/config'
 import type { NextConfig } from 'next'
 
 const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env['ANALYZE'] === 'true' })
+const isDev = process.env.NODE_ENV === 'development'
 
-// Базовые заголовки безопасности и CSP без nonce: nonce делает все страницы динамическими и ломает
-// статическую оболочку Cache Components. script-src — через хэши (experimental.sri), когда понадобится.
-// form-action не задан: вход через OAuth уходит редиректом на домен Supabase.
+// CSP без nonce: App Router вставляет в каждую страницу инлайн-скрипты (тема, загрузчик, данные серверных
+// компонентов), поэтому script-src без 'unsafe-inline' возможен только с nonce, а nonce требует рендерить
+// каждую страницу на сервере на каждый запрос (await connection()) и отказаться от статической оболочки
+// Cache Components; SRI (experimental.sri) инлайн-скрипты не покрывает — проверено в шаблоне (D-075 Finance Hub).
+// Проект, где все экраны за входом, может выбрать nonce: см. docs/blocks/B00-setup/tasks.md, B00-T07.
+// В dev React требует 'unsafe-eval' для отладки. form-action не задан: вход через OAuth уходит редиректом
+// на домен Supabase. connect-src 'self': браузер ходит только к своему серверу (Server Actions, /api/vitals).
+const scriptSources = ["'self'", "'unsafe-inline'", ...(isDev ? ["'unsafe-eval'"] : [])].join(' ')
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  `script-src ${scriptSources}`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' blob: data:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "frame-ancestors 'none'",
+].join('; ')
 const securityHeaders = [
-  {
-    key: 'Content-Security-Policy',
-    value: "frame-ancestors 'none'; object-src 'none'; base-uri 'none'",
-  },
+  { key: 'Content-Security-Policy', value: contentSecurityPolicy },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },

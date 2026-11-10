@@ -9,16 +9,20 @@ gh repo create <org>/<проект> --template Volodymyr-FullStack-Pro/nextjs-su
 cd <проект>
 fnm use                      # Node 24 из .nvmrc (или nvm use)
 npm ci                       # ставит зависимости и git-хуки
-cp .env.example .env.local   # заполнить из Supabase → Project Settings → API
-supabase start               # локальный Supabase (нужен Supabase CLI); supabase status → ключи в .env.local
+npx playwright install       # браузеры для e2e и Lighthouse
+cp .env.example .env.local   # локально — адрес и ключи из `supabase status`; облако — Supabase → Project Settings → API
+supabase start               # локальный Supabase (Supabase CLI той версии, что в .github/workflows/db.yml, и Docker)
+npm run seed:test-user       # тестовый пользователь по .env.test.local (TEST_USER_*), код второго фактора — npm run totp -s
 npm run dev
 ```
+
+Репозиторий в организации заказчика, у которой нет доступа к шаблону: заказчик создаёт пустой приватный репозиторий, разработчик переносит шаблон без истории — руководство по системе разработки (`claude-kit/docs/GUIDE.md`), раздел «Проект в организации заказчика», п. 3; дальше — блок `B00-setup`.
 
 Затем: заменить `<Проект>` в `CLAUDE.md` и `docs/knowledge/`, записать первое решение в `docs/knowledge/decisions.md`, первый модуль `npm run new:module <модуль> <запись>` — после разбиения ТЗ на блоки, при работе с ClickUp переименовать `.claude/rules/clickup.md.example` в `clickup.md`.
 
 Безопасность: в Supabase выключить саморегистрацию (Authentication → «Allow new users to sign up» = off; пользователи заводятся приглашением), а если приложение закрыто Cloudflare Access — проверять его JWT в `proxy.ts` или закрыть `*.vercel.app`, иначе периметр обходится (`.claude/rules/security.md`). В репозитории включить оповещения Dependabot и автоматические security-PR (`gh api -X PUT repos/<org>/<проект>/vulnerability-alerts` и `.../automated-security-fixes`), защитить `main` (PR и зелёный CI обязательны). Версия Supabase CLI в `.github/workflows/db.yml` закреплена и должна совпадать с `supabase --version` на машинах разработчиков: обновлять обе вместе.
 
-Второй фактор и журнал изменений уже в шаблоне. Вход по паролю дополняется кодом из приложения-аутентификатора (TOTP): экраны `/mfa/setup` и `/mfa/verify` в модуле `auth`; у кого фактор подключён, тот после пароля попадает на `/mfa/verify`, а с `AUTH_REQUIRE_MFA=true` (финансовые проекты) без фактора — на `/mfa/setup`. Проверяют три места: `src/proxy.ts` (редирект), `authActionClient` (Server Action отказывает) и база — ограничивающая политика `private.mfa_ok()` на каждой таблице: с подтверждённым фактором строки видны только в сессии `aal2`. Журнал `audit.log` (схема `audit`, закрыта для API) пишет триггер `audit.record()`: кто, когда, операция, старая и новая строка. Новая таблица получает ту же политику и тот же триггер (образец — миграции `*_second_factor_policies.sql` и `*_audit_log.sql`). Цена: в сессии `aal1` проверка фактора — запрос к Supabase Auth (`listFactors`) в `proxy.ts` и в `verifySession`; в `aal2` запросов нет.
+Второй фактор и журнал изменений уже в шаблоне. Вход по паролю дополняется кодом из приложения-аутентификатора (TOTP): экраны `/mfa/setup` и `/mfa/verify` в модуле `auth`; у кого фактор подключён, тот после пароля попадает на `/mfa/verify`, а с `AUTH_REQUIRE_MFA=true` (финансовые проекты) без фактора — на `/mfa/setup`. Проверяют четыре места: `src/proxy.ts` (редирект), `requireVerifiedSession()` на страницах за входом (редирект, если запрос обошёл proxy), `authActionClient` (Server Action отказывает) и база — ограничивающая политика `private.mfa_ok()` на каждой таблице: с подтверждённым фактором строки видны только в сессии `aal2`. В production второй фактор обязателен по умолчанию (`AUTH_REQUIRE_MFA` не задана = `true`), неудачные входы и неверные коды попадают в лог и в Sentry событием `auth-failure`. Журнал `audit.log` (схема `audit`, закрыта для API) пишет триггер `audit.record()`: кто, когда, операция, старая и новая строка. Новая таблица получает ту же политику и тот же триггер (образец — миграции `*_second_factor_policies.sql` и `*_audit_log.sql`). Цена: в сессии `aal1` проверка фактора — запрос к Supabase Auth (`listFactors`) в `proxy.ts` и в `verifySession`; в `aal2` запросов нет.
 
 Для `/notes`, `npm run db:types`, pgTAP и e2e за входом (`npm run test:e2e:db`) нужны Docker и Supabase CLI (`brew install supabase/tap/supabase`). Тестового пользователя заводит `npm run seed:test-user` по `.env.test.local` (код второго фактора — `npm run totp -s`).
 

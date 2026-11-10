@@ -1,18 +1,35 @@
 import Decimal from 'decimal.js'
 
-import { MINUS, SCALE } from './decimal-input'
+import { MINUS } from './decimal-input'
 import { DEFAULT_LOCALE } from './locale'
 
 const DECIMAL_PRECISION = 64
+const TICKER_FRACTION_DIGITS = 8
 
-const Money = Decimal.clone({ precision: DECIMAL_PRECISION, rounding: Decimal.ROUND_HALF_EVEN })
+const MoneyDecimal = Decimal.clone({
+  precision: DECIMAL_PRECISION,
+  rounding: Decimal.ROUND_HALF_EVEN,
+})
 
-export const money = (value: string | Decimal): Decimal => new Money(value)
+export const money = (value: string | Decimal): Decimal => {
+  const result = new MoneyDecimal(value)
+  if (!result.isFinite()) {
+    throw new RangeError(
+      `money: \u043E\u0436\u0438\u0434\u0430\u0435\u0442\u0441\u044F \u043A\u043E\u043D\u0435\u0447\u043D\u043E\u0435 \u0447\u0438\u0441\u043B\u043E, \u043F\u043E\u043B\u0443\u0447\u0435\u043D\u043E ${String(value)}`,
+    )
+  }
+  return result
+}
 
 const NBSP = '\u00A0'
 const LETTER_CODE = /^[A-Z]{3}$/u
 const DECIMAL_PROBE = 1.5
 const ISO_CURRENCIES = new Set(Intl.supportedValuesOf('currency'))
+
+function currencyFractionDigits(currency: string, locale: string): number | undefined {
+  return new Intl.NumberFormat(locale, { style: 'currency', currency }).resolvedOptions()
+    .maximumFractionDigits
+}
 
 export function shareOf(value: string, fraction: string): string {
   return money(value).times(fraction).toFixed()
@@ -24,7 +41,7 @@ function currencySymbol(currency: string, locale: string): string {
   return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
-    currencyDisplay: 'narrowSymbol',
+    currencyDisplay: 'symbol',
   })
     .formatToParts(0)
     .filter((part) => part.type === 'currency')
@@ -42,7 +59,7 @@ function groupDigits(fixed: string, locale: string): string {
 }
 
 function signedDigits(amount: string, locale: string, fractionDigits: number | undefined) {
-  const rounded = money(amount).toDecimalPlaces(fractionDigits ?? SCALE.quantity)
+  const rounded = money(amount).toDecimalPlaces(fractionDigits ?? TICKER_FRACTION_DIGITS)
   const fixed =
     fractionDigits === undefined ? rounded.abs().toFixed() : rounded.abs().toFixed(fractionDigits)
   const sign = rounded.isNegative() && !rounded.isZero() ? MINUS : ''
@@ -57,7 +74,11 @@ export function formatMoney(
     const { sign, digits } = signedDigits(amount, locale, fractionDigits)
     return `${sign}${digits}${NBSP}${currency}`
   }
-  const { sign, digits } = signedDigits(amount, locale, fractionDigits ?? 0)
+  const { sign, digits } = signedDigits(
+    amount,
+    locale,
+    fractionDigits ?? currencyFractionDigits(currency, locale),
+  )
   const symbol = currencySymbol(currency, locale)
   return LETTER_CODE.test(symbol) ? `${sign}${digits}${NBSP}${symbol}` : `${sign}${symbol}${digits}`
 }

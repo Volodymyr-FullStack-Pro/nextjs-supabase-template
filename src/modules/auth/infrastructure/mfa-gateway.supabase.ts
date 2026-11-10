@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { reportAuthFailure } from '@/shared/infrastructure/monitoring'
 import { createClient } from '@/shared/infrastructure/supabase/server'
 
 import type { MfaGateway } from '../application/mfa-gateway'
@@ -32,8 +33,12 @@ export const supabaseMfaGateway: MfaGateway = {
     const supabase = await createClient()
     const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId, code })
     if (!error) return 'verified'
-    if (error.code !== undefined && INVALID_CODE_ERRORS.has(error.code)) return 'invalid-code'
+    if (error.code !== undefined && INVALID_CODE_ERRORS.has(error.code)) {
+      reportAuthFailure('invalid-totp-code')
+      return 'invalid-code'
+    }
     if (error.code === 'over_request_rate_limit' || error.status === HTTP_TOO_MANY_REQUESTS) {
+      reportAuthFailure('too-many-totp-attempts')
       return 'too-many-attempts'
     }
     throw new Error(`mfa.verify: ${error.message}`, { cause: error })

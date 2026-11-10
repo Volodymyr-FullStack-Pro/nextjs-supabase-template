@@ -7,6 +7,7 @@ declare global {
       DATABASE_CA_CERT?: string
       SENTRY_DSN?: string
       AUTH_REQUIRE_MFA?: string
+      SUPABASE_SECRET_KEY?: string
     }
   }
 }

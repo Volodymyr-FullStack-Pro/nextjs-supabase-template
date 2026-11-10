@@ -301,7 +301,9 @@ auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
 # Multi-factor-authentication is available to Supabase Pro plan.
 [auth.mfa]
 # Control how many MFA factors can be enrolled at once per user.
-max_enrolled_factors = 10
+# Один фактор на пользователя, пока нет экрана со списком факторов и их удалением: иначе захвативший сессию aal2
+# подключит свой аутентификатор и останется в системе незаметно.
+max_enrolled_factors = 1
 
 # Control MFA via App Authenticator (TOTP)
 # Второй фактор — приложение-аутентификатор (TOTP, на всех тарифах): /mfa/setup и /mfa/verify; обязательным его делает AUTH_REQUIRE_MFA.

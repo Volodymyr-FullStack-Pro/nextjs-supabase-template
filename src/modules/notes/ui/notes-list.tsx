@@ -3,14 +3,14 @@ import type { SearchParams } from 'nuqs/server'
 import { SCALE } from '@/shared/domain/decimal-input'
 import { formatMoney } from '@/shared/domain/money'
 import { formatDate } from '@/shared/domain/time'
-import { verifySession } from '@/shared/lib/session'
+import { requireVerifiedSession } from '@/shared/lib/session'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 
 import { notes } from '../server'
 import { loadNotesSearchParams } from './search-params'
 
 export async function NotesList({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const session = await verifySession()
+  const session = await requireVerifiedSession()
   const { q: search } = await loadNotesSearchParams(searchParams)
   const items = await notes.list({ q: search }, { userId: session.userId })
   if (items.length === 0) return <p className="text-sm text-muted-foreground">Пока пусто</p>

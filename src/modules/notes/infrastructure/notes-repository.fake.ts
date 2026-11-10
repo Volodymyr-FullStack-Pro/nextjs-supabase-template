@@ -3,8 +3,6 @@ import type { Note } from '../domain/note'
 
 type StoredNote = Note & { ownerId: string }
 
-const DEFAULT_AMOUNT = '0.00'
-
 export function fakeNotesRepository(seed: StoredNote[] = []) {
   const rows: StoredNote[] = [...seed]
   const repository: NotesRepository = {
@@ -24,7 +22,7 @@ export function fakeNotesRepository(seed: StoredNote[] = []) {
       const note: StoredNote = {
         id: `note-${String(rows.length + 1)}`,
         title: data.title,
-        amount: DEFAULT_AMOUNT,
+        amount: data.amount,
         createdAt: new Date(rows.length).toISOString(),
         ownerId: data.ownerId,
       }

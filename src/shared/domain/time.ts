@@ -5,6 +5,13 @@ export const APP_TIME_ZONE = 'Europe/Berlin'
 type DateFormat = { locale?: string; timeZone?: string }
 
 const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/u
+const DAY_LENGTH = 10
+
+function isCalendarDay(day: string): boolean {
+  if (!DAY_PATTERN.test(day)) return false
+  const parsed = new Date(`${day}T00:00:00Z`)
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, DAY_LENGTH) === day
+}
 
 export function formatDate(
   iso: string,
@@ -22,7 +29,7 @@ export function formatDay(
   day: string,
   { locale = DEFAULT_LOCALE }: Pick<DateFormat, 'locale'> = {},
 ): string {
-  if (!DAY_PATTERN.test(day)) {
+  if (!isCalendarDay(day)) {
     throw new RangeError(`formatDay: ожидается календарная дата YYYY-MM-DD, получено ${day}`)
   }
   return new Intl.DateTimeFormat(locale, {
