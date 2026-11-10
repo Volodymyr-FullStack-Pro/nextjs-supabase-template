@@ -41,22 +41,22 @@ describe('money', () => {
 
 describe('formatMoney', () => {
   it('formats EUR with non-breaking thousands separators and the cents of the currency', () => {
-    expect(formatMoney('4218400')).toBe(`€4${NBSP}218${NBSP}400,00`)
-    expect(formatMoney('1250.49')).toBe(`€1${NBSP}250,49`)
+    expect(formatMoney('4218400', { currency: 'EUR' })).toBe(`€4${NBSP}218${NBSP}400,00`)
+    expect(formatMoney('1250.49', { currency: 'EUR' })).toBe(`€1${NBSP}250,49`)
   })
 
   it('formats negative amounts with a real minus sign', () => {
-    expect(formatMoney('-8500')).toBe(`−€8${NBSP}500,00`)
+    expect(formatMoney('-8500', { currency: 'EUR' })).toBe(`−€8${NBSP}500,00`)
   })
 
   it('drops the sign of an amount that rounds to zero', () => {
-    expect(formatMoney('-0.004')).toBe('€0,00')
+    expect(formatMoney('-0.004', { currency: 'EUR' })).toBe('€0,00')
   })
 
   it('rounds half to even', () => {
-    expect(formatMoney('2.5', { fractionDigits: 0 })).toBe('€2')
-    expect(formatMoney('3.5', { fractionDigits: 0 })).toBe('€4')
-    expect(formatMoney('2.665')).toBe('€2,66')
+    expect(formatMoney('2.5', { currency: 'EUR', fractionDigits: 0 })).toBe('€2')
+    expect(formatMoney('3.5', { currency: 'EUR', fractionDigits: 0 })).toBe('€4')
+    expect(formatMoney('2.665', { currency: 'EUR' })).toBe('€2,66')
   })
 
   it('shows no decimals for a currency without minor units', () => {
@@ -71,7 +71,9 @@ describe('formatMoney', () => {
   })
 
   it('follows the English locale and keeps the requested decimals', () => {
-    expect(formatMoney('4218400.5', { locale: 'en-US', fractionDigits: 2 })).toBe('€4,218,400.50')
+    expect(formatMoney('4218400.5', { currency: 'EUR', locale: 'en-US', fractionDigits: 2 })).toBe(
+      '€4,218,400.50',
+    )
   })
 
   it('puts a letter currency code after the number', () => {
@@ -79,7 +81,7 @@ describe('formatMoney', () => {
   })
 
   it('shows an amount with more than 15 significant digits exactly', () => {
-    expect(formatMoney('1234567890123456.78', { fractionDigits: 2 })).toBe(
+    expect(formatMoney('1234567890123456.78', { currency: 'EUR', fractionDigits: 2 })).toBe(
       `€1${NBSP}234${NBSP}567${NBSP}890${NBSP}123${NBSP}456,78`,
     )
   })

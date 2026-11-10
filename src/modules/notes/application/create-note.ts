@@ -1,8 +1,8 @@
 import { RuleViolationError } from '@/shared/domain/errors'
+import { exceedsCurrencyPrecision } from '@/shared/domain/money'
 import { err, ok, type Result } from '@/shared/domain/result'
 import { hasLettersOrDigits } from '@/shared/domain/text'
 
-import { exceedsCurrencyPrecision } from '../domain/currency'
 import { type CreateNoteInput, type Note, NOTE_MESSAGE_KEYS } from '../domain/note'
 import type { NotesRepository } from './notes-repository'
 

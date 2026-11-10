@@ -45,7 +45,7 @@ export function shareOf(value: string, fraction: string): string {
   return money(value).times(fraction).toFixed()
 }
 
-type MoneyFormat = { currency?: string; locale?: string; fractionDigits?: number }
+type MoneyFormat = { currency: string; locale?: string; fractionDigits?: number }
 
 function currencySymbol(currency: string, locale: string): string {
   return new Intl.NumberFormat(locale, {
@@ -78,7 +78,7 @@ function signedDigits(amount: string, locale: string, fractionDigits: number | u
 
 export function formatMoney(
   amount: string,
-  { currency = 'EUR', locale = DEFAULT_LOCALE, fractionDigits }: MoneyFormat = {},
+  { currency, locale = DEFAULT_LOCALE, fractionDigits }: MoneyFormat,
 ): string {
   if (!isIsoCurrency(currency)) {
     const { sign, digits } = signedDigits(amount, locale, fractionDigits)
