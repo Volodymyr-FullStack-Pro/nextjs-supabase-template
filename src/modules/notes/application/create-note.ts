@@ -2,6 +2,7 @@ import { RuleViolationError } from '@/shared/domain/errors'
 import { err, ok, type Result } from '@/shared/domain/result'
 import { hasLettersOrDigits } from '@/shared/domain/text'
 
+import { exceedsCurrencyPrecision } from '../domain/currency'
 import { type CreateNoteInput, type Note, NOTE_MESSAGE_KEYS } from '../domain/note'
 import type { NotesRepository } from './notes-repository'
 
@@ -15,6 +16,9 @@ export function makeCreateNote({ notes }: { notes: NotesRepository }) {
     if (!hasLettersOrDigits(input.title)) {
       return err(new RuleViolationError(NOTE_MESSAGE_KEYS.titleMeaningless))
     }
-    return ok(await notes.insert({ ownerId: ctx.userId, title: input.title, amount: input.amount }))
+    if (exceedsCurrencyPrecision(input.amount, input.currency)) {
+      return err(new RuleViolationError(NOTE_MESSAGE_KEYS.amountTooPrecise))
+    }
+    return ok(await notes.insert({ ...input, ownerId: ctx.userId }))
   }
 }

@@ -5,17 +5,31 @@ import { createClient } from '@/shared/infrastructure/supabase/server'
 import type { NotesRepository } from '../application/notes-repository'
 import { type Note, NOTE_SEARCH_MAX, NOTES_LIST_LIMIT, NoteSchema } from '../domain/note'
 
-const NOTE_COLUMNS = 'id, title, amount::text, created_at'
+const NOTE_COLUMNS = 'id, title, amount::text, currency, created_at'
+const UNIQUE_VIOLATION = '23505'
 
-type NoteRow = { id: string; title: string; amount: string; created_at: string }
+type NoteRow = { id: string; title: string; amount: string; currency: string; created_at: string }
 
 function toNote(row: NoteRow): Note {
   return NoteSchema.parse({
     id: row.id,
     title: row.title,
     amount: row.amount,
+    currency: row.currency,
     createdAt: row.created_at,
   })
+}
+
+async function findByRequest(ownerId: string, clientRequestId: string): Promise<Note> {
+  const supabase = await createClient()
+  const { data: row, error } = await supabase
+    .from('notes')
+    .select(NOTE_COLUMNS)
+    .eq('owner_id', ownerId)
+    .eq('client_request_id', clientRequestId)
+    .single()
+  if (error) throw new Error(`notes.findByRequest: ${error.message}`)
+  return toNote(row)
 }
 
 export const supabaseNotesRepository: NotesRepository = {
@@ -41,9 +55,16 @@ export const supabaseNotesRepository: NotesRepository = {
     const supabase = await createClient()
     const { data: row, error } = await supabase
       .from('notes')
-      .insert({ title: data.title, owner_id: data.ownerId, amount: data.amount })
+      .insert({
+        owner_id: data.ownerId,
+        title: data.title,
+        amount: data.amount,
+        currency: data.currency,
+        client_request_id: data.clientRequestId,
+      })
       .select(NOTE_COLUMNS)
       .single()
+    if (error?.code === UNIQUE_VIOLATION) return findByRequest(data.ownerId, data.clientRequestId)
     if (error) throw new Error(`notes.insert: ${error.message}`)
     return toNote(row)
   },

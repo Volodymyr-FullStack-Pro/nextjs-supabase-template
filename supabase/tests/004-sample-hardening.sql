@@ -1,11 +1,12 @@
 -- Образец защиты финансовой таблицы: строки не исчезают вместе с пользователем, очистка таблицы запрещена,
--- служебные колонки (id, владелец, время создания) клиент не задаёт и не меняет.
+-- служебные колонки (id, владелец, время создания) клиент не задаёт и не меняет, повторная отправка с тем же
+-- client_request_id не создаёт вторую строку.
 -- Проверка самого теста: верните табличный grant insert, update — проверки служебных колонок должны упасть.
 begin;
-select plan(11);
+select plan(16);
 
 select tests.create_supabase_user('frank');
-insert into public.notes (owner_id, title) values (tests.get_supabase_uid('frank'), 'kept');
+insert into public.notes (owner_id, title, currency, client_request_id) values (tests.get_supabase_uid('frank'), 'kept', 'EUR', gen_random_uuid());
 
 select throws_ok(
   $$ delete from auth.users where id = tests.get_supabase_uid('frank') $$,
@@ -30,15 +31,15 @@ select is(
 -- Служебные колонки клиент не задаёт и не меняет: права роли API выданы по колонкам, а не на таблицу целиком.
 select tests.authenticate_as('frank');
 select throws_ok(
-  $$ insert into public.notes (owner_id, title, created_at)
-     values (tests.get_supabase_uid('frank'), 'задним числом', '2020-01-01') $$,
+  $$ insert into public.notes (owner_id, title, created_at, currency, client_request_id)
+     values (tests.get_supabase_uid('frank'), 'задним числом', '2020-01-01', 'EUR', gen_random_uuid()) $$,
   '42501',
   'permission denied for table notes',
   'клиент не задаёт created_at при вставке'
 );
 select throws_ok(
-  $$ insert into public.notes (id, owner_id, title)
-     values (gen_random_uuid(), tests.get_supabase_uid('frank'), 'свой id') $$,
+  $$ insert into public.notes (id, owner_id, title, currency, client_request_id)
+     values (gen_random_uuid(), tests.get_supabase_uid('frank'), 'свой id', 'EUR', gen_random_uuid()) $$,
   '42501',
   'permission denied for table notes',
   'клиент не задаёт id при вставке'
@@ -78,6 +79,42 @@ select throws_ok(
   'смена id в notes запрещена: по id запись связана со своей историей в журнале',
   'владелец базы тоже не меняет id: отклоняет триггер журнала'
 );
+
+-- Идемпотентность: один client_request_id у одного владельца — одна строка.
+select tests.create_supabase_user('gina');
+select tests.authenticate_as('frank');
+select lives_ok(
+  $$ insert into public.notes (owner_id, title, currency, client_request_id)
+     values (tests.get_supabase_uid('frank'), 'первая отправка', 'EUR', '00000000-0000-4000-8000-000000000001') $$,
+  'первая отправка формы создаёт строку'
+);
+select throws_ok(
+  $$ insert into public.notes (owner_id, title, currency, client_request_id)
+     values (tests.get_supabase_uid('frank'), 'повтор', 'EUR', '00000000-0000-4000-8000-000000000001') $$,
+  '23505',
+  'duplicate key value violates unique constraint "notes_owner_id_client_request_id_key"',
+  'повтор с тем же client_request_id отклонён: репозиторий по этому коду возвращает уже созданную строку'
+);
+select throws_ok(
+  $$ update public.notes set client_request_id = gen_random_uuid() $$,
+  '42501',
+  'permission denied for table notes',
+  'клиент не меняет client_request_id'
+);
+select throws_ok(
+  $$ insert into public.notes (owner_id, title, currency)
+     values (tests.get_supabase_uid('frank'), 'без ключа', 'EUR') $$,
+  '23502',
+  null,
+  'вставка без client_request_id отклонена'
+);
+select tests.authenticate_as('gina');
+select lives_ok(
+  $$ insert into public.notes (owner_id, title, currency, client_request_id)
+     values (tests.get_supabase_uid('gina'), 'чужой ключ', 'EUR', '00000000-0000-4000-8000-000000000001') $$,
+  'тот же ключ у другого владельца не мешает и не выдаёт чужую строку'
+);
+select tests.clear_authentication();
 
 select * from finish();
 rollback;

@@ -9,7 +9,7 @@ create temp table log_start on commit drop as select coalesce(max(id), 0) as id 
 select tests.create_supabase_user('erin');
 
 select tests.authenticate_as('erin');
-insert into public.notes (owner_id, title) values (tests.get_supabase_uid('erin'), 'draft');
+insert into public.notes (owner_id, title, currency, client_request_id) values (tests.get_supabase_uid('erin'), 'draft', 'EUR', gen_random_uuid());
 update public.notes set title = 'final' where title = 'draft';
 delete from public.notes where title = 'final';
 

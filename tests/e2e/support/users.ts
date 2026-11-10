@@ -28,11 +28,15 @@ function adminAuth() {
 
 export async function insertNote(
   owner: TestUser,
-  note: { title: string; amount: string },
+  note: { title: string; amount: string; currency: string },
 ): Promise<void> {
-  const { error } = await createClient(supabaseUrl, secretKey, NO_SESSION)
-    .from('notes')
-    .insert({ owner_id: owner.id, title: note.title, amount: note.amount })
+  const { error } = await createClient(supabaseUrl, secretKey, NO_SESSION).from('notes').insert({
+    owner_id: owner.id,
+    title: note.title,
+    amount: note.amount,
+    currency: note.currency,
+    client_request_id: randomUUID(),
+  })
   if (error) throw new Error(`insertNote: ${error.message}`, { cause: error })
 }
 
