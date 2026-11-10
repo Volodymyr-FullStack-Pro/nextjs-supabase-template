@@ -175,7 +175,7 @@ const boundariesConfig = {
               to: {
                 module: {
                   origin: 'external',
-                  source: ['zod', 'decimal.js', 'date-fns', 'date-fns/*'],
+                  source: ['zod', 'decimal.js'],
                 },
               },
             },
@@ -189,9 +189,10 @@ const boundariesConfig = {
 // Стиль кода (см. .claude/rules/code-style.md): понятные имена, без магических чисел, простые функции.
 // Что можно проверить машиной — проверяет линтер; принципы DRY/KISS/YAGNI — в правилах и ревью.
 
-// Код объясняет себя сам: комментарии запрещены, кроме директив инструментов (eslint, vitest, ts).
+// Код объясняет себя сам: комментарии запрещены, кроме директив инструментов (eslint, vitest, ts)
+// и ссылки на решение из docs/knowledge/decisions.md: // D-041: налог округляется один раз.
 const DIRECTIVE =
-  /^(eslint-|@vitest-environment|@ts-expect-error|@ts-ignore|@ts-check|@ts-nocheck|@jsx|global\s|@type\s|prettier-ignore|v8 ignore|c8 ignore)/
+  /^(eslint-|@vitest-environment|@ts-expect-error|@ts-ignore|@ts-check|@ts-nocheck|@jsx|global\s|@type\s|prettier-ignore|v8 ignore|c8 ignore|D-\d+: )/
 
 const noComments = {
   meta: {
@@ -199,7 +200,7 @@ const noComments = {
     docs: { description: 'Смысл выражается именами и структурой, а не комментариями' },
     messages: {
       comment:
-        'Комментарий: вынесите смысл в имя или тест; причина решения — строка в docs/knowledge/decisions.md',
+        'Комментарий: вынесите смысл в имя или тест; причина решения — строка в docs/knowledge/decisions.md и ссылка «// D-NNN: …»',
     },
     schema: [],
   },
@@ -214,6 +215,333 @@ const noComments = {
       },
     }
   },
+}
+
+// Защита денег и доступа (см. .claude/rules/code-style.md и architecture.md). Каждая группа — своё локальное правило:
+// в выводе видно, что сработало, и группы разных слоёв не перетирают друг друга (во flat config позднее правило
+// заменяет опции целиком). Сообщение правила говорит, как исправить. Пробы на каждое правило — tests/lint-rules
+// (npm run lint:rules). Комментарием эти правила не отключаются (disableDirectivesConfig): ложное срабатывание —
+// правка правила здесь и новая проба.
+const syntaxRule = (description, checks) => ({
+  meta: { type: 'problem', docs: { description }, schema: [] },
+  create: (context) =>
+    Object.fromEntries(
+      checks.map(({ selector, message }) => [
+        selector,
+        (node) => context.report({ node, message }),
+      ]),
+    ),
+})
+
+// Сумма числом: 0.1 + 0.2 ≠ 0.3, (1.005).toFixed(2) = «1.00», «9» > «10» у строк — ошибки, которые не видит компилятор.
+// Правило по именам: amount, price, balance, fee, cost, rate, quantity, share — и с префиксом (openingBalance, tax_rate).
+const MONEY_NAME =
+  '/(^|_)(amount|price|balance|fee|cost|rate|quantity|share)$|(Amount|Price|Balance|Fee|Cost|Rate|Quantity|Share)$/'
+const HAS_MONEY_OPERAND = `:has(> :matches(Identifier[name=${MONEY_NAME}], MemberExpression[property.name=${MONEY_NAME}]))`
+const MONEY_AS_NUMBER =
+  'сумма, цена, остаток, курс, количество, доля — строка или Money (money() из @/shared/domain/money), не number; в Zod — z.string() с parseDecimalInput или decimalPattern, число из чужого JSON — z.coerce.string().regex(decimalPattern(…))'
+const MONEY_OPERATOR =
+  'арифметика и сравнение сумм — через money(): money(a).plus(b), money(a).gt(b); операторы на строках сравнивают по буквам, на числах теряют копейки'
+const MONEY_CONVERSION =
+  'Number(), parseFloat и унарный плюс теряют точность суммы: расчёт — money(a), на экран — formatMoney(a, { currency }), число для графика — money(a).toNumber() в ui'
+const moneyAsNumber = syntaxRule('Суммы — строка или Money, не number', [
+  {
+    selector: `TSPropertySignature[key.name=${MONEY_NAME}] > TSTypeAnnotation > TSNumberKeyword`,
+    message: MONEY_AS_NUMBER,
+  },
+  {
+    selector: `Identifier[name=${MONEY_NAME}] > TSTypeAnnotation > TSNumberKeyword`,
+    message: MONEY_AS_NUMBER,
+  },
+  {
+    selector: `Property[key.name=${MONEY_NAME}] CallExpression[callee.property.name="number"]`,
+    message: MONEY_AS_NUMBER,
+  },
+  {
+    selector: `BinaryExpression:matches([operator=/^([<>]=?|[-+*%]|\\*\\*)$/], [operator="/"])${HAS_MONEY_OPERAND}`,
+    message: MONEY_OPERATOR,
+  },
+  {
+    selector: `AssignmentExpression:matches([operator=/^([-+*%]|\\*\\*)=$/], [operator="/="])${HAS_MONEY_OPERAND}`,
+    message: MONEY_OPERATOR,
+  },
+  {
+    selector: `:matches(CallExpression[callee.name=/^(Number|parseFloat)$/], CallExpression[callee.property.name="parseFloat"], UnaryExpression[operator="+"])${HAS_MONEY_OPERAND}`,
+    message: MONEY_CONVERSION,
+  },
+])
+
+// Money (Decimal) в операторе сравнения превращается в строку: money('9') > money('10') — true, === сравнивает ссылки.
+// Компилятор это пропускает, поэтому правило смотрит на тип.
+const COMPARISON_OPERATORS = new Set(['<', '<=', '>', '>=', '==', '===', '!=', '!=='])
+const isNullish = (node) =>
+  (node.type === 'Literal' && node.value === null) ||
+  (node.type === 'Identifier' && node.name === 'undefined')
+const typeParts = (type) => (type.isUnion() ? type.types : [type])
+const noMoneyOperators = {
+  meta: {
+    type: 'problem',
+    docs: { description: 'Money сравнивается методами, не операторами' },
+    messages: {
+      operator:
+        'Money сравнивается методами .gt() .gte() .lt() .lte() .eq() .cmp(): оператор «{{operator}}» сравнивает строки («9» > «10») или ссылки',
+    },
+    schema: [],
+  },
+  create(context) {
+    const services = context.sourceCode.parserServices
+    const isMoney = (node) =>
+      typeParts(services.getTypeAtLocation(node)).some(
+        (part) => part.getSymbol()?.getName() === 'Decimal',
+      )
+    return {
+      BinaryExpression(node) {
+        if (!COMPARISON_OPERATORS.has(node.operator)) return
+        if (isNullish(node.left) || isNullish(node.right)) return
+        if (isMoney(node.left) || isMoney(node.right)) {
+          context.report({ node, messageId: 'operator', data: { operator: node.operator } })
+        }
+      },
+    }
+  },
+}
+
+// Чистое ядро не превращает строки в числа и не читает часы: расчёт идёт в money(), а «сейчас» приходит параметром —
+// иначе правило «на дату» не проверить тестом, а new Date().toISOString() даёт день по UTC, не по времени проекта.
+const NUMBER_CONVERSION =
+  'domain и application не превращают строки в числа: расчёт — money(); целое (год, месяц, счётчик) — Number.parseInt(x, 10); число для графика готовит ui'
+const CLOCK =
+  'domain и application не читают часы: текущий момент приходит параметром (ctx.now), его задаёт action или server.ts'
+const pureCore = syntaxRule('Чистое ядро: без чисел из строк и без часов', [
+  { selector: 'CallExpression[callee.name=/^(Number|parseFloat)$/]', message: NUMBER_CONVERSION },
+  {
+    selector: 'CallExpression[callee.object.name="Number"][callee.property.name="parseFloat"]',
+    message: NUMBER_CONVERSION,
+  },
+  { selector: 'CallExpression[callee.property.name="toNumber"]', message: NUMBER_CONVERSION },
+  { selector: 'UnaryExpression[operator="+"]', message: NUMBER_CONVERSION },
+  { selector: 'NewExpression[callee.name="Date"][arguments.length=0]', message: CLOCK },
+  {
+    selector: 'CallExpression[callee.object.name="Date"][callee.property.name="now"]',
+    message: CLOCK,
+  },
+])
+
+// Отказ use case — значение Result: исключение из use case пользователь видит как «Что-то пошло не так»,
+// а непроверенный Result уходит ему как успех.
+const noThrowInUseCase = syntaxRule('Use case возвращает Result, а не бросает исключение', [
+  {
+    selector: 'ThrowStatement',
+    message:
+      'use case не бросает исключений: ожидаемый отказ — return err(new RuleViolationError(…)); неожиданный придёт из infrastructure, нарушенный инвариант — из функции domain',
+  },
+])
+const noIgnoredResult = {
+  meta: {
+    type: 'problem',
+    docs: { description: 'Result use case проверяется' },
+    messages: {
+      ignored:
+        'Result не проверен: const result = await …; if (!result.ok) fail(result.error) — иначе отказ уйдёт пользователю как успех',
+    },
+    schema: [],
+  },
+  create(context) {
+    const services = context.sourceCode.parserServices
+    return {
+      ExpressionStatement(node) {
+        const type = services.getTypeAtLocation(node.expression)
+        if (type.aliasSymbol?.getName() === 'Result') context.report({ node, messageId: 'ignored' })
+      },
+    }
+  },
+}
+
+// Server Action — открытая точка входа (вызывается прямым POST): только цепочка safe-action, которая проверяет сессию,
+// второй фактор и вход; владелец записи — из сессии, а не из входа.
+const USE_SERVER_FILE = 'Program:has(> ExpressionStatement[directive="use server"])'
+const SERVER_ACTION =
+  'Server Action — только цепочка safe-action: export const x = authActionClient.inputSchema(Schema).action(…) (@/shared/lib/safe-action); обычный экспорт не проверяет ни сессию, ни второй фактор, ни вход'
+const serverAction = syntaxRule('Server Action — только через safe-action', [
+  {
+    selector: `${USE_SERVER_FILE} > ExportNamedDeclaration > FunctionDeclaration`,
+    message: SERVER_ACTION,
+  },
+  {
+    selector: `${USE_SERVER_FILE} > ExportNamedDeclaration > VariableDeclaration > VariableDeclarator:not(:has(CallExpression Identifier[name=/[aA]ctionClient$/]))`,
+    message: SERVER_ACTION,
+  },
+  {
+    selector: `${USE_SERVER_FILE} > ExportNamedDeclaration > ExportSpecifier`,
+    message: SERVER_ACTION,
+  },
+  {
+    selector: `${USE_SERVER_FILE} > :matches(ExportDefaultDeclaration, ExportAllDeclaration)`,
+    message: SERVER_ACTION,
+  },
+  {
+    selector: ':function > BlockStatement > ExpressionStatement[directive="use server"]',
+    message: SERVER_ACTION,
+  },
+  {
+    selector:
+      'Property[key.name=/^(userId|ownerId)$/] > MemberExpression[object.name="parsedInput"]',
+    message:
+      'userId и ownerId — только из сессии (ctx.session.userId), не из входа action: иначе вошедший действует от чужого имени',
+  },
+])
+
+// За входом — только проверки с шагом второго фактора: verifySession() и клиенты actions без него остаются модулю auth.
+const SESSION_FILE = '/shared\\/lib\\/session$/'
+const SAFE_ACTION_FILE = '/shared\\/lib\\/safe-action$/'
+const UNVERIFIED_SESSION =
+  'verifySession() не проверяет шаг второго фактора: за входом — requireVerifiedSession(); verifySession — только экраны /mfa/* модуля auth'
+const UNVERIFIED_ACTION =
+  'actionClient, mfaActionClient и setupActionClient не проверяют сессию или шаг второго фактора: за входом — authActionClient; остальные — только модуль auth (вход и /mfa/*)'
+const behindSignIn = syntaxRule('За входом — requireVerifiedSession и authActionClient', [
+  {
+    selector: `ImportDeclaration[source.value=${SESSION_FILE}] > ImportSpecifier[imported.name="verifySession"]`,
+    message: UNVERIFIED_SESSION,
+  },
+  {
+    selector: `ImportDeclaration[source.value=${SAFE_ACTION_FILE}] > ImportSpecifier[imported.name=/^(actionClient|mfaActionClient|setupActionClient)$/]`,
+    message: UNVERIFIED_ACTION,
+  },
+  {
+    selector: `ImportDeclaration[source.value=${SESSION_FILE}] > ImportNamespaceSpecifier`,
+    message: UNVERIFIED_SESSION,
+  },
+  {
+    selector: `ImportDeclaration[source.value=${SAFE_ACTION_FILE}] > ImportNamespaceSpecifier`,
+    message: UNVERIFIED_ACTION,
+  },
+])
+
+// Клиент Supabase и подключение к базе создаёт только shared/infrastructure: свой createClient(url, secretKey)
+// или postgres(databaseUrl) в репозитории — тот же обход RLS, что и createAdminClient(), но мимо запрета BYPASSES_RLS.
+const rawClient = syntaxRule('Клиент базы создаёт только shared/infrastructure', [
+  {
+    selector:
+      'ImportDeclaration[importKind!="type"][source.value=/^(@supabase\\/(supabase-js|ssr)|postgres|drizzle-orm\\/postgres-js)$/]',
+    message:
+      'клиент Supabase и подключение к базе создаёт только src/shared/infrastructure: в репозитории — createClient() из @/shared/infrastructure/supabase/server (тип можно: import type)',
+  },
+])
+
+// Репозиторий: ошибка Supabase приходит значением — без проверки error отказ базы выглядит как «пусто» (нулевой остаток).
+const dataAccess = syntaxRule('Репозиторий проверяет error и выбирает колонки явно', [
+  {
+    selector:
+      'VariableDeclarator[init.type="AwaitExpression"] > ObjectPattern:has(> Property[key.name=/^(data|count)$/]):not(:has(> Property[key.name="error"]))',
+    message:
+      'ответ Supabase: const { data, error } = await …; if (error) throw new Error(`модуль.действие: ${error.message}`) — иначе отказ базы выглядит как пустой список',
+  },
+  {
+    selector:
+      'CallExpression[callee.property.name="select"]:matches([arguments.length=0], [arguments.0.value=/\\*/])',
+    message:
+      'select — явный список колонок константой (деньги — amount::text), не *: наружу уходит модель домена, не строка таблицы',
+  },
+  {
+    selector: 'CallExpression[callee.property.name="getSession"]',
+    message:
+      'getSession() не проверяет подпись токена: пользователь приходит параметром из сессии (requireVerifiedSession() в ui, ctx.session в action)',
+  },
+  {
+    selector: 'CallExpression[callee.object.name="sql"][callee.property.name="raw"]',
+    message:
+      'sql.raw вставляет строку в запрос как есть: значения — только интерполяцией внутри sql`…`',
+  },
+])
+
+// /api/cron/* открыт в proxy.ts (сессии у планировщика нет): без проверки секрета это привилегированная операция по адресу без входа.
+const HTTP_HANDLER = '/^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)$/'
+const CRON_CHECK =
+  'IfStatement > UnaryExpression[operator="!"] > CallExpression[callee.name="isCronRequest"]'
+const CRON_SECRET =
+  'маршрут /api/cron/* открыт в proxy.ts: обработчик начинается с if (!isCronRequest(request)) return new Response(null, { status: 401 }) — isCronRequest из @/shared/lib/cron'
+const cronSecret = syntaxRule('Плановая задача проверяет секрет', [
+  {
+    selector: `ExportNamedDeclaration > FunctionDeclaration[id.name=${HTTP_HANDLER}]:not(:has(${CRON_CHECK}))`,
+    message: CRON_SECRET,
+  },
+  {
+    selector: `ExportNamedDeclaration > VariableDeclaration > VariableDeclarator[id.name=${HTTP_HANDLER}]:not(:has(${CRON_CHECK}))`,
+    message: CRON_SECRET,
+  },
+])
+
+// enum: числовой принимает любое число, а значение не совпадает со строкой из базы и Zod — набор значений задаёт z.enum.
+const noEnum = syntaxRule('enum не используется', [
+  {
+    selector: 'TSEnumDeclaration',
+    message: 'enum не используется: z.enum([...]) в domain или массив as const и union строк',
+  },
+])
+
+const local = {
+  rules: {
+    'no-comments': noComments,
+    'money-as-number': moneyAsNumber,
+    'no-money-operators': noMoneyOperators,
+    'pure-core': pureCore,
+    'no-throw-in-use-case': noThrowInUseCase,
+    'no-ignored-result': noIgnoredResult,
+    'server-action': serverAction,
+    'behind-sign-in': behindSignIn,
+    'raw-client': rawClient,
+    'data-access': dataAccess,
+    'cron-secret': cronSecret,
+    'no-enum': noEnum,
+  },
+}
+const NOT_VENDOR_UI = ['src/shared/ui/**', '!src/shared/ui/form/**']
+const guardsConfig = {
+  files: ['src/**/*.{ts,tsx}'],
+  ignores: NOT_VENDOR_UI,
+  plugins: { local },
+  rules: {
+    'local/money-as-number': 'error',
+    'local/no-money-operators': 'error',
+    'local/no-ignored-result': 'error',
+    'local/server-action': 'error',
+    'local/no-enum': 'error',
+    // as на границе — только после проверки: сужение типа без Zod пропускает чужую форму данных
+    '@typescript-eslint/no-unsafe-type-assertion': 'error',
+  },
+}
+const pureCoreConfig = {
+  files: ['src/modules/*/domain/**', 'src/modules/*/application/**', 'src/shared/domain/**'],
+  plugins: { local },
+  rules: { 'local/pure-core': 'error' },
+}
+const useCaseConfig = {
+  files: ['src/modules/*/application/**'],
+  plugins: { local },
+  rules: { 'local/no-throw-in-use-case': 'error' },
+}
+const behindSignInConfig = {
+  files: ['src/modules/**/*.{ts,tsx}', 'src/app/**/*.{ts,tsx}'],
+  ignores: ['src/modules/auth/**'],
+  plugins: { local },
+  rules: { 'local/behind-sign-in': 'error' },
+}
+const rawClientConfig = {
+  files: ['src/**/*.{ts,tsx}'],
+  ignores: ['src/shared/infrastructure/**', 'src/proxy.ts', ...NOT_VENDOR_UI],
+  plugins: { local },
+  rules: { 'local/raw-client': 'error' },
+}
+const repositoryConfig = {
+  files: ['src/modules/*/infrastructure/**'],
+  ignores: ['src/**/*.fake.ts'],
+  plugins: { local },
+  rules: { 'local/data-access': 'error' },
+}
+const cronRouteConfig = {
+  files: ['src/app/api/cron/**/route.ts'],
+  plugins: { local },
+  rules: { 'local/cron-secret': 'error' },
 }
 
 // Порядок импортов (чинится --fix): побочные эффекты (server-only, css) → node: → react, next, пакеты → @/shared, @/modules → ../ → ./
@@ -232,7 +560,7 @@ const codeStyleConfig = {
     unicorn,
     sonarjs,
     'simple-import-sort': simpleImportSort,
-    local: { rules: { 'no-comments': noComments } },
+    local,
   },
   rules: {
     'local/no-comments': 'error',
@@ -341,7 +669,7 @@ const codeStyleTsConfig = {
         ignoreTypeIndexes: true,
         ignoreReadonlyClassProperties: true,
         enforceConst: true,
-        detectObjects: true,
+        detectObjects: false,
       },
     ],
     '@typescript-eslint/naming-convention': [
@@ -379,7 +707,12 @@ const codeStyleTsConfig = {
     '@typescript-eslint/switch-exhaustiveness-check': 'error',
     // 0 — настоящее значение (сумма 0, количество 0): `||` и `if (amount)` его теряют, нужны `??` и явное сравнение.
     // Пустая строка и «нет значения» для строк обычно одно и то же (пустой поиск, не заданная переменная) — строки разрешены.
-    '@typescript-eslint/prefer-nullish-coalescing': 'error',
+    '@typescript-eslint/prefer-nullish-coalescing': [
+      'error',
+      { ignorePrimitives: { string: true } },
+    ],
+    // остаток деструктуризации убирает поле без перечисления остальных: const { ownerId: _ownerId, ...note } = stored
+    '@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true }],
     '@typescript-eslint/prefer-optional-chain': 'error',
     '@typescript-eslint/strict-boolean-expressions': [
       'error',
@@ -416,6 +749,17 @@ const disableDirectivesConfig = {
     ...eslintComments.recommended.rules,
     '@eslint-community/eslint-comments/disable-enable-pair': ['error', { allowWholeFile: true }],
     '@eslint-community/eslint-comments/require-description': 'error',
+    // границы слоёв, обход RLS, деньги и точки входа комментарием не отключаются: иначе любая защита снимается одной строкой
+    '@eslint-community/eslint-comments/no-restricted-disable': [
+      'error',
+      'boundaries/*',
+      'no-restricted-imports',
+      'no-restricted-properties',
+      'local/*',
+      '!local/no-comments',
+      '@typescript-eslint/no-explicit-any',
+      '@typescript-eslint/consistent-type-assertions',
+    ],
   },
 }
 // Тесты: забытый .only, тест без проверки, одинаковые названия, ожидание по таймеру и пропущенный await — ошибки
@@ -481,7 +825,10 @@ const boundaryOnlyTypesConfig = {
   },
 }
 
-// Переменные окружения — только через env.ts (секреты и адреса) и runtime.ts (режим сборки)
+// Переменные окружения — только через env.ts (секреты и адреса) и runtime.ts (режим сборки).
+// Секретный ключ Supabase и адрес базы — это и есть обход RLS: их читает только shared/infrastructure.
+const SECRET_ACCESS =
+  'секретный ключ Supabase и адрес базы читает только src/shared/infrastructure (createAdminClient, db): запрос с ними идёт мимо RLS'
 const envAccessConfig = {
   files: ['src/**/*.{ts,tsx}'],
   ignores: ['src/shared/infrastructure/**', 'src/shared/lib/runtime.ts'],
@@ -494,6 +841,8 @@ const envAccessConfig = {
         message:
           'переменные окружения — через src/shared/infrastructure/env.ts, режим сборки — isProduction из src/shared/lib/runtime.ts',
       },
+      { object: 'env', property: 'supabaseSecretKey', message: SECRET_ACCESS },
+      { object: 'env', property: 'databaseUrl', message: SECRET_ACCESS },
     ],
   },
 }
@@ -535,7 +884,12 @@ const a11yConfig = {
       'role-supports-aria-props',
       'scope',
       'tabindex-no-positive',
-    ].map((rule) => [`jsx-a11y/${rule}`, 'error']),
+    ]
+      .map((rule) => [`jsx-a11y/${rule}`, 'error'])
+      // прокрутка таблицы на телефоне: <div role="region" aria-label="…" tabIndex={0}> (.claude/rules/ui.md)
+      .concat([
+        ['jsx-a11y/no-noninteractive-tabindex', ['error', { roles: ['region'], tags: [] }]],
+      ]),
   ),
 }
 
@@ -556,8 +910,8 @@ const vendorUiConfig = {
 // Прямое подключение к базе (db(), локально и в CI) и клиент Supabase на секретном ключе (createAdminClient,
 // серверные задачи без сессии) обходят RLS: только в shared/infrastructure и в файлах *.admin.ts инфраструктуры
 // модуля (плановая задача в src/app/api/cron зовёт server.ts модуля). Паттерны ловят и алиас, и относительный путь.
-// shared/lib — техника Next.js для ui и app: инфраструктуру видят только сессия и actions, иначе обход RLS
-// просочился бы в ui через реэкспорт.
+// shared/lib — техника Next.js для ui и app: инфраструктуру видят только сессия, actions и проверка секрета
+// планировщика (cron.ts читает env), иначе обход RLS просочился бы в ui через реэкспорт.
 const BYPASSES_RLS = {
   group: [
     '@/shared/infrastructure/db',
@@ -597,7 +951,7 @@ const moneyConfig = {
 }
 const sharedLibConfig = {
   files: ['src/shared/lib/**/*.ts'],
-  ignores: ['src/shared/lib/session.ts', 'src/shared/lib/safe-action.ts'],
+  ignores: ['src/shared/lib/session.ts', 'src/shared/lib/safe-action.ts', 'src/shared/lib/cron.ts'],
   rules: {
     'no-restricted-imports': [
       'error',
@@ -608,7 +962,7 @@ const sharedLibConfig = {
           {
             group: ['@/shared/infrastructure/*', '@/shared/infrastructure/**'],
             message:
-              'shared/lib доступен из ui: инфраструктура — только в session.ts и safe-action.ts',
+              'shared/lib доступен из ui: инфраструктура — только в session.ts, safe-action.ts и cron.ts',
           },
         ],
       },
@@ -628,6 +982,7 @@ export default defineConfig([
     'test-results/**',
     'coverage/**',
     'src/shared/infrastructure/supabase/types.ts', // генерирует npm run db:types
+    'tests/lint-rules/fixtures/**', // пробы правил: заведомо плохой код, проверяет npm run lint:rules
   ]),
   ...nextVitals,
   ...nextTs,
@@ -642,6 +997,13 @@ export default defineConfig([
   unitTestsConfig,
   e2eTestsConfig,
   boundaryOnlyTypesConfig,
+  guardsConfig,
+  pureCoreConfig,
+  useCaseConfig,
+  behindSignInConfig,
+  rawClientConfig,
+  repositoryConfig,
+  cronRouteConfig,
   a11yConfig,
   envAccessConfig,
   vendorUiConfig,
