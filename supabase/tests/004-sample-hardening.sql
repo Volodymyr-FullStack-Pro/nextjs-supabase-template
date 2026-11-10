@@ -3,7 +3,7 @@
 -- client_request_id не создаёт вторую строку.
 -- Проверка самого теста: верните табличный grant insert, update — проверки служебных колонок должны упасть.
 begin;
-select plan(16);
+select plan(19);
 
 select tests.create_supabase_user('frank');
 insert into public.notes (owner_id, title, currency, client_request_id) values (tests.get_supabase_uid('frank'), 'kept', 'EUR', gen_random_uuid());
@@ -114,6 +114,22 @@ select lives_ok(
      values (tests.get_supabase_uid('gina'), 'чужой ключ', 'EUR', '00000000-0000-4000-8000-000000000001') $$,
   'тот же ключ у другого владельца не мешает и не выдаёт чужую строку'
 );
+select tests.clear_authentication();
+
+-- Журнал и второй фактор на самой таблице-примере. Поведение журнала и private.mfa_ok() проверяют 003 и 002 на
+-- своих таблицах; здесь — что notes подключена к обоим: правка заметки записана с автором, а сессия aal1
+-- пользователя с подтверждённым фактором заметок не видит.
+select results_eq(
+  $$ select distinct actor from audit.log
+     where table_name = 'notes' and op = 'UPDATE' and new ->> 'title' = 'kept, renamed' $$,
+  $$ values (tests.get_supabase_uid('frank')) $$,
+  'правка заметки записана в журнал с автором'
+);
+select tests.add_verified_totp('frank');
+select tests.authenticate_as('frank', 'aal1');
+select is_empty('select * from public.notes', 'с подтверждённым фактором в сессии aal1 заметки не видны');
+select tests.authenticate_as('frank', 'aal2');
+select isnt_empty('select * from public.notes', 'в сессии aal2 заметки видны');
 select tests.clear_authentication();
 
 select * from finish();
