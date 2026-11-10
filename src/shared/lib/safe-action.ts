@@ -11,10 +11,12 @@ import {
   UNEXPECTED_ERROR,
 } from '@/shared/domain/errors'
 import { EnvironmentError } from '@/shared/infrastructure/env'
-import { reportUnexpectedError } from '@/shared/infrastructure/monitoring'
+import { reportSlowAction, reportUnexpectedError } from '@/shared/infrastructure/monitoring'
 
 import { isProduction } from './runtime'
 import { sessionMfaStep, verifySession } from './session'
+
+const SLOW_ACTION_MS = 1000
 
 class ActionError extends Error {
   override readonly name = 'ActionError'
@@ -36,6 +38,12 @@ export const actionClient = createSafeActionClient({
     }
     return { code: UNEXPECTED_ERROR }
   },
+}).use(async ({ next }) => {
+  const startedAt = performance.now()
+  const result = await next()
+  const durationMs = Math.round(performance.now() - startedAt)
+  if (durationMs > SLOW_ACTION_MS) reportSlowAction(durationMs)
+  return result
 })
 
 export const mfaActionClient = actionClient.use(async ({ next }) => {

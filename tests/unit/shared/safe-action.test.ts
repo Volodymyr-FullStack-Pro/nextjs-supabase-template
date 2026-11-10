@@ -5,6 +5,8 @@ import type { MfaStep } from '@/shared/domain/mfa'
 import { actionClient, authActionClient, fail, setupActionClient } from '@/shared/lib/safe-action'
 
 const captureException = vi.hoisted(() => vi.fn())
+const SLOW_MS = 1500
+const FAST_MS = 1000
 type Session = { userId: string; aal: 'aal1' | 'aal2'; hasVerifiedFactor: boolean }
 
 const session = vi.hoisted(() => ({
@@ -20,6 +22,7 @@ vi.mock('@/shared/lib/session', () => session)
 
 describe('actionClient', () => {
   afterEach(() => {
+    vi.useRealTimers()
     vi.restoreAllMocks()
     captureException.mockClear()
   })
@@ -52,6 +55,51 @@ describe('actionClient', () => {
       message: 'notes.insert: connection reset',
     })
     expect(captureException).toHaveBeenCalledWith(failure)
+  })
+
+  it('logs an action slower than a second as one JSON line with nothing but its duration', async () => {
+    vi.useFakeTimers({ toFake: ['performance'] })
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const action = authActionClient.action(() => {
+      vi.advanceTimersByTime(SLOW_MS)
+      return Promise.resolve('done')
+    })
+
+    const result = await action()
+
+    expect(result.data).toBe('done')
+    expect(consoleWarn).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(String(consoleWarn.mock.calls[0]?.[0]))).toEqual({
+      type: 'slow-action',
+      durationMs: SLOW_MS,
+    })
+  })
+
+  it('logs a slow action that ends with an error too', async () => {
+    vi.useFakeTimers({ toFake: ['performance'] })
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const action = actionClient.action(() => {
+      vi.advanceTimersByTime(SLOW_MS)
+      return Promise.resolve().then(() => fail(new RuleViolationError('note.title.meaningless')))
+    })
+
+    const result = await action()
+
+    expect(result.serverError).toEqual({ code: 'RULE_VIOLATION', rule: 'note.title.meaningless' })
+    expect(consoleWarn).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not log an action that takes a second or less', async () => {
+    vi.useFakeTimers({ toFake: ['performance'] })
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const action = actionClient.action(() => {
+      vi.advanceTimersByTime(FAST_MS)
+      return Promise.resolve('done')
+    })
+
+    await action()
+
+    expect(consoleWarn).not.toHaveBeenCalled()
   })
 
   it('refuses a signed-in action until the second factor is confirmed', async () => {

@@ -12,6 +12,10 @@ export function reportUnexpectedError(type: string, error: unknown): void {
   Sentry.captureException(error)
 }
 
+export function reportSlowAction(durationMs: number): void {
+  console.warn(JSON.stringify({ type: 'slow-action', durationMs }))
+}
+
 const AUTH_FAILURE = 'auth-failure'
 const RATE_LIMITED = 'too-many-'
 
