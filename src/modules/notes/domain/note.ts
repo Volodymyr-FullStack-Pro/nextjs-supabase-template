@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
+import { isIsoCurrency } from '@/shared/domain/currency'
 import { decimalPattern, parseDecimalInput, SCALE } from '@/shared/domain/decimal-input'
-import { isIsoCurrency } from '@/shared/domain/money'
 import { normalizeText } from '@/shared/domain/text'
 
 export const NOTE_TITLE_MAX = 200

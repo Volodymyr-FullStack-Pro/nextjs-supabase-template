@@ -5,6 +5,7 @@
       "Bash(npm run check:*)",
       "Bash(npm run gate:*)",
       "Bash(npm run lint:*)",
+      "Bash(npm run lint:rules:*)",
       "Bash(npm run typecheck:*)",
       "Bash(npm run test:*)",
       "Bash(npm run req:check:*)",

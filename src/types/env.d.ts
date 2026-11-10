@@ -8,6 +8,7 @@ declare global {
       SENTRY_DSN?: string
       AUTH_REQUIRE_MFA?: string
       SUPABASE_SECRET_KEY?: string
+      CRON_SECRET?: string
     }
   }
 }

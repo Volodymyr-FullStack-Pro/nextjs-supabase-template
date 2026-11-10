@@ -1,5 +1,6 @@
 import Decimal from 'decimal.js'
 
+import { currencyFractionDigits, isIsoCurrency } from './currency'
 import { MINUS } from './decimal-input'
 import { DEFAULT_LOCALE } from './locale'
 
@@ -24,18 +25,6 @@ export const money = (value: string | Decimal): Money => {
 const NBSP = '\u00A0'
 const LETTER_CODE = /^[A-Z]{3}$/u
 const DECIMAL_PROBE = 1.5
-const ISO_CURRENCIES = new Set(Intl.supportedValuesOf('currency'))
-
-export function isIsoCurrency(code: string): boolean {
-  return ISO_CURRENCIES.has(code)
-}
-
-export function currencyFractionDigits(currency: string): number | undefined {
-  if (!isIsoCurrency(currency)) return undefined
-  return new Intl.NumberFormat(DEFAULT_LOCALE, { style: 'currency', currency }).resolvedOptions()
-    .maximumFractionDigits
-}
-
 export function exceedsCurrencyPrecision(amount: string, currency: string): boolean {
   const fractionDigits = currencyFractionDigits(currency)
   return fractionDigits !== undefined && money(amount).decimalPlaces() > fractionDigits
