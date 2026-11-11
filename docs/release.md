@@ -37,7 +37,7 @@ Preview — для разработчика; заказчику показыва
 
 ## Выпуск в production
 
-PR `main → production` сливается merge commit, не squash (иначе `production` расходится с `main` и следующий выпуск конфликтует), с описанием «что выходит» (блоки, требования), CI зелёный → слияние человеком → Vercel деплоит код, а `deploy-db.yml` ждёт подтверждения в окружении `production` (его даёт сам разработчик) и выкладывает миграции и настройки Auth. Упавшую выкладку повторить: Actions → Deploy database → Run workflow на ветке `production`.
+PR `main → production` сливается merge commit, не squash (иначе `production` расходится с `main` и следующий выпуск конфликтует), с описанием «что выходит» (блоки, требования), CI зелёный (в нём e2e и замер скорости страниц на объёме данных — `npm run perf`, пороги в `tests/perf/pages.ts`) → слияние человеком → Vercel деплоит код, а `deploy-db.yml` ждёт подтверждения в окружении `production` (его даёт сам разработчик) и выкладывает миграции и настройки Auth. Упавшую выкладку повторить: Actions → Deploy database → Run workflow на ветке `production`.
 
 ## Если что-то упало
 
