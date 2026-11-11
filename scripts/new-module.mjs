@@ -11,6 +11,8 @@ import {
 } from 'node:fs'
 import { dirname, join, relative } from 'node:path'
 
+import { namesTakenByTemplates } from './template-names.mjs'
+
 const TEMPLATE_ROOT = join(import.meta.dirname, 'module-template')
 const MIGRATIONS = 'supabase/migrations'
 const DATABASE_TESTS = 'supabase/tests'
@@ -28,6 +30,8 @@ const FIRST_TABLE_TEST = 100
 const SHARED_TESTS_FROM = 900
 const TEST_NUMBER_WIDTH = 3
 const TABLE_NAME_MAX = 28
+const NAME_LENGTH_MIN = 2
+const GENERATOR_CHECK_MODULE = 'generator-probes'
 const RESERVED_WORDS = new Set(
   'break case catch class const continue debugger default delete do else enum export extends false finally for function if import in instanceof new null return super switch this throw true try typeof var void while with yield let static await'.split(
     ' ',
@@ -43,6 +47,11 @@ const [moduleName, entityName] = process.argv.slice(2)
 if (!moduleName || !entityName || !KEBAB.test(moduleName) || !KEBAB.test(entityName)) {
   fail(
     'Использование: npm run new:module <модуль> <запись> — модуль во множественном числе, запись в единственном; строчные буквы, цифры, дефис (businesses business, bank-accounts bank-account)',
+  )
+}
+if (moduleName === GENERATOR_CHECK_MODULE && process.env['GENERATOR_CHECK'] !== '1') {
+  fail(
+    `Имя «${GENERATOR_CHECK_MODULE}» занято проверкой шаблонов: npm run generator:check создаёт и удаляет модуль с этим именем. Выберите другое.`,
   )
 }
 if (moduleName === entityName) {
@@ -82,6 +91,13 @@ for (const forms of Object.values(names)) {
     )
   }
 }
+for (const forms of Object.values(names)) {
+  if (forms.camel.length < NAME_LENGTH_MIN) {
+    fail(
+      `«${forms.kebab}» — имя из одной буквы: линтер требует у имён в коде не меньше ${String(NAME_LENGTH_MIN)} символов (id-length). Назовите словом`,
+    )
+  }
+}
 if (table.length > TABLE_NAME_MAX) {
   fail(
     `Имя таблицы ${table} длиннее ${String(TABLE_NAME_MAX)} символов: имя ограничения ключа повтора не поместится в 63 символа Postgres`,
@@ -93,6 +109,19 @@ const templateFiles = (directory) =>
     const full = join(directory, entry)
     return statSync(full).isDirectory() ? templateFiles(full) : [full]
   })
+
+const clashes = namesTakenByTemplates(templateFiles(TEMPLATE_ROOT), {
+  moduleName: names.module.camel,
+  ModuleName: names.module.pascal,
+  entityName: names.entity.camel,
+  EntityName: names.entity.pascal,
+})
+if (clashes.length > 0) {
+  const named = clashes.map(({ name, file }) => `${name} (${relative(TEMPLATE_ROOT, file)})`)
+  fail(
+    `Шаблон scripts/module-template сам объявляет или зовёт это имя: ${[...new Set(named)].join(', ')} — срез может не скомпилироваться. Назовите иначе (items → stock-items, result → test-result)`,
+  )
+}
 
 const routeSegmentExists = (directory) =>
   readdirSync(directory).some((entry) => {
