@@ -2,6 +2,12 @@
 
 Что менялось в шаблоне. Проект, созданный раньше, переносит нужное руками и записывает это строкой D-NNN.
 
+## 2026-11-11 — выпуск в production на GitHub Team: подтверждение — слияние PR
+
+- На плане Team в приватном репозитории у окружений нет required reviewers и таймера ожидания (они — только в публичном репозитории или на Enterprise), поэтому выпуск подтверждается слиянием PR `main → production` в защищённую ветку `production`, а окружение `production` принимает только эту ветку: `docs/release.md`, B00-T01 и README блока B00, комментарий в `deploy-db.yml`. В `docs/release.md` — минуты Actions на Team ( в месяц, около 3000 минут Linux).
+- Задача «Закрытие блока» в `docs/blocks/_template/tasks.md` включает `npm run perf`, как и список проверок в `CLAUDE.md`.
+- Проекту, созданному раньше: убрать required reviewer у окружения `production`, если он был задан, и перенести тексты.
+
 ## 2026-11-11 — Drizzle убран: приложение работает с базой только через API Supabase
 
 - Удалены `src/shared/infrastructure/db/` (`db()` и рукописная копия таблиц `schema.ts`), `drizzle.config.ts`, команды `db:generate` и `db:studio`, пакеты `drizzle-orm`, `drizzle-kit` и `dotenv` (его читал только `drizzle.config.ts`), override `@esbuild-kit/core-utils`. Причина: у `db()` не было ни одного вызова, копию таблиц ничто не сверяло с миграциями, а приложение ходит в базу через API Supabase с токеном пользователя — иначе RLS не действует. Что вместо него и как вернуть прямой SQL-клиент, если проекту он понадобится, — `.claude/rules/db.md`.
