@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: 'Шаблон Next.js + Supabase',
-  description: 'Стартовый проект: Next.js 16, Supabase, Drizzle, строгий TypeScript',
+  description: 'Стартовый проект: Next.js 16, Supabase, строгий TypeScript',
 }
 
 export const viewport: Viewport = {

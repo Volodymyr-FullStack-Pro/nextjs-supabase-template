@@ -25,8 +25,6 @@
     "req:check": "node scripts/requirements-check.mjs",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "db:generate": "drizzle-kit generate",
-    "db:studio": "drizzle-kit studio",
     "db:types": "node scripts/with-local-supabase.mjs node scripts/db-types.mjs && prettier --write src/shared/infrastructure/supabase/types.ts",
     "test:e2e": "playwright test",
     "test:e2e:db": "node scripts/with-local-supabase.mjs playwright test",
@@ -50,13 +48,11 @@
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.2",
     "decimal.js": "^10.6.0",
-    "drizzle-orm": "^0.45.4",
     "lucide-react": "^1.70.0",
     "next": "16.4.5",
     "next-safe-action": "^8.7.3",
     "next-themes": "^0.4.6",
     "nuqs": "^2.10.2",
-    "postgres": "^4.1.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "react-hook-form": "^7.91.0",
@@ -78,8 +74,6 @@
     "@vitest/coverage-v8": "^5.1.0",
     "@vitest/eslint-plugin": "^1.6.28",
     "babel-plugin-react-compiler": "1.0.0",
-    "dotenv": "^18.0.9",
-    "drizzle-kit": "^0.31.11",
     "eslint": "^10.14.0",
     "eslint-config-next": "16.4.5",
     "eslint-config-prettier": "^10.1.8",
@@ -94,6 +88,7 @@
     "knip": "^6.44.1",
     "lint-staged": "^17.6.0",
     "otplib": "^13.6.0",
+    "postgres": "^4.1.0",
     "prettier": "^3.9.10",
     "prettier-plugin-tailwindcss": "^0.8.1",
     "shadcn": "^4.23.0",
@@ -106,10 +101,7 @@
     "vitest": "^5.1.0"
   },
   "overrides": {
-    "minimatch@^10.0.0": "^11.0.5",
-    "@esbuild-kit/core-utils": {
-      "esbuild": "^0.25.12"
-    }
+    "minimatch@^10.0.0": "^11.0.5"
   },
   "simple-git-hooks": {
     "pre-commit": "npx lint-staged"
@@ -125,7 +117,6 @@
     "package-lock.json": "node scripts/check-lock.mjs"
   },
   "allowScripts": {
-    "esbuild": false,
     "fsevents": false,
     "simple-git-hooks": false
   }

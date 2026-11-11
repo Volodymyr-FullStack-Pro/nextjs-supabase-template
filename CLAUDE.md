@@ -1,6 +1,6 @@
 # <Проект>
 
-<Одна фраза: что это за система и для кого.> Стартовая точка — шаблон `nextjs-supabase-template`: Next.js 16 (App Router, Cache Components), Supabase (Auth, Postgres с RLS), Drizzle, строгий TypeScript, shadcn/ui; архитектура «модули и четыре слоя» (README, раздел «Архитектура»).
+<Одна фраза: что это за система и для кого.> Стартовая точка — шаблон `nextjs-supabase-template`: Next.js 16 (App Router, Cache Components), Supabase (Auth, Postgres с RLS), строгий TypeScript, shadcn/ui; архитектура «модули и четыре слоя» (README, раздел «Архитектура»).
 
 ## Начинать отсюда
 
@@ -36,7 +36,6 @@ npm run generator:check   # срез из шаблонов проходит вс
 npm run build
 supabase start         # локальный Supabase; supabase test db — pgTAP; supabase db advisors и db lint — проверки; npm run db:check-migrations — Squawk
 npm run db:new <имя>   # новая миграция с lock_timeout и statement_timeout; применить — supabase migration up
-npm run db:generate    # SQL из src/shared/infrastructure/db/schema.ts в drizzle/ (для сверки; миграции — в supabase/migrations)
 npm run db:types       # типы supabase-js из локальной базы → src/shared/infrastructure/supabase/types.ts (numeric: в Row — number, в Insert и Update — string)
 npm run seed:test-user # тестовый пользователь для проверки экранов (.env.test.local или переменные окружения); npm run totp -s — код второго фактора
 ```

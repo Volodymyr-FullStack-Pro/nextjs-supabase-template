@@ -56,5 +56,3 @@ docs/_scratch/
 /AGENTS.md
 
 
-# drizzle-kit generate (сверка со схемой; миграции — в supabase/migrations)
-drizzle/

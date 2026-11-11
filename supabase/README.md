@@ -2,7 +2,7 @@
 
 - `migrations/` — SQL-миграции, источник правды для базы (таблицы, RLS, функции). Применяются `supabase db push --remote` (облако) или при `supabase start` / `supabase db reset` (локально).
 - `tests/` — pgTAP: `000-setup-tests-hooks.sql` создаёт хелперы `tests.create_supabase_user`, `tests.authenticate_as(имя, aal)` (по умолчанию `aal1`), `tests.add_verified_totp`, `tests.clear_authentication`; `001`, `004`, `005` — таблица-пример `notes` (политики владельца, защита служебных колонок и повтора, деньги) и удаляются вместе с ней; остальные от примера не зависят, создают свои таблицы внутри теста и остаются после его удаления: `002` (поведение `private.mfa_ok()` и политики второго фактора), `003` (журнал `audit.log`: автор, старое и новое значение, только дополнение, закрыт для `anon`, `authenticated` и `service_role`, запрет `truncate`), `006` (права по умолчанию, функции для анонима), `007` (связь записи с журналом) и `900` (соглашения каждой таблицы и функции `public` по каталогу, исключения — списком в самом файле). Запуск: `supabase test db`.
-- Схема Drizzle (`src/shared/infrastructure/db/schema.ts`) повторяет миграции и даёт типы коду; `npm run db:generate` строит SQL в `drizzle/` для сверки, в `supabase/migrations` его переносят руками, чтобы RLS и функции оставались в одном месте.
+- Типы для кода — `src/shared/infrastructure/supabase/types.ts`: после миграции их генерирует из локальной базы `npm run db:types`; копии схемы в коде нет (`.claude/rules/db.md`).
 
 ## Локально
 

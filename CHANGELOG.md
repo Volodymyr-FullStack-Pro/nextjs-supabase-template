@@ -2,6 +2,15 @@
 
 Что менялось в шаблоне. Проект, созданный раньше, переносит нужное руками и записывает это строкой D-NNN.
 
+## 2026-11-11 — Drizzle убран: приложение работает с базой только через API Supabase
+
+- Удалены `src/shared/infrastructure/db/` (`db()` и рукописная копия таблиц `schema.ts`), `drizzle.config.ts`, команды `db:generate` и `db:studio`, пакеты `drizzle-orm`, `drizzle-kit` и `dotenv` (его читал только `drizzle.config.ts`), override `@esbuild-kit/core-utils`. Причина: у `db()` не было ни одного вызова, копию таблиц ничто не сверяло с миграциями, а приложение ходит в базу через API Supabase с токеном пользователя — иначе RLS не действует. Что вместо него и как вернуть прямой SQL-клиент, если проекту он понадобится, — `.claude/rules/db.md`.
+- `postgres` — в devDependencies: нужен только скриптам `db-types.mjs` и `seed-test-user.mjs` и `seedOwnedRows` (`tests/e2e/support/users.ts`, строки для `npm run perf`), адрес локальной базы им передаёт `with-local-supabase.mjs`. `DATABASE_URL` и `DATABASE_CA_CERT` убраны из `env.ts`, `env.d.ts`, `.env.example` и документов выпуска.
+- Удалён браузерный клиент `src/shared/infrastructure/supabase/client.ts`: его никто не импортировал, а `connect-src 'self'` не пускает браузер к Supabase.
+- Линтер: сняты части защит, сторожившие только удалённое, — `sql.raw` в `local/data-access`, путь `infrastructure/db` в запрете обхода RLS и в `local/dynamic-import`, `env.databaseUrl`, пакет `drizzle-orm/postgres-js` в `local/raw-client`; пакет `postgres` в `src` закрыт по-прежнему.
+- `allowScripts`: запись `esbuild` убрана — пакет был в дереве только из-за `drizzle-kit`.
+- Проекту, созданному раньше: если `db()` нигде не вызывается — удалить то же и убрать `DATABASE_URL` из `.env.local`; если вызывается — оставить и записать причину строкой D-NNN.
+
 ## 2026-11-11 — замер скорости в Playwright вместо Lighthouse CI
 
 - `npm run perf` — тест Playwright (`tests/perf`, `playwright.perf.config.ts`): страницы production-сборки в Chromium на компьютере и телефоне, три прогона, медиана против порога, таблица «страница × профиль × величина». Пороги прежние (TTFB 200 мс; LCP 1,5 и 2,5 с; TBT 200 и 400 мс; CLS 0,1; оценка 0,9) и новый — «данные пришли» ≤ 500 мс (от начала перехода до строки из базы в документе, без троттлинга). Пороги и список страниц — один файл `tests/perf/pages.ts`.

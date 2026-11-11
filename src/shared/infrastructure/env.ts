@@ -17,11 +17,6 @@ export const env = {
       'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     ),
-  databaseUrl: () => required('DATABASE_URL', process.env.DATABASE_URL),
-  databaseCaCert: () => {
-    const cert = process.env.DATABASE_CA_CERT
-    return cert ? cert.replaceAll(String.raw`\n`, '\n') : undefined
-  },
   supabaseSecretKey: () => required('SUPABASE_SECRET_KEY', process.env.SUPABASE_SECRET_KEY),
   sentryDsn: () => process.env.SENTRY_DSN,
   cronSecret: () => process.env.CRON_SECRET,

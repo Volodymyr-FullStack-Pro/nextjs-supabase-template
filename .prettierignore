@@ -8,7 +8,6 @@ test-results
 package-lock.json
 next-env.d.ts
 supabase/.temp
-drizzle/
 # реестр и журнал: Prettier выравнивает всю таблицу по длинной ячейке, и любая правка переписывает каждую строку
 docs/knowledge/requirements.md
 docs/knowledge/decisions.md
