@@ -2,6 +2,14 @@
 
 Что менялось в шаблоне. Проект, созданный раньше, переносит нужное руками и записывает это строкой D-NNN.
 
+## 2026-11-11 — генератор полного среза и его проверка
+
+- Генератор: `npm run new:module <модуль> <запись>` создаёт полный рабочий срез одной сущности из шаблонов `scripts/module-template/` (настоящие файлы с метками вместо имён): четыре слоя и `server.ts`, форма с ключом повтора и ошибкой сервера у формы, список со скелетоном, словарь, action, страница, одна миграция таблицы (политики владельца, второй фактор, права по колонкам, журнал, запрет `truncate`, индексы, проверки), её pgTAP, unit-тесты и e2e с `checkPageQuality` на странице с данными — 20 файлов, около 1 250 строк; страницу и таблицу сам дописывает в `SIGNED_IN_PAGES` и `OWNED_TABLES`. Раньше — 10 файлов и около 100 строк, только список.
+- Проверка шаблонов: `npm run generator:check` создаёт модуль `generator-probes`, применяет миграцию, прогоняет линтер, самопроверку защит, типы, unit с порогами, knip, jscpd, prettier, advisors, db lint, pgTAP, Squawk, e2e модуля на двух устройствах и бюджет JS, затем удаляет модуль и таблицу; в CI — последний шаг задания `e2e`, в `npm run gate` не входит.
+- Общий код: ключ повтора формы — `keepRequestId` и `resetRequestId` (`src/shared/ui/form/request-id.ts`), иначе вторая форма денег дублирует первую (jscpd); таблицы с владельцем для e2e — список `OWNED_TABLES` и `insertOwnedRows` в `tests/e2e/support/users.ts`.
+- Правила: новая сущность — три задачи (база и pgTAP; ядро и unit; экран и e2e) поверх среза из генератора (`.claude/rules/docs.md`); после удаления примера `notes` исполняемый образец — шаблоны генератора, а не история git (B00-T03); тесты pgTAP таблиц продукта — с номера `100`.
+- Проекту, созданному раньше: перенести `scripts/module-template/`, `scripts/new-module.mjs`, `scripts/generator-check.mjs`, скрипт `generator:check` и шаг CI, исключение шаблонов в `eslint.config.mjs` и `tsconfig.json`, `request-id.ts`, `OWNED_TABLES` и `insertOwnedRows`.
+
 ## 2026-11-10 — третья перепроверка: функции базы закрыты, линтер ловит ошибки денег и доступа, одно «готово», исполнимые задачи B00
 
 - База: новая функция в `public` недоступна `anon` и `authenticated` (`*_functions_closed_by_default.sql`: `alter default privileges for role postgres revoke execute on functions from public`; функции, которую зовёт политика или клиент через `rpc`, нужен явный `grant execute`), pgTAP `006`; `audit.record()` берёт `row_id` из строки до изменения и запрещает смену `id` (`*_audit_record_identity.sql`, pgTAP `007`); общий pgTAP `900-table-conventions.sql` проверяет соглашения у каждой таблицы `public`, исключения — списком в самом тесте с номером D-NNN.
