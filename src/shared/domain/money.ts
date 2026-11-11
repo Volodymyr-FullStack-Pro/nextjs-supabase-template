@@ -14,11 +14,19 @@ const MoneyDecimal = Decimal.clone({
 
 export type Money = Decimal
 
-export const money = (value: string | Decimal): Money => {
-  const result = new MoneyDecimal(value)
-  if (!result.isFinite()) {
-    throw new RangeError(`money: ожидается конечное число, получено ${String(value)}`)
+const NOT_A_FINITE_DECIMAL = 'money: ожидается конечное десятичное число'
+
+function toDecimal(value: string | Decimal): Money {
+  try {
+    return new MoneyDecimal(value)
+  } catch {
+    throw new RangeError(NOT_A_FINITE_DECIMAL)
   }
+}
+
+export const money = (value: string | Decimal): Money => {
+  const result = toDecimal(value)
+  if (!result.isFinite()) throw new RangeError(NOT_A_FINITE_DECIMAL)
   return result
 }
 
@@ -31,7 +39,7 @@ export function exceedsCurrencyPrecision(amount: string, currency: string): bool
 }
 
 export function shareOf(value: string, fraction: string): string {
-  return money(value).times(fraction).toFixed()
+  return money(value).times(money(fraction)).toFixed()
 }
 
 type MoneyFormat = { currency: string; locale?: string; fractionDigits?: number }

@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/nextjs'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { formatMoney, money } from '@/shared/domain/money'
 import { reportUnexpectedError } from '@/shared/infrastructure/monitoring'
 import { databaseError } from '@/shared/infrastructure/supabase/postgres-errors'
 import {
@@ -95,34 +96,51 @@ describe('Sentry events', () => {
     expect(leakedIn(sent)).toEqual([])
   })
 
-  it('name a refusal of the database by operation and code, in the event and in the log line', async () => {
+  it('name a failure without the value it was about, in the event and in the log line', async () => {
     const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const reportThrownBy = (calculate: () => unknown) => {
+      try {
+        calculate()
+      } catch (error) {
+        reportUnexpectedError('action-error', error)
+      }
+    }
 
     const sent = await sentDuringRequest(sentryOptions(DSN), VISITOR_REQUEST, () => {
       reportUnexpectedError('action-error', databaseError('notes.insert', REJECTED_BY_DATABASE))
+      reportThrownBy(() => money(SECRETS.rejected))
+      reportThrownBy(() => formatMoney(SECRETS.rejected, { currency: 'EUR' }))
+      reportUnexpectedError('action-error', { code: '22P02', details: SECRETS.rejected })
     })
     const lines = logged.mock.calls.map(([line]) => String(line))
     logged.mockRestore()
 
-    expect(sent).toContain('notes.insert: 22P02')
+    const notANumber =
+      '{"type":"action-error","error":"RangeError","message":"money: ожидается конечное десятичное число"}'
     expect(leakedIn(sent)).toEqual([])
+    expect(sent).toContain('notes.insert: 22P02')
+    expect(sent).toContain('money: ожидается конечное десятичное число')
+    expect(sent).toContain('action-error: брошено не Error (object)')
     expect(lines).toEqual([
       '{"type":"action-error","error":"Error","message":"notes.insert: 22P02"}',
+      notANumber,
+      notANumber,
+      '{"type":"action-error","error":"object"}',
     ])
   })
 
-  it('would carry the rejected value if the text of the database error or the error itself were attached', async () => {
+  it('would carry the value with the provider error attached as the cause or with a thrown object handed over as it is', async () => {
     const provider = Object.assign(new Error(REJECTED_BY_DATABASE.message), REJECTED_BY_DATABASE)
 
-    const withText = await sentDuringRequest(sentryOptions(DSN), VISITOR_REQUEST, () => {
-      Sentry.captureException(new Error(`notes.insert: ${provider.message}`))
-    })
     const withCause = await sentDuringRequest(sentryOptions(DSN), VISITOR_REQUEST, () => {
       Sentry.captureException(new Error('notes.insert: 22P02', { cause: provider }))
     })
+    const withObject = await sentDuringRequest(sentryOptions(DSN), VISITOR_REQUEST, () => {
+      Sentry.captureException({ code: '22P02', details: SECRETS.rejected })
+    })
 
-    expect(leakedIn(withText)).toEqual(['rejected'])
     expect(leakedIn(withCause)).toEqual(['rejected'])
+    expect(leakedIn(withObject)).toEqual(['rejected'])
   })
 
   it('would carry them under the SDK defaults, so the checks above are not vacuous', async () => {
