@@ -70,6 +70,7 @@ jobs:
           path: ~/.cache/ms-playwright
           key: ${{ steps.playwright.outputs.key }}
       - run: npx playwright install --with-deps chromium webkit
+        timeout-minutes: 8 # обычно 2–3 минуты; при сбое сети раннера apt повторяет попытки до таймаута задания
       - name: Playwright with the local database
         run: npm run test:e2e:db # адрес и ключи берёт из supabase status, сценарии за входом не пропускаются
         env:
