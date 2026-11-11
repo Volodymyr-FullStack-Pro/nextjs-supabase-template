@@ -93,28 +93,30 @@ const steps = [
   ['бюджет JS с новым маршрутом', acceptNewRoute],
 ]
 
-const restore = () => {
-  run('supabase', ['db', 'query', DROP_PROBE_TABLE])
-  run('git', ['checkout', '--', ...CHANGED_FILES])
+const removeProbe = () => {
+  const dropped = run('supabase', ['db', 'query', DROP_PROBE_TABLE])
   const created = [
     ...CREATED_PATHS,
     ...tableFiles(MIGRATIONS, `_${TABLE}.sql`),
     ...tableFiles(DATABASE_TESTS, `-${MODULE}.sql`),
   ]
   for (const path of created) rmSync(path, { recursive: true, force: true })
+  return dropped
+}
+
+const restore = (originals) => {
+  removeProbe()
+  for (const [file, content] of originals) writeFileSync(file, content)
   run('npx', ['next', 'typegen'])
 }
 
 const precondition = async () => {
-  if (gitStatus() !== '') {
-    return 'Рабочее дерево не чистое: проверка создаёт модуль и удаляет его за собой — закоммитьте или уберите изменения (git status)'
-  }
   const busy = await Promise.all(E2E_PORTS.map((port) => portIsBusy(port)))
   const busyPorts = E2E_PORTS.filter((_, index) => busy[index])
   if (busyPorts.length > 0) {
     return `Порт ${busyPorts.join(', ')} занят: остановите сервер — e2e должен собрать проект с новым модулем, а не взять работающую сборку`
   }
-  if (!run('supabase', ['db', 'query', DROP_PROBE_TABLE])) {
+  if (!removeProbe()) {
     return 'Локальная база не отвечает: supabase start (в клоне — SUPABASE_PROJECT_ID=<имя папки оригинала>)'
   }
   return null
@@ -133,6 +135,8 @@ if (refusal !== null) {
   process.exit(1)
 }
 
+const originals = CHANGED_FILES.map((file) => [file, readFileSync(file)])
+const treeBefore = gitStatus()
 const startedAt = Date.now()
 const report = []
 let failed = null
@@ -149,15 +153,16 @@ try {
   }
 } finally {
   console.log('\n── уборка: таблица, файлы модуля, изменённые файлы')
-  restore()
+  restore(originals)
 }
 
-const leftovers = gitStatus()
+const treeAfter = gitStatus()
+const leftovers = treeAfter === treeBefore ? '' : treeAfter
 console.log(`\nПроверка генератора (${MODULE}), ${seconds(startedAt)}:`)
 console.log(report.join('\n'))
 if (leftovers !== '') {
   console.error(
-    `После уборки дерево не чистое — генератор создал то, чего проверка не знает:\n${leftovers}`,
+    `После уборки git status не тот, что до проверки, — генератор создал или изменил то, чего проверка не знает:\n${leftovers}`,
   )
 }
 if (failed !== null) {
@@ -167,7 +172,7 @@ if (failed !== null) {
 }
 if (failed === null && leftovers === '') {
   console.log(
-    'Срез из шаблонов проходит все проверки; дерево и база возвращены в исходное состояние',
+    'Срез из шаблонов проходит все проверки; файлы и база возвращены в состояние до проверки',
   )
 }
 process.exit(failed === null && leftovers === '' ? 0 : 1)
