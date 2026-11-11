@@ -108,7 +108,7 @@ const unknown = rendered.find(({ path, content }) =>
 )
 if (unknown) {
   fail(
-    `В шаблоне ${unknown.path} осталась неизвестная метка ${UNKNOWN_PLACEHOLDER.exec(`${unknown.path}\n${unknown.content}`)?.[0] ?? ''}: список меток — в начале scripts/new-module.mjs`,
+    `В шаблоне ${unknown.path} осталась неизвестная метка ${UNKNOWN_PLACEHOLDER.exec(`${unknown.path}\n${unknown.content}`)?.[0] ?? ''}: список меток — PLACEHOLDER в scripts/new-module.mjs`,
   )
 }
 
@@ -117,10 +117,13 @@ const databaseTestTemplate = `${DATABASE_TESTS}/${moduleName}.sql`
 const tableFiles = (directory, suffix) =>
   readdirSync(directory).filter((file) => file.endsWith(suffix))
 const taken = [
-  ...rendered
-    .map(({ path }) => path)
-    .filter((path) => path !== migrationTemplate && path !== databaseTestTemplate)
-    .filter((path) => existsSync(path)),
+  ...[
+    `src/modules/${moduleName}`,
+    `src/app/${moduleName}`,
+    `tests/unit/modules/${moduleName}`,
+    `${E2E_TESTS}/${moduleName}.spec.ts`,
+    `${E2E_TESTS}/${moduleName}-quality.spec.ts`,
+  ].filter((path) => existsSync(path)),
   ...tableFiles(MIGRATIONS, `_${table}.sql`).map((file) => `${MIGRATIONS}/${file}`),
   ...tableFiles(DATABASE_TESTS, `-${moduleName}.sql`).map((file) => `${DATABASE_TESTS}/${file}`),
 ]
