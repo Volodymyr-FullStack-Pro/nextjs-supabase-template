@@ -39,6 +39,14 @@ export type MeasuredPage = {
   seed?: { table: string; sqlByColumn: Record<string, string>; textOnScreen: string }
 }
 
+const SIGN_IN_STEP =
+  'шаг входа: страницу открывает сессия посреди входа, до второго фактора, а замер идёт с сессией после входа; форма — из тех же компонентов, что /login'
+
+export const NOT_MEASURED: Record<string, string> = {
+  '/mfa/setup': SIGN_IN_STEP,
+  '/mfa/verify': SIGN_IN_STEP,
+}
+
 export const MEASURED_PAGES: MeasuredPage[] = [
   { path: '/' },
   { path: '/login' },
