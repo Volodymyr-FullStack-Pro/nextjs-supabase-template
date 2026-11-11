@@ -85,7 +85,7 @@ const steps = [
   ['advisors', () => run('supabase', ['db', 'advisors', '--fail-on', 'warn'])],
   ['db lint', () => run('supabase', ['db', 'lint', '--fail-on', 'warning'])],
   ['pgTAP', () => run('supabase', ['test', 'db'])],
-  ['Squawk', () => run('node', ['scripts/check-migrations.mjs', 'HEAD'])],
+  ['Squawk', () => run('npm', ['run', 'db:check-migrations', '--', 'HEAD'])],
   [
     'e2e на двух устройствах (собирает проект)',
     () => run('npm', ['run', 'test:e2e:db', '--', MODULE, 'ui-quality']),
@@ -122,6 +122,8 @@ const precondition = async () => {
   return null
 }
 
+const signalsHandled = () => new Promise((resolve) => setImmediate(resolve))
+
 let interrupted = false
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => {
@@ -139,18 +141,22 @@ const originals = CHANGED_FILES.map((file) => [file, readFileSync(file)])
 const treeBefore = gitStatus()
 const startedAt = Date.now()
 const report = []
+
+const firstFailure = async ([current, ...rest]) => {
+  if (current === undefined) return null
+  const [name, step] = current
+  const stepStartedAt = Date.now()
+  console.log(`\n── ${name}`)
+  const stepPassed = step()
+  await signalsHandled()
+  const passed = stepPassed && !interrupted
+  report.push(`  ${passed ? '✓' : '✘'} ${name} — ${seconds(stepStartedAt)}`)
+  return passed ? firstFailure(rest) : name
+}
+
 let failed = null
 try {
-  for (const [name, step] of steps) {
-    const stepStartedAt = Date.now()
-    console.log(`\n── ${name}`)
-    const passed = step() && !interrupted
-    report.push(`  ${passed ? '✓' : '✘'} ${name} — ${seconds(stepStartedAt)}`)
-    if (!passed) {
-      failed = name
-      break
-    }
-  }
+  failed = await firstFailure(steps)
 } finally {
   console.log('\n── уборка: таблица, файлы модуля, изменённые файлы')
   restore(originals)
@@ -165,7 +171,11 @@ if (leftovers !== '') {
     `После уборки git status не тот, что до проверки, — генератор создал или изменил то, чего проверка не знает:\n${leftovers}`,
   )
 }
-if (failed !== null) {
+if (interrupted) {
+  console.error(
+    `Проверка прервана на шаге «${failed ?? ''}»; файлы и база возвращены в состояние до проверки`,
+  )
+} else if (failed !== null) {
   console.error(
     `Срез из шаблонов scripts/module-template не проходит шаг «${failed}»: исправьте шаблон (или общий код, на который он опирается) и запустите снова`,
   )
