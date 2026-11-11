@@ -66,15 +66,22 @@ const tableFiles = (directory, suffix) =>
 
 const readJson = (file) => JSON.parse(readFileSync(file, 'utf8'))
 
+let databaseError = ''
+
 const databaseState = () => {
   try {
     const output = execFileSync(
       'supabase',
       ['db', 'query', '--output-format', 'json', DATABASE_STATE],
-      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
     )
     return JSON.parse(output).rows[0] ?? null
-  } catch {
+  } catch (error) {
+    databaseError = [error.stdout, error.stderr, error.message]
+      .map((part) => String(part ?? '').trim())
+      .filter((part) => part.startsWith('{') || part.includes('rror'))
+      .join('\n  ')
+      .slice(0, 600)
     return null
   }
 }
@@ -187,7 +194,7 @@ const precondition = async () => {
     return `Порт ${busyPorts.join(', ')} занят: остановите сервер — e2e должен собрать проект с новым модулем, а не взять работающую сборку`
   }
   if (databaseState() === null) {
-    return 'Локальная база не отвечает: supabase start (в клоне — SUPABASE_PROJECT_ID=<имя папки оригинала>)'
+    return `Локальная база не отвечает: supabase start (в клоне — SUPABASE_PROJECT_ID=<имя папки оригинала>)\n  ${databaseError}`
   }
   if (existsSync(SNAPSHOT)) {
     console.log(
