@@ -11,7 +11,3 @@ paths = [
   '''supabase/tests/.*\.sql$''',
   '''package-lock\.json$''',
 ]
-
-[[allowlists]]
-description = "Значение не секрет: бывшая константа теста планового маршрута, осталась в истории ветки (сейчас создаётся при запуске теста)"
-regexes = ['''scheduler-secret-0123456789abcdef''']
