@@ -75,13 +75,19 @@ const databaseState = () => {
       ['db', 'query', '--output-format', 'json', DATABASE_STATE],
       { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
     )
-    return JSON.parse(output).rows[0] ?? null
+    const json = output.slice(output.indexOf('{'), output.lastIndexOf('}') + 1)
+    const row = JSON.parse(json).rows?.[0]
+    if (row === undefined) databaseError = `нет строки в ответе: ${output.slice(0, 300)}`
+    return row ?? null
   } catch (error) {
-    databaseError = [error.stdout, error.stderr, error.message]
-      .map((part) => String(part ?? '').trim())
-      .filter((part) => part.startsWith('{') || part.includes('rror'))
+    databaseError = [error.message, error.stdout, error.stderr]
+      .map((part) =>
+        String(part ?? '')
+          .trim()
+          .slice(0, 400),
+      )
+      .filter((part) => part !== '')
       .join('\n  ')
-      .slice(0, 600)
     return null
   }
 }
