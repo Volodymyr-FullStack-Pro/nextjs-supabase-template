@@ -4,6 +4,8 @@ import { readFileSync, writeFileSync } from 'node:fs'
 
 import postgres from 'postgres'
 
+import { exceptedObjects } from './convention-exceptions.mjs'
+
 const OUTPUT = 'src/shared/infrastructure/supabase/types.ts'
 const CONVENTIONS_TEST = 'supabase/tests/900-table-conventions.sql'
 const TABLE_INDENT = '      '
@@ -25,18 +27,29 @@ const formatted = execFileSync('npx', ['prettier', '--stdin-filepath', OUTPUT], 
   input: generated,
 })
 const sql = postgres(databaseUrl, { max: 1 })
-const numericTypes = sql`
+const resolvedTypes = sql`
   with recursive resolved as (
-    select t.oid as root, t.oid, t.typbasetype, t.typelem, t.typcategory
+    select t.oid as root, t.oid, t.typbasetype, t.typelem, t.typcategory, t.typrelid, false as in_composite
     from pg_type t
     union all
-    select r.root, t.oid, t.typbasetype, t.typelem, t.typcategory
+    select r.root, t.oid, t.typbasetype, t.typelem, t.typcategory, t.typrelid, r.in_composite or part.of_composite
     from resolved r
-    join pg_type t
-      on t.oid = case when r.typbasetype <> 0 then r.typbasetype when r.typcategory = 'A' then r.typelem end
+    cross join lateral (
+      select r.typbasetype as type_oid, false as of_composite where r.typbasetype <> 0
+      union all
+      select r.typelem, false where r.typbasetype = 0 and r.typcategory = 'A'
+      union all
+      select a.atttypid, true
+      from pg_attribute a
+      where r.typbasetype = 0 and r.typcategory = 'C'
+        and a.attrelid = r.typrelid and a.attnum > 0 and not a.attisdropped
+    ) as part
+    join pg_type t on t.oid = part.type_oid
   )
-  select distinct root from resolved where oid = 'numeric'::regtype
+  select root, in_composite from resolved where oid = 'numeric'::regtype
 `
+const numericTypes = sql`select root from (${resolvedTypes}) as numeric_type where not in_composite`
+const compositeNumericTypes = sql`select root from (${resolvedTypes}) as numeric_type where in_composite`
 const numericColumns = await sql`
   select c.relname as table_name, a.attname as column_name
   from pg_attribute a
@@ -46,6 +59,16 @@ const numericColumns = await sql`
     and a.attnum > 0
     and not a.attisdropped
     and a.atttypid in (${numericTypes})
+`
+const compositeColumns = await sql`
+  select c.relname as table_name, a.attname as column_name, a.atttypid::regtype::text as type_name
+  from pg_attribute a
+  join pg_class c on c.oid = a.attrelid
+  where c.relnamespace = 'public'::regnamespace
+    and c.relkind in ('r', 'p', 'v', 'm', 'f')
+    and a.attnum > 0
+    and not a.attisdropped
+    and a.atttypid in (${compositeNumericTypes})
 `
 const numericFunctions = await sql`
   select p.proname as name, p.oid::regprocedure::text as signature
@@ -105,11 +128,21 @@ function rewriteTable(block, columns) {
   return { block: rewritten, unmatched }
 }
 
-const exceptedFunctions = new Set(
-  readFileSync(CONVENTIONS_TEST, 'utf8')
-    .matchAll(/^\s*\(\s*'(?<name>[^']+)'\s*,\s*'rpc_numeric'/gmu)
-    .map((match) => match.groups.name),
-)
+if (compositeColumns.length > 0) {
+  console.error(
+    [
+      'Колонки составного типа с numeric внутри:',
+      ...compositeColumns.map(
+        (column) => `  ${column.table_name}.${column.column_name} (${column.type_name})`,
+      ),
+      'В types.ts поле такого типа — number и в Insert, и в Update: сумма ушла бы в запись числом.',
+      'Объявите колонки по отдельности (amount numeric, currency text) вместо составного типа.',
+    ].join('\n'),
+  )
+  process.exit(1)
+}
+
+const exceptedFunctions = exceptedObjects(readFileSync(CONVENTIONS_TEST, 'utf8'), 'rpc_numeric')
 const forbiddenFunctions = numericFunctions.filter(({ name }) => !exceptedFunctions.has(name))
 if (forbiddenFunctions.length > 0) {
   console.error(

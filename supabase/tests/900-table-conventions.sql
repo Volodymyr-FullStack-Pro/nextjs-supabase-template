@@ -265,16 +265,17 @@ select is_empty(
 );
 
 -- security definer обходит RLS целиком — и политики владельца, и политику второго фактора: право проверяет сама
--- функция. Тест видит только забытую проверку: вызовы auth.uid() и private.mfa_ok() в теле (комментарии не
--- считаются). Что проверка стоит первой и что право на объект проверено верно — pgTAP самой функции
+-- функция. Тест видит только забытую проверку: вызовы auth.uid() и private.mfa_ok() в теле (комментарии и
+-- строковые литералы не считаются). Что проверка стоит первой и что право на объект проверено верно — pgTAP самой функции
 -- (аноним — 42501, чужой — отказ, без второго фактора — отказ, свой — результат).
 select is_empty(
   $q$ select format('%s: security definer без %s в теле — функция обходит RLS и политику второго фактора, право проверяет она сама, первым делом: if (select auth.uid()) is null or not (select private.mfa_ok()) then raise exception ''нет доступа'' using errcode = ''insufficient_privilege''; end if; (образец — .claude/rules/db.md; права владельца не нужны — убрать security definer)',
         p.oid::regprocedure, missing.calls)
       from pg_proc p
       cross join lateral (
-        select replace(regexp_replace(regexp_replace(
-          coalesce(pg_get_function_sqlbody(p.oid), p.prosrc), '/\*.*?\*/', '', 'g'), '--[^\n]*', '', 'g'), '"', '') as text
+        select replace(regexp_replace(regexp_replace(regexp_replace(
+          coalesce(pg_get_function_sqlbody(p.oid), p.prosrc), '/\*.*?\*/', '', 'g'), '--[^\n]*', '', 'g'),
+          '''(?:[^'']|'''')*''', '', 'g'), '"', '') as text
       ) as body
       cross join lateral (
         select array_to_string(array_remove(array[

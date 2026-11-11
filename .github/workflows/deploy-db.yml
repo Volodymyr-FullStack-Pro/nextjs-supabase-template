@@ -143,10 +143,12 @@ jobs:
         run: |
           reference="$RUNNER_TEMP/network-reference.json"
           # Запрос ставит ровно эталон, поэтому повтор безопасен: при сбое сети адрес раннера не остаётся в списке.
+          # Ответ пишет сам curl (-o): перед повтором он обнуляет файл, а через «>» два ответа склеились бы.
           curl -fsS --max-time 30 --retry 3 --retry-all-errors --retry-delay 2 \
+            -o "$RUNNER_TEMP/network-restrictions-restored.json" \
             -X POST "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/network-restrictions/apply" \
             -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H 'Content-Type: application/json' \
-            -d "$(jq -c . "$reference")" > "$RUNNER_TEMP/network-restrictions-restored.json"
+            -d "$(jq -c . "$reference")"
           if ! jq -e --slurpfile reference "$reference" \
             '[.config.dbAllowedCidrs, .config.dbAllowedCidrsV6 | . // [] | unique] == [$reference[0].dbAllowedCidrs, $reference[0].dbAllowedCidrsV6]' \
             "$RUNNER_TEMP/network-restrictions-restored.json" > /dev/null; then
