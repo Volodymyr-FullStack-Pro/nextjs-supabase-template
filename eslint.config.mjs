@@ -447,18 +447,40 @@ const actionClient = syntaxRule('next-safe-action импортирует тол�
   },
 ])
 
-// Клиент Supabase создаёт только shared/infrastructure, а прямого подключения к базе в приложении нет вовсе
-// (пакет postgres — только для scripts/ и наполнения таблиц в tests/): свой createClient(url, secretKey)
-// или postgres(адрес базы) в репозитории — тот же обход RLS, что и createAdminClient(), но мимо запрета BYPASSES_RLS.
-const RAW_CLIENT_PACKAGE = '/^(@supabase\\/(supabase-js|ssr)|postgres)$/'
+// Клиент Supabase создаёт только shared/infrastructure: свой createClient(url, secretKey) в репозитории — тот же обход
+// RLS, что и createAdminClient(), но мимо запрета BYPASSES_RLS.
+const RAW_CLIENT_PACKAGE = '/^@supabase\\/(supabase-js|ssr)$/'
 const RAW_CLIENT =
-  'клиент Supabase создаёт только src/shared/infrastructure, прямого подключения к базе в приложении нет: в репозитории — createClient() из @/shared/infrastructure/supabase/server (тип можно: import type)'
+  'клиент Supabase создаёт только src/shared/infrastructure: в репозитории — createClient() из @/shared/infrastructure/supabase/server (тип можно: import type)'
 const rawClient = syntaxRule('Клиент базы создаёт только shared/infrastructure', [
   {
     selector: `ImportDeclaration[importKind!="type"][source.value=${RAW_CLIENT_PACKAGE}]`,
     message: RAW_CLIENT,
   },
   { selector: `ImportExpression[source.value=${RAW_CLIENT_PACKAGE}]`, message: RAW_CLIENT },
+])
+
+// Прямого подключения к базе в приложении нет вовсе: драйвер Postgres (postgres, pg) и ORM поверх него (drizzle-orm)
+// ходят ролью с полным доступом мимо RLS, как createAdminClient(), но без его запрета и без *.admin.ts. Поэтому запрет —
+// на весь src без исключений, shared/infrastructure тоже, и на import type; пакет postgres — только scripts/ и tests/.
+// С ним стали не нужны запреты sql.raw и env.databaseUrl: без драйвера в src нет ни сырого SQL, ни смысла в адресе базы.
+// Вернуть прямой SQL-клиент — решением D-NNN, по .claude/rules/db.md, вместе с этими двумя запретами.
+const DIRECT_DATABASE_PACKAGE = '/^(postgres|pg|drizzle-orm)(\\/.*)?$/'
+const DIRECT_DATABASE =
+  'прямого подключения к базе в приложении нет: драйвер Postgres ходит мимо RLS. Данные пользователя — createClient() из @/shared/infrastructure/supabase/server, задача без сессии — createAdminClient() в *.admin.ts; пакет postgres — только scripts/ и tests/'
+const directDatabase = syntaxRule('Драйвера Postgres и ORM в приложении нет', [
+  {
+    selector: `ImportDeclaration[source.value=${DIRECT_DATABASE_PACKAGE}]`,
+    message: DIRECT_DATABASE,
+  },
+  {
+    selector: `ImportExpression[source.value=${DIRECT_DATABASE_PACKAGE}]`,
+    message: DIRECT_DATABASE,
+  },
+  {
+    selector: `:matches(ExportNamedDeclaration, ExportAllDeclaration)[source.value=${DIRECT_DATABASE_PACKAGE}]`,
+    message: DIRECT_DATABASE,
+  },
 ])
 
 // Динамический import() не виден no-restricted-imports: тот же запрет обхода RLS повторён для него, а источник,
@@ -737,6 +759,7 @@ const local = {
     'behind-sign-in': behindSignIn,
     'action-client': actionClient,
     'raw-client': rawClient,
+    'direct-database': directDatabase,
     'dynamic-import': dynamicImport,
     'data-access': dataAccess,
     'no-unchecked-response': noUncheckedResponse,
@@ -801,6 +824,11 @@ const rawClientConfig = {
   ignores: ['src/shared/infrastructure/**', 'src/proxy.ts'],
   plugins: { local },
   rules: { 'local/raw-client': 'error' },
+}
+const directDatabaseConfig = {
+  files: ['src/**/*.{ts,tsx}'],
+  plugins: { local },
+  rules: { 'local/direct-database': 'error' },
 }
 const repositoryConfig = {
   files: ['src/modules/*/infrastructure/**'],
@@ -1314,6 +1342,7 @@ export default defineConfig([
   useCaseConfig,
   behindSignInConfig,
   rawClientConfig,
+  directDatabaseConfig,
   repositoryConfig,
   cronRouteConfig,
   a11yConfig,
