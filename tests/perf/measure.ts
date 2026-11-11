@@ -69,7 +69,7 @@ const LIGHTHOUSE_SCORE_WEIGHTS = {
 export const RUNS_PER_PAGE = 3
 const BYTES_PER_SECOND_IN_KBPS = 1024 / 8
 const HTTP_OK = 200
-const MAIN_THREAD_QUIET_MS = 500
+const LIGHTHOUSE_INTERACTIVE_QUIET_WINDOW_MS = 5000
 const LONG_TASK_MS = 50
 const DATA_ARRIVED_MARK = 'perf:data-arrived'
 
@@ -119,13 +119,14 @@ type RenderTimings = {
   longTasks: { endMs: number; durationMs: number }[]
 }
 
-async function readRenderTimingsOnceMainThreadIsQuiet(quiet: {
+async function readRenderTimingsAfterQuietWindow(quiet: {
   forMs: number
   pollMs: number
 }): Promise<RenderTimings> {
   const paints: PerformanceEntry[] = []
   const shifts: PerformanceEntry[] = []
   const tasks: PerformanceEntry[] = []
+  const requests: PerformanceEntry[] = []
   const collect = (type: string, entries: PerformanceEntry[]) => {
     new PerformanceObserver((list) => {
       entries.push(...list.getEntries())
@@ -134,12 +135,13 @@ async function readRenderTimingsOnceMainThreadIsQuiet(quiet: {
   collect('largest-contentful-paint', paints)
   collect('layout-shift', shifts)
   collect('longtask', tasks)
+  collect('resource', requests)
 
   const startedAt = performance.now()
-  const endOf = (task: PerformanceEntry) => task.startTime + task.duration
+  const endOf = (entry: PerformanceEntry) => entry.startTime + entry.duration
   await new Promise<void>((resolve) => {
     const check = () => {
-      const busyUntil = Math.max(startedAt, ...tasks.map((task) => endOf(task)))
+      const busyUntil = Math.max(startedAt, ...[...tasks, ...requests].map((entry) => endOf(entry)))
       if (performance.now() - busyUntil >= quiet.forMs) resolve()
       else setTimeout(check, quiet.pollMs)
     }
@@ -216,8 +218,8 @@ async function renderTimingsUnderThrottling({ browser, target, profile, visit }:
     await page.getByRole('heading', { level: 1 }).waitFor()
     if (target.seed) await page.getByText(target.seed.textOnScreen).first().waitFor()
     await page.waitForLoadState('load')
-    return await page.evaluate(readRenderTimingsOnceMainThreadIsQuiet, {
-      forMs: MAIN_THREAD_QUIET_MS,
+    return await page.evaluate(readRenderTimingsAfterQuietWindow, {
+      forMs: LIGHTHOUSE_INTERACTIVE_QUIET_WINDOW_MS,
       pollMs: LONG_TASK_MS,
     })
   } finally {
