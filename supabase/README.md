@@ -11,6 +11,7 @@ supabase start       # Postgres, Auth, Studio на 54323 (настройки —
 supabase status      # URL и ключи → .env.local
 npm run db:new accounts   # новая миграция сразу с lock_timeout и statement_timeout
 supabase migration up     # применить новые миграции к локальной базе (supabase db reset — пересоздать её целиком)
+supabase stop && supabase start   # после правки supabase/config.toml: db reset настройки Auth не перечитывает
 supabase test db     # pgTAP
 supabase db advisors # проверки безопасности и производительности (RLS, security definer, search_path, индексы)
 ```
