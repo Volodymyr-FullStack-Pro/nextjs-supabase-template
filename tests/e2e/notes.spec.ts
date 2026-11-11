@@ -5,7 +5,10 @@ import { expect, type Page, test } from '@playwright/test'
 import { hasDatabase, NEEDS_DATABASE, storageStatePath } from './support/users'
 
 const SAVE_TIMEOUT_MS = 5000
-const NBSP = ' '
+const NBSP = ' '
+const SERVER_ACTION_HEADER = 'next-action'
+
+type NoteForm = { title: string; amount: string; currency?: string }
 
 test.skip(!hasDatabase, NEEDS_DATABASE)
 test.use({ storageState: storageStatePath('alice') })
@@ -16,16 +19,38 @@ async function openNotes(page: Page) {
   await expect(page.getByText('Загружаю…')).toBeHidden()
 }
 
+async function submitNote(page: Page, note: NoteForm) {
+  await page.getByLabel('Новая заметка').fill(note.title)
+  await page.getByLabel('Сумма').fill(note.amount)
+  if (note.currency !== undefined) await page.getByLabel('Валюта').fill(note.currency)
+  await page.getByRole('button', { name: 'Добавить' }).click()
+}
+
+async function loseFirstSaveResponse(page: Page) {
+  let lost = false
+  await page.route('**/notes', async (route) => {
+    const request = route.request()
+    const isSave = request.method() === 'POST' && SERVER_ACTION_HEADER in request.headers()
+    if (lost || !isSave) {
+      await route.fallback()
+      return
+    }
+    lost = true
+    await route.fetch()
+    await route.abort('failed')
+  })
+}
+
+const noteCards = (page: Page, title: string) => page.locator('li', { hasText: title })
+
 test('shows a note only to its owner', async ({ page, browser }) => {
   const title = `Заметка ${randomUUID()}`
   await openNotes(page)
   await expect(async () => {
-    await page.getByLabel('Новая заметка').fill(title)
-    await page.getByLabel('Сумма').fill('1 234,56')
-    await page.getByRole('button', { name: 'Добавить' }).click()
+    await submitNote(page, { title, amount: '1 234,56' })
     await expect(page.getByText(title).first()).toBeVisible({ timeout: SAVE_TIMEOUT_MS })
   }).toPass()
-  await expect(page.locator('li', { hasText: title }).getByText(`€1${NBSP}234,56`)).toBeVisible()
+  await expect(noteCards(page, title).getByText(`€1${NBSP}234,56`)).toBeVisible()
 
   const bobContext = await browser.newContext({ storageState: storageStatePath('bob') })
   try {
@@ -35,4 +60,74 @@ test('shows a note only to its owner', async ({ page, browser }) => {
   } finally {
     await bobContext.close()
   }
+})
+
+test('saves one note when the response is lost and the form is submitted again', async ({
+  page,
+}) => {
+  const title = `Повтор ${randomUUID()}`
+  const notSaved = page.getByRole('alert').filter({ hasText: 'Что-то пошло не так' })
+  await openNotes(page)
+  await loseFirstSaveResponse(page)
+  await expect(async () => {
+    await submitNote(page, { title, amount: '10,50', currency: 'usd' })
+    await expect(notSaved).toBeVisible({ timeout: SAVE_TIMEOUT_MS })
+  }).toPass()
+
+  const secondTab = await page.context().newPage()
+  await openNotes(secondTab)
+  await expect(noteCards(secondTab, title)).toHaveCount(1)
+  await secondTab.close()
+
+  await page.getByRole('button', { name: 'Добавить' }).click()
+  await expect(noteCards(page, title).getByText('$10,50')).toBeVisible({ timeout: SAVE_TIMEOUT_MS })
+  await expect(notSaved).toBeHidden()
+  await page.reload()
+  await expect(noteCards(page, title)).toHaveCount(1)
+})
+
+test('refuses a corrected amount sent with the request id of a lost response', async ({ page }) => {
+  const title = `Правка ${randomUUID()}`
+  const notSaved = page.getByRole('alert').filter({ hasText: 'Что-то пошло не так' })
+  const savedWithOldData = page
+    .getByRole('alert')
+    .filter({ hasText: 'Заметка уже сохранена с прежними данными' })
+  await openNotes(page)
+  await loseFirstSaveResponse(page)
+  await expect(async () => {
+    await submitNote(page, { title, amount: '1000' })
+    await expect(notSaved).toBeVisible({ timeout: SAVE_TIMEOUT_MS })
+  }).toPass()
+
+  await page.getByLabel('Сумма').fill('10000')
+  await page.getByRole('button', { name: 'Добавить' }).click()
+  await expect(savedWithOldData).toBeVisible({ timeout: SAVE_TIMEOUT_MS })
+  await expect(noteCards(page, title).getByText(`€1${NBSP}000,00`)).toBeVisible()
+
+  const secondTab = await page.context().newPage()
+  await openNotes(secondTab)
+  await expect(noteCards(secondTab, title)).toHaveCount(1)
+  await expect(noteCards(secondTab, title).getByText(`€1${NBSP}000,00`)).toBeVisible()
+  await secondTab.close()
+
+  await page.getByRole('button', { name: 'Добавить' }).click()
+  await expect(noteCards(page, title).getByText(`€10${NBSP}000,00`)).toBeVisible({
+    timeout: SAVE_TIMEOUT_MS,
+  })
+  await expect(savedWithOldData).toBeHidden()
+  await page.reload()
+  await expect(noteCards(page, title)).toHaveCount(2)
+  await expect(noteCards(page, title).getByText(`€1${NBSP}000,00`)).toBeVisible()
+})
+
+test('shows a rule violation from the server at the form', async ({ page }) => {
+  const title = `Иены ${randomUUID()}`
+  await openNotes(page)
+  await expect(async () => {
+    await submitNote(page, { title, amount: '100,50', currency: 'jpy' })
+    await expect(
+      page.getByRole('alert').filter({ hasText: 'У этой валюты нет копеек' }),
+    ).toBeVisible({ timeout: SAVE_TIMEOUT_MS })
+  }).toPass()
+  await expect(noteCards(page, title)).toHaveCount(0)
 })

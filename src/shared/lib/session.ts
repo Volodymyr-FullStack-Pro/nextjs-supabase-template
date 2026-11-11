@@ -8,17 +8,22 @@ import { env } from '@/shared/infrastructure/env'
 import { readAssurance } from '@/shared/infrastructure/supabase/assurance'
 import { createClient } from '@/shared/infrastructure/supabase/server'
 
+import { API_DENIALS, type ApiDenial } from './api-denial'
+
 export type Session = { userId: string } & Assurance
 
-export const verifySession = cache(async (): Promise<Session> => {
+const readSession = cache(async (): Promise<Session | null> => {
   const supabase = await createClient()
   const { data, error } = await supabase.auth.getClaims()
   const claims = data?.claims
-  if (error || !claims?.sub) redirect('/login')
+  if (error || !claims?.sub) return null
   const assurance = await readAssurance(supabase, claims.aal)
-  if (!assurance) redirect('/login')
-  return { userId: claims.sub, ...assurance }
+  return assurance ? { userId: claims.sub, ...assurance } : null
 })
+
+export async function verifySession(): Promise<Session> {
+  return (await readSession()) ?? redirect('/login')
+}
 
 export function sessionMfaStep(session: Session): MfaStep | null {
   return pendingMfaStep(session, env.authRequireMfa())
@@ -29,4 +34,12 @@ export async function requireVerifiedSession(): Promise<Session> {
   const step = sessionMfaStep(session)
   if (step) redirect(MFA_PATHS[step])
   return session
+}
+
+const refuse = ({ body, status }: ApiDenial) => Response.json(body, { status })
+
+export async function verifiedSessionOrResponse(): Promise<Session | Response> {
+  const session = await readSession()
+  if (!session) return refuse(API_DENIALS.unauthorized)
+  return sessionMfaStep(session) ? refuse(API_DENIALS.mfaRequired) : session
 }

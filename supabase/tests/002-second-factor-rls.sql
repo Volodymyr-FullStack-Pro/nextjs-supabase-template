@@ -1,41 +1,64 @@
--- Второй фактор: с подтверждённым TOTP данные видны и меняются только в сессии aal2; без фактора — как раньше.
+-- Второй фактор: поведение private.mfa_ok() и ограничивающей политики, которую несёт каждая таблица public
+-- (наличие и текст политики у каждой таблицы проверяет 900 по каталогу). С подтверждённым TOTP данные видны
+-- и меняются только в сессии aal2; без фактора — как раньше.
+-- Таблица создаётся внутри теста: проверяется сама функция, а не таблица-пример, и файл остаётся после её удаления.
 -- Проверка самого теста: временно замените тело private.mfa_ok() на true — тесты «aal1 with factor» должны упасть.
 begin;
-select plan(11);
+select plan(13);
+
+create table public.second_factor_probe (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid not null references auth.users (id) on delete restrict,
+  title text not null
+);
+alter table public.second_factor_probe enable row level security;
+grant select, delete on public.second_factor_probe to authenticated;
+grant insert (owner_id, title), update (title) on public.second_factor_probe to authenticated;
+create policy second_factor_probe_owner on public.second_factor_probe
+  for all to authenticated
+  using ((select auth.uid()) = owner_id)
+  with check ((select auth.uid()) = owner_id);
+create policy second_factor_probe_second_factor on public.second_factor_probe
+  as restrictive
+  for all to authenticated
+  using ((select private.mfa_ok()))
+  with check ((select private.mfa_ok()));
 
 select tests.create_supabase_user('carol');
 select tests.create_supabase_user('dave');
 select tests.add_verified_totp('carol');
 
-insert into public.notes (owner_id, title)
-values (tests.get_supabase_uid('carol'), 'carol note'), (tests.get_supabase_uid('dave'), 'dave note');
+insert into public.second_factor_probe (owner_id, title)
+values (tests.get_supabase_uid('carol'), 'carol row'), (tests.get_supabase_uid('dave'), 'dave row');
 
 select tests.authenticate_as('carol', 'aal1');
-select is_empty('select * from public.notes', 'aal1 with factor: sees nothing');
+select is_empty('select * from public.second_factor_probe', 'aal1 with factor: sees nothing');
 select throws_ok(
-  $$ insert into public.notes (owner_id, title) values (tests.get_supabase_uid('carol'), 'aal1 insert') $$,
+  $$ insert into public.second_factor_probe (owner_id, title) values (tests.get_supabase_uid('carol'), 'aal1 insert') $$,
   '42501',
-  'new row violates row-level security policy "notes: second factor when enrolled" for table "notes"',
+  'new row violates row-level security policy "second_factor_probe_second_factor" for table "second_factor_probe"',
   'aal1 with factor: cannot insert'
 );
-select lives_ok($$ update public.notes set title = 'aal1 update' $$, 'aal1 with factor: update runs');
-select lives_ok($$ delete from public.notes $$, 'aal1 with factor: delete runs');
+select lives_ok($$ update public.second_factor_probe set title = 'aal1 update' $$, 'aal1 with factor: update runs');
+select lives_ok($$ delete from public.second_factor_probe $$, 'aal1 with factor: delete runs');
+select ok(not (select private.mfa_ok()), 'aal1 with factor: private.mfa_ok() is false');
 
 select tests.authenticate_as('carol', 'aal2');
 select results_eq(
-  'select title from public.notes',
-  array['carol note'],
-  'aal2 with factor: sees own notes, untouched by the aal1 attempts'
+  'select title from public.second_factor_probe',
+  array['carol row'],
+  'aal2 with factor: sees own rows, untouched by the aal1 attempts'
 );
 select lives_ok(
-  $$ insert into public.notes (owner_id, title) values (tests.get_supabase_uid('carol'), 'aal2 insert') $$,
+  $$ insert into public.second_factor_probe (owner_id, title) values (tests.get_supabase_uid('carol'), 'aal2 insert') $$,
   'aal2 with factor: can insert'
 );
+select ok((select private.mfa_ok()), 'aal2 with factor: private.mfa_ok() is true');
 
 select tests.authenticate_as('dave', 'aal1');
-select results_eq('select title from public.notes', array['dave note'], 'no factor at aal1: sees own notes');
+select results_eq('select title from public.second_factor_probe', array['dave row'], 'no factor at aal1: sees own rows');
 select lives_ok(
-  $$ insert into public.notes (owner_id, title) values (tests.get_supabase_uid('dave'), 'dave second') $$,
+  $$ insert into public.second_factor_probe (owner_id, title) values (tests.get_supabase_uid('dave'), 'dave second') $$,
   'no factor at aal1: can insert'
 );
 select ok((select private.mfa_ok()), 'authenticated can call private.mfa_ok');

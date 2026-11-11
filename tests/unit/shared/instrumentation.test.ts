@@ -1,15 +1,169 @@
-import type { ErrorEvent } from '@sentry/nextjs'
-import { describe, expect, it, vi } from 'vitest'
+import * as Sentry from '@sentry/nextjs'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { withoutRequestDetails } from '@/instrumentation'
+import { formatMoney, money } from '@/shared/domain/money'
+import { reportUnexpectedError } from '@/shared/infrastructure/monitoring'
+import { databaseError } from '@/shared/infrastructure/supabase/postgres-errors'
+import {
+  register,
+  sentryOptions,
+  withoutConsoleOutput,
+  withoutRequestDetails,
+} from '@/instrumentation'
+
+import {
+  queryFakePostgrest,
+  SECRETS,
+  VISITOR_REQUEST,
+  VISITOR_REQUEST_WITH_BODY,
+} from '../support/sentry-request'
 
 vi.mock('server-only', () => ({}))
-vi.mock('@sentry/nextjs', () => ({ init: vi.fn(), captureRequestError: vi.fn() }))
+
+type SentryOptions = NonNullable<Parameters<typeof Sentry.init>[0]>
+
+const DSN = 'http://public@127.0.0.1:9/1'
+const FLUSH_TIMEOUT_MS = 2000
+const FAILURE = 'notes.insert: connection reset'
+const COLLECTED_BY_SDK_DEFAULTS = [
+  'address',
+  'header',
+  'query',
+  'filter',
+  'body',
+  'logged',
+] as const
+
+vi.spyOn(console, 'info').mockImplementation(() => undefined)
+
+const REJECTED_BY_DATABASE = {
+  code: '22P02',
+  message: `invalid input syntax for type numeric: "${SECRETS.rejected}"`,
+  details: `Failing row contains (${SECRETS.rejected}).`,
+  hint: '',
+}
+const captureFailure = () => {
+  Sentry.captureException(new Error(FAILURE))
+}
+
+async function sentDuringRequest(
+  options: SentryOptions,
+  request: object,
+  fail: () => void = captureFailure,
+): Promise<string> {
+  const envelopes: unknown[] = []
+  Sentry.init({
+    ...options,
+    transport: () => ({
+      send: (envelope: unknown) => {
+        envelopes.push(envelope)
+        return Promise.resolve({})
+      },
+      flush: () => Promise.resolve(true),
+    }),
+  })
+  await Sentry.withIsolationScope(async (scope) => {
+    scope.setSDKProcessingMetadata({ normalizedRequest: request, ipAddress: SECRETS.address })
+    await queryFakePostgrest()
+    console.info(JSON.stringify({ type: 'payment-imported', amount: SECRETS.logged }))
+    fail()
+  })
+  await Sentry.close(FLUSH_TIMEOUT_MS)
+  return JSON.stringify(envelopes)
+}
+
+const leakedIn = (sent: string) =>
+  Object.entries(SECRETS)
+    .filter(([, secret]) => sent.includes(secret))
+    .map(([kind]) => kind)
+
+describe('Sentry events', () => {
+  it('leave the server without the visitor address, cookies, headers, body, query or log lines', async () => {
+    const sent = await sentDuringRequest(sentryOptions(DSN), VISITOR_REQUEST_WITH_BODY)
+
+    expect(sent).toContain(FAILURE)
+    expect(sent).toContain('"request":{"method":"POST","url":"https://app.example/notes"}')
+    expect(sent).toContain('/rest/v1/notes"')
+    expect(leakedIn(sent)).toEqual([])
+  })
+
+  it('are collected without them even before the beforeSend filter runs', async () => {
+    const { dsn, dataCollection, beforeBreadcrumb } = sentryOptions(DSN)
+
+    const sent = await sentDuringRequest({ dsn, dataCollection, beforeBreadcrumb }, VISITOR_REQUEST)
+
+    expect(sent).toContain(FAILURE)
+    expect(leakedIn(sent)).toEqual([])
+  })
+
+  it('name a failure without the value it was about, in the event and in the log line', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const reportThrownBy = (calculate: () => unknown) => {
+      try {
+        calculate()
+      } catch (error) {
+        reportUnexpectedError('action-error', error)
+      }
+    }
+
+    const sent = await sentDuringRequest(sentryOptions(DSN), VISITOR_REQUEST, () => {
+      reportUnexpectedError('action-error', databaseError('notes.insert', REJECTED_BY_DATABASE))
+      reportThrownBy(() => money(SECRETS.rejected))
+      reportThrownBy(() => formatMoney(SECRETS.rejected, { currency: 'EUR' }))
+      reportUnexpectedError('action-error', { code: '22P02', details: SECRETS.rejected })
+    })
+    const lines = logged.mock.calls.map(([line]) => String(line))
+    logged.mockRestore()
+
+    const notANumber =
+      '{"type":"action-error","error":"RangeError","message":"money: ожидается конечное десятичное число"}'
+    expect(leakedIn(sent)).toEqual([])
+    expect(sent).toContain('notes.insert: 22P02')
+    expect(sent).toContain('money: ожидается конечное десятичное число')
+    expect(sent).toContain('action-error: брошено не Error (object)')
+    expect(lines).toEqual([
+      '{"type":"action-error","error":"Error","message":"notes.insert: 22P02"}',
+      notANumber,
+      notANumber,
+      '{"type":"action-error","error":"object"}',
+    ])
+  })
+
+  it('would carry the value with the provider error attached as the cause or with a thrown object handed over as it is', async () => {
+    const provider = Object.assign(new Error(REJECTED_BY_DATABASE.message), REJECTED_BY_DATABASE)
+
+    const withCause = await sentDuringRequest(sentryOptions(DSN), VISITOR_REQUEST, () => {
+      Sentry.captureException(new Error('notes.insert: 22P02', { cause: provider }))
+    })
+    const withObject = await sentDuringRequest(sentryOptions(DSN), VISITOR_REQUEST, () => {
+      Sentry.captureException({ code: '22P02', details: SECRETS.rejected })
+    })
+
+    expect(leakedIn(withCause)).toEqual(['rejected'])
+    expect(leakedIn(withObject)).toEqual(['rejected'])
+  })
+
+  it('would carry them under the SDK defaults, so the checks above are not vacuous', async () => {
+    const sent = await sentDuringRequest({ dsn: DSN }, VISITOR_REQUEST_WITH_BODY)
+
+    expect(leakedIn(sent)).toEqual(expect.arrayContaining([...COLLECTED_BY_SDK_DEFAULTS]))
+  })
+})
+
+describe('withoutConsoleOutput', () => {
+  it('drops what the application logs and keeps the other breadcrumbs', () => {
+    const request = { category: 'http', data: { url: 'http://127.0.0.1/rest/v1/notes' } }
+
+    expect(withoutConsoleOutput({ category: 'console', message: 'log line' })).toBeNull()
+    expect(withoutConsoleOutput(request)).toBe(request)
+  })
+})
 
 describe('withoutRequestDetails', () => {
-  it('keeps the request method and path but drops headers, cookies, body and query', () => {
+  it('keeps the request method and path but drops the user, headers, cookies, body and query', () => {
     const event = {
       type: undefined,
+      user: { ip_address: '203.0.113.77', id: 'user-1' },
       request: {
         method: 'POST',
         url: 'https://app.example/notes?q=secret%20search',
@@ -18,7 +172,7 @@ describe('withoutRequestDetails', () => {
         cookies: { 'sb-token': '…' },
         data: { amount: '1234.56' },
       },
-    } as unknown as ErrorEvent
+    } as unknown as Sentry.ErrorEvent
 
     expect(withoutRequestDetails(event)).toEqual({
       type: undefined,
@@ -26,9 +180,51 @@ describe('withoutRequestDetails', () => {
     })
   })
 
-  it('returns an event without request data unchanged', () => {
-    const event = { type: undefined, message: 'auth-failure' } as unknown as ErrorEvent
+  it('keeps an event without request data as it is', () => {
+    const event = { type: undefined, message: 'auth-failure' } as unknown as Sentry.ErrorEvent
 
-    expect(withoutRequestDetails(event)).toBe(event)
+    expect(withoutRequestDetails(event)).toEqual(event)
+  })
+})
+
+describe('register', () => {
+  afterEach(async () => {
+    vi.unstubAllEnvs()
+    await Sentry.close(FLUSH_TIMEOUT_MS)
+  })
+
+  it('does not start Sentry without SENTRY_DSN', () => {
+    vi.stubEnv('SENTRY_DSN', '')
+
+    register()
+
+    expect(Sentry.isEnabled()).toBe(false)
+  })
+
+  it('starts Sentry with every data collection option off and without tracing', () => {
+    vi.stubEnv('SENTRY_DSN', DSN)
+
+    register()
+
+    const client = Sentry.getClient()
+    expect(Sentry.isEnabled()).toBe(true)
+    expect(client?.getDsn()?.host).toBe('127.0.0.1')
+    expect(client?.getOptions().beforeSend).toBe(withoutRequestDetails)
+    expect(client?.getOptions().beforeBreadcrumb).toBe(withoutConsoleOutput)
+    expect(client?.getOptions().tracesSampleRate).toBeUndefined()
+    expect(client?.getDataCollectionOptions()).toEqual({
+      userInfo: false,
+      cookies: false,
+      httpHeaders: { request: false, response: false },
+      httpBodies: [],
+      urlQueryParams: false,
+      graphQL: { document: false, variables: false },
+      genAI: { inputs: false, outputs: false },
+      mcp: { inputs: false, outputs: false },
+      databaseQueryData: false,
+      queues: false,
+      stackFrameVariables: false,
+      frameContextLines: 5,
+    })
   })
 })

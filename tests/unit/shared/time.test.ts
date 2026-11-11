@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { formatDate, formatDay } from '@/shared/domain/time'
+import { formatDate, formatDay, isCalendarDay } from '@/shared/domain/time'
 
 describe('formatDate', () => {
   it('shows the calendar day in the project time zone, not in UTC', () => {
@@ -28,5 +28,19 @@ describe('formatDay', () => {
     expect(() => formatDay('2026-02-29')).toThrow(RangeError)
     expect(() => formatDay('2026-13-01')).toThrow(RangeError)
     expect(formatDay('2028-02-29')).toBe('29 февраля 2028 г.')
+  })
+})
+
+describe('isCalendarDay', () => {
+  it('accepts an existing day', () => {
+    expect(isCalendarDay('2028-02-29')).toBe(true)
+    expect(isCalendarDay('2026-12-31')).toBe(true)
+  })
+
+  it('rejects a day missing from the calendar or another format', () => {
+    expect(isCalendarDay('2026-02-29')).toBe(false)
+    expect(isCalendarDay('2026-13-01')).toBe(false)
+    expect(isCalendarDay('01.03.2026')).toBe(false)
+    expect(isCalendarDay('2026-03-01T00:00:00Z')).toBe(false)
   })
 })

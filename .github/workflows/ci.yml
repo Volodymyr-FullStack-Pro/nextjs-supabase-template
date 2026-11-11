@@ -29,6 +29,7 @@ jobs:
       - run: npm audit --omit=dev --audit-level=high # production-зависимости без известных уязвимостей; dev — через Dependabot
       - run: npm run licenses # production-зависимости без GPL, AGPL, SSPL и неизвестных лицензий
       - run: npm run lint
+      - run: npm run lint:rules # защиты денег и доступа ловят свои пробы и молчат на хорошем коде
       - run: npm run typecheck
       - run: npm run req:check
       - run: npm run test:coverage
@@ -38,11 +39,11 @@ jobs:
       - run: npm run build
       - run: npm run budget
 
+  # Идёт одновременно с quality: ответ CI не ждёт линтера и сборки (около двух минут на каждый push).
   e2e:
     name: Playwright
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: quality
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -55,6 +56,19 @@ jobs:
       - name: Start local Supabase (Postgres, Auth, REST)
         run: supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,realtime,storage-api,postgres-meta,supavisor
       - run: npm ci
+      # Кэш хранит только скачанные браузеры: ключ — образ раннера и установленная версия @playwright/test.
+      # Системные библиотеки (apt) в кэш не попадают, поэтому команда установки та же: с кэшем она пропускает
+      # скачивание, без кэша или с неполным кэшем — докачивает недостающее.
+      - name: Playwright browsers cache key
+        id: playwright
+        run: |
+          . /etc/os-release
+          version=$(node -p "require('@playwright/test/package.json').version")
+          echo "key=playwright-$ID$VERSION_ID-$(uname -m)-$version-chromium-webkit" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ steps.playwright.outputs.key }}
       - run: npx playwright install --with-deps chromium webkit
       - name: Playwright with the local database
         run: npm run test:e2e:db # адрес и ключи берёт из supabase status, сценарии за входом не пропускаются

@@ -1,5 +1,6 @@
 import Decimal from 'decimal.js'
 
+import { currencyFractionDigits, isIsoCurrency } from './currency'
 import { MINUS } from './decimal-input'
 import { DEFAULT_LOCALE } from './locale'
 
@@ -13,29 +14,35 @@ const MoneyDecimal = Decimal.clone({
 
 export type Money = Decimal
 
-export const money = (value: string | Decimal): Money => {
-  const result = new MoneyDecimal(value)
-  if (!result.isFinite()) {
-    throw new RangeError(`money: ожидается конечное число, получено ${String(value)}`)
+const NOT_A_FINITE_DECIMAL = 'money: ожидается конечное десятичное число'
+
+function toDecimal(value: string | Decimal): Money {
+  try {
+    return new MoneyDecimal(value)
+  } catch {
+    throw new RangeError(NOT_A_FINITE_DECIMAL)
   }
+}
+
+export const money = (value: string | Decimal): Money => {
+  const result = toDecimal(value)
+  if (!result.isFinite()) throw new RangeError(NOT_A_FINITE_DECIMAL)
   return result
 }
 
 const NBSP = '\u00A0'
 const LETTER_CODE = /^[A-Z]{3}$/u
 const DECIMAL_PROBE = 1.5
-const ISO_CURRENCIES = new Set(Intl.supportedValuesOf('currency'))
-
-function currencyFractionDigits(currency: string, locale: string): number | undefined {
-  return new Intl.NumberFormat(locale, { style: 'currency', currency }).resolvedOptions()
-    .maximumFractionDigits
+export function exceedsCurrencyPrecision(amount: string, currency: string): boolean {
+  const fractionDigits = currencyFractionDigits(currency)
+  return fractionDigits !== undefined && money(amount).decimalPlaces() > fractionDigits
 }
 
 export function shareOf(value: string, fraction: string): string {
-  return money(value).times(fraction).toFixed()
+  return money(value).times(money(fraction)).toFixed()
 }
 
-type MoneyFormat = { currency?: string; locale?: string; fractionDigits?: number }
+type MoneyFormat = { currency: string; locale?: string; fractionDigits?: number }
 
 function currencySymbol(currency: string, locale: string): string {
   return new Intl.NumberFormat(locale, {
@@ -68,16 +75,16 @@ function signedDigits(amount: string, locale: string, fractionDigits: number | u
 
 export function formatMoney(
   amount: string,
-  { currency = 'EUR', locale = DEFAULT_LOCALE, fractionDigits }: MoneyFormat = {},
+  { currency, locale = DEFAULT_LOCALE, fractionDigits }: MoneyFormat,
 ): string {
-  if (!ISO_CURRENCIES.has(currency)) {
+  if (!isIsoCurrency(currency)) {
     const { sign, digits } = signedDigits(amount, locale, fractionDigits)
     return `${sign}${digits}${NBSP}${currency}`
   }
   const { sign, digits } = signedDigits(
     amount,
     locale,
-    fractionDigits ?? currencyFractionDigits(currency, locale),
+    fractionDigits ?? currencyFractionDigits(currency),
   )
   const symbol = currencySymbol(currency, locale)
   return LETTER_CODE.test(symbol) ? `${sign}${digits}${NBSP}${symbol}` : `${sign}${symbol}${digits}`

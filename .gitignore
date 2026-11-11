@@ -52,6 +52,8 @@ coverage/
 docs/_scratch/
 .playwright-mcp/
 .claude/settings.local.json
+# next dev пишет его сам, если agentRules включён (в next.config.ts выключен); инструкции агенту — в CLAUDE.md
+/AGENTS.md
 
 # lighthouse ci
 .lighthouseci/

@@ -9,7 +9,13 @@ function describe(error: unknown) {
 
 export function reportUnexpectedError(type: string, error: unknown): void {
   console.error(JSON.stringify({ type, ...describe(error) }))
-  Sentry.captureException(error)
+  Sentry.captureException(
+    error instanceof Error ? error : new Error(`${type}: брошено не Error (${typeof error})`),
+  )
+}
+
+export function reportSlowAction(durationMs: number): void {
+  console.warn(JSON.stringify({ type: 'slow-action', durationMs }))
 }
 
 const AUTH_FAILURE = 'auth-failure'

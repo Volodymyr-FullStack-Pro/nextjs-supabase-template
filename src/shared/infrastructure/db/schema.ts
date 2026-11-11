@@ -10,6 +10,7 @@ import {
   pgTable,
   text,
   timestamp,
+  unique,
   uuid,
 } from 'drizzle-orm/pg-core'
 import { authenticatedRole, authUid, authUsers } from 'drizzle-orm/supabase'
@@ -29,10 +30,14 @@ export const notes = pgTable(
     amount: numeric('amount', { precision: MONEY_PRECISION, scale: MONEY_SCALE })
       .notNull()
       .default('0'),
+    currency: text('currency').notNull(),
+    clientRequestId: uuid('client_request_id').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index('notes_owner_id_created_at_idx').on(table.ownerId, table.createdAt.desc().nullsFirst()),
+    unique('notes_owner_id_client_request_id_key').on(table.ownerId, table.clientRequestId),
+    check('notes_currency_format', sql`${table.currency} ~ '^[A-Z]{3}$'`),
     check(
       'notes_title_length',
       sql`char_length(${table.title}) <= ${sql.raw(String(NOTE_TITLE_MAX))}`,

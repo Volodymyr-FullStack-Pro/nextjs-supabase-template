@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { decimalPattern, parseDecimalInput, SCALE } from '@/shared/domain/decimal-input'
-import { formatMoney, money, shareOf } from '@/shared/domain/money'
+import { exceedsCurrencyPrecision, formatMoney, money, shareOf } from '@/shared/domain/money'
 
 const NBSP = ' '
 
@@ -30,26 +30,45 @@ describe('money', () => {
     expect(() => money('NaN')).toThrow(RangeError)
     expect(() => money('Infinity')).toThrow(RangeError)
   })
+
+  it.each(['12 345,67 secret', 'NaN', '-Infinity', ''])(
+    'refuses %j without quoting it: the text of the error goes to the log and to Sentry',
+    (value) => {
+      expect(() => money(value)).toThrow(
+        new RangeError('money: ожидается конечное десятичное число'),
+      )
+    },
+  )
+
+  it.each([
+    ['formatMoney', () => formatMoney('12 345,67 secret', { currency: 'EUR' })],
+    ['formatMoney of a ticker', () => formatMoney('12 345,67 secret', { currency: 'BTC' })],
+    ['exceedsCurrencyPrecision', () => exceedsCurrencyPrecision('12 345,67 secret', 'EUR')],
+    ['shareOf (the value)', () => shareOf('12 345,67 secret', '0.5')],
+    ['shareOf (the fraction)', () => shareOf('100', '12 345,67 secret')],
+  ])('%s refuses a non-numeric amount without quoting it', (_name, run) => {
+    expect(run).toThrow(new RangeError('money: ожидается конечное десятичное число'))
+  })
 })
 
 describe('formatMoney', () => {
   it('formats EUR with non-breaking thousands separators and the cents of the currency', () => {
-    expect(formatMoney('4218400')).toBe(`€4${NBSP}218${NBSP}400,00`)
-    expect(formatMoney('1250.49')).toBe(`€1${NBSP}250,49`)
+    expect(formatMoney('4218400', { currency: 'EUR' })).toBe(`€4${NBSP}218${NBSP}400,00`)
+    expect(formatMoney('1250.49', { currency: 'EUR' })).toBe(`€1${NBSP}250,49`)
   })
 
   it('formats negative amounts with a real minus sign', () => {
-    expect(formatMoney('-8500')).toBe(`−€8${NBSP}500,00`)
+    expect(formatMoney('-8500', { currency: 'EUR' })).toBe(`−€8${NBSP}500,00`)
   })
 
   it('drops the sign of an amount that rounds to zero', () => {
-    expect(formatMoney('-0.004')).toBe('€0,00')
+    expect(formatMoney('-0.004', { currency: 'EUR' })).toBe('€0,00')
   })
 
   it('rounds half to even', () => {
-    expect(formatMoney('2.5', { fractionDigits: 0 })).toBe('€2')
-    expect(formatMoney('3.5', { fractionDigits: 0 })).toBe('€4')
-    expect(formatMoney('2.665')).toBe('€2,66')
+    expect(formatMoney('2.5', { currency: 'EUR', fractionDigits: 0 })).toBe('€2')
+    expect(formatMoney('3.5', { currency: 'EUR', fractionDigits: 0 })).toBe('€4')
+    expect(formatMoney('2.665', { currency: 'EUR' })).toBe('€2,66')
   })
 
   it('shows no decimals for a currency without minor units', () => {
@@ -64,7 +83,9 @@ describe('formatMoney', () => {
   })
 
   it('follows the English locale and keeps the requested decimals', () => {
-    expect(formatMoney('4218400.5', { locale: 'en-US', fractionDigits: 2 })).toBe('€4,218,400.50')
+    expect(formatMoney('4218400.5', { currency: 'EUR', locale: 'en-US', fractionDigits: 2 })).toBe(
+      '€4,218,400.50',
+    )
   })
 
   it('puts a letter currency code after the number', () => {
@@ -72,7 +93,7 @@ describe('formatMoney', () => {
   })
 
   it('shows an amount with more than 15 significant digits exactly', () => {
-    expect(formatMoney('1234567890123456.78', { fractionDigits: 2 })).toBe(
+    expect(formatMoney('1234567890123456.78', { currency: 'EUR', fractionDigits: 2 })).toBe(
       `€1${NBSP}234${NBSP}567${NBSP}890${NBSP}123${NBSP}456,78`,
     )
   })
@@ -170,5 +191,28 @@ describe('decimalPattern', () => {
     expect(() => decimalPattern(19)).toThrow(RangeError)
     expect(() => decimalPattern(-1)).toThrow(RangeError)
     expect(() => decimalPattern(1.5)).toThrow(RangeError)
+  })
+})
+
+describe('exceedsCurrencyPrecision', () => {
+  it('rejects an amount more precise than the currency: 100.50 yen would be shown as ¥100', () => {
+    expect(exceedsCurrencyPrecision('100.50', 'JPY')).toBe(true)
+    expect(exceedsCurrencyPrecision('100.505', 'EUR')).toBe(true)
+    expect(exceedsCurrencyPrecision('-0.0001', 'KWD')).toBe(true)
+  })
+
+  it('accepts an amount within the precision of the currency', () => {
+    expect(exceedsCurrencyPrecision('100', 'JPY')).toBe(false)
+    expect(exceedsCurrencyPrecision('100.50', 'EUR')).toBe(false)
+    expect(exceedsCurrencyPrecision('1.234', 'KWD')).toBe(false)
+  })
+
+  it('ignores trailing zeros: 100.00 yen is a whole amount', () => {
+    expect(exceedsCurrencyPrecision('100.00', 'JPY')).toBe(false)
+    expect(exceedsCurrencyPrecision('100.500', 'EUR')).toBe(false)
+  })
+
+  it('leaves the precision of a ticker to the scale of the column', () => {
+    expect(exceedsCurrencyPrecision('0.00000001', 'BTC')).toBe(false)
   })
 })

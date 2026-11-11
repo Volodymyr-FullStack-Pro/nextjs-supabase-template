@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { existsSync } from 'node:fs'
+
 import { createClient } from '@supabase/supabase-js'
 import postgres from 'postgres'
 
@@ -11,13 +13,7 @@ const fail = (message) => {
   process.exit(1)
 }
 
-try {
-  process.loadEnvFile(ENV_FILE)
-} catch {
-  fail(
-    `Нет ${ENV_FILE}: задайте в нём TEST_USER_EMAIL, TEST_USER_PASSWORD и TEST_USER_TOTP_SECRET (.env.example)`,
-  )
-}
+if (existsSync(ENV_FILE)) process.loadEnvFile(ENV_FILE)
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL
 const secretKey = process.env.SUPABASE_SECRET_KEY
@@ -30,7 +26,10 @@ if (!url || !secretKey || !databaseUrl)
   fail('Запуск: npm run seed:test-user при запущенном supabase start')
 if (!LOCAL_HOSTS.has(new URL(url).hostname) || !LOCAL_HOSTS.has(new URL(databaseUrl).hostname))
   fail('Тестовый пользователь заводится только в локальном Supabase')
-if (!email || !password) fail(`В ${ENV_FILE} нужны TEST_USER_EMAIL и TEST_USER_PASSWORD`)
+if (!email || !password)
+  fail(
+    `Нужны TEST_USER_EMAIL и TEST_USER_PASSWORD (и TEST_USER_TOTP_SECRET для второго фактора): в файле ${ENV_FILE} (образец — .env.example) или в переменных окружения`,
+  )
 if (totpSecret && !TOTP_SECRET_PATTERN.test(totpSecret))
   fail(
     'TEST_USER_TOTP_SECRET — base32 (A–Z, 2–7) не короче 26 символов: такой нужен приложению-аутентификатору',

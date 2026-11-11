@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { reportAuthFailure } from '@/shared/infrastructure/monitoring'
+import { authError } from '@/shared/infrastructure/supabase/auth-errors'
 import { createClient } from '@/shared/infrastructure/supabase/server'
 
 import type { AuthGateway } from '../application/auth-gateway'
@@ -20,12 +21,12 @@ export const supabaseAuthGateway: AuthGateway = {
       reportAuthFailure('too-many-attempts')
       return 'too-many-attempts'
     }
-    throw new Error(`auth.signIn: ${error.message}`, { cause: error })
+    throw authError('auth.signIn', error)
   },
 
   async signOut() {
     const supabase = await createClient()
     const { error } = await supabase.auth.signOut()
-    if (error) throw new Error(`auth.signOut: ${error.message}`, { cause: error })
+    if (error) throw authError('auth.signOut', error)
   },
 }

@@ -1,17 +1,11 @@
 {
-  "extraKnownMarketplaces": {
-    "claude-kit": {
-      "source": { "source": "github", "repo": "Volodymyr-FullStack-Pro/claude-kit" }
-    }
-  },
-  "enabledPlugins": {
-    "dev-kit@claude-kit": true
-  },
   "permissions": {
     "allow": [
       "Bash(npm test:*)",
       "Bash(npm run check:*)",
+      "Bash(npm run gate:*)",
       "Bash(npm run lint:*)",
+      "Bash(npm run lint:rules:*)",
       "Bash(npm run typecheck:*)",
       "Bash(npm run test:*)",
       "Bash(npm run req:check:*)",
@@ -22,11 +16,13 @@
       "Bash(npm run budget:*)",
       "Bash(npm run db:types:*)",
       "Bash(npm run db:check-migrations:*)",
+      "Bash(npm run db:new:*)",
       "Bash(npm run totp:*)",
       "Bash(supabase test db:*)",
       "Bash(supabase db advisors:*)",
       "Bash(supabase db lint:*)",
       "Bash(supabase status:*)",
+      "Bash(supabase migration up:*)",
       "Bash(git status:*)",
       "Bash(git diff:*)",
       "Bash(git log:*)",
@@ -44,6 +40,20 @@
       "Read(./.env.development*)",
       "Read(./.env.staging*)",
       "Read(./.env.production*)",
+      "Read(./.vercel/**)",
+      "Read(./supabase/.env*)",
+      "Bash(supabase migration up *--remote*)",
+      "Bash(supabase migration up *--linked*)",
+      "Bash(supabase migration up *--db-url*)",
+      "Bash(supabase test db *--remote*)",
+      "Bash(supabase test db *--linked*)",
+      "Bash(supabase test db *--db-url*)",
+      "Bash(supabase db lint *--remote*)",
+      "Bash(supabase db lint *--linked*)",
+      "Bash(supabase db lint *--db-url*)",
+      "Bash(supabase db advisors *--remote*)",
+      "Bash(supabase db advisors *--linked*)",
+      "Bash(supabase db advisors *--db-url*)",
       "mcp__clickup__clickup_delete_task",
       "mcp__clickup__clickup_delete_comment",
       "mcp__clickup__clickup_delete_chat_message"

@@ -20,7 +20,7 @@ let owner: TestUser
 
 test.beforeEach(async () => {
   owner = await createTestUser('money')
-  await insertNote(owner, { title: 'Крупная сумма', amount: LARGE_AMOUNT })
+  await insertNote(owner, { title: 'Крупная сумма', amount: LARGE_AMOUNT, currency: 'EUR' })
 })
 
 test.afterEach(async () => {

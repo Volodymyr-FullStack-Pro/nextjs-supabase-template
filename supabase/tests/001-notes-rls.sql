@@ -1,25 +1,26 @@
 -- Политики таблицы notes: владелец видит и меняет своё, чужое невидимо и неизменяемо; у анонима нет прав на таблицу.
+-- Передать строку другому не дают два слоя: права по колонкам (owner_id не меняется) и политика update.
 -- Проверка самого теста: временно замените using на (true) в миграции — тест «other user sees nothing» должен упасть.
 begin;
-select plan(12);
+select plan(13);
 
 select tests.create_supabase_user('alice');
 select tests.create_supabase_user('bob');
 
-insert into public.notes (owner_id, title)
-values (tests.get_supabase_uid('alice'), 'alice note');
+insert into public.notes (owner_id, title, currency, client_request_id)
+values (tests.get_supabase_uid('alice'), 'alice note', 'EUR', gen_random_uuid());
 
 select tests.authenticate_as('alice');
 select is((select count(*)::int from public.notes), 1, 'owner sees own note');
 select lives_ok(
-  $$ insert into public.notes (owner_id, title) values (tests.get_supabase_uid('alice'), 'second') $$,
+  $$ insert into public.notes (owner_id, title, currency, client_request_id) values (tests.get_supabase_uid('alice'), 'second', 'EUR', gen_random_uuid()) $$,
   'owner can insert own note'
 );
 
 select tests.authenticate_as('bob');
 select is_empty('select * from public.notes', 'other user sees nothing');
 select throws_ok(
-  $$ insert into public.notes (owner_id, title) values (tests.get_supabase_uid('alice'), 'forged') $$,
+  $$ insert into public.notes (owner_id, title, currency, client_request_id) values (tests.get_supabase_uid('alice'), 'forged', 'EUR', gen_random_uuid()) $$,
   '42501',
   'new row violates row-level security policy for table "notes"',
   'other user cannot insert as owner'
@@ -36,9 +37,22 @@ select is(
 select throws_ok(
   $$ update public.notes set owner_id = tests.get_supabase_uid('bob') where title = 'second' $$,
   '42501',
-  'new row violates row-level security policy for table "notes"',
-  'owner cannot hand a note to another user'
+  'permission denied for table notes',
+  'owner cannot hand a note to another user: no privilege on the owner_id column'
 );
+-- Вторая линия: даже если право на колонку когда-нибудь выдадут, строку не даст передать политика update.
+select tests.clear_authentication();
+grant update (owner_id) on public.notes to authenticated;
+select tests.authenticate_as('alice');
+select throws_ok(
+  $$ update public.notes set owner_id = tests.get_supabase_uid('bob') where title = 'second' $$,
+  '42501',
+  'new row violates row-level security policy for table "notes"',
+  'owner cannot hand a note to another user even with the column privilege'
+);
+select tests.clear_authentication();
+revoke update (owner_id) on public.notes from authenticated;
+select tests.authenticate_as('alice');
 select lives_ok($$ update public.notes set title = 'renamed' where title = 'second' $$, 'owner can update own note');
 select lives_ok($$ delete from public.notes where title = 'renamed' $$, 'owner can delete own note');
 
@@ -51,7 +65,7 @@ select throws_ok(
   'anonymous user cannot read notes'
 );
 select throws_ok(
-  $$ insert into public.notes (owner_id, title) values (gen_random_uuid(), 'anonymous') $$,
+  $$ insert into public.notes (owner_id, title, currency, client_request_id) values (gen_random_uuid(), 'anonymous', 'EUR', gen_random_uuid()) $$,
   '42501',
   'permission denied for table notes',
   'anonymous user cannot insert'
