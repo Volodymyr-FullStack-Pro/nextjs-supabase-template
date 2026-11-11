@@ -3,12 +3,14 @@ import { randomUUID } from 'node:crypto'
 import { expect, type Page } from '@playwright/test'
 import { createClient } from '@supabase/supabase-js'
 import { generate } from 'otplib'
+import postgres from 'postgres'
 
 import { AFTER_SIGN_IN_PATH } from '@/shared/domain/routes'
 
 const supabaseUrl = process.env['NEXT_PUBLIC_SUPABASE_URL'] ?? ''
 const secretKey = process.env['SUPABASE_SECRET_KEY'] ?? ''
 const publishableKey = process.env['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'] ?? ''
+const databaseUrl = process.env['DATABASE_URL'] ?? ''
 
 export const hasDatabase = supabaseUrl !== '' && secretKey !== ''
 export const NEEDS_DATABASE = 'нужен локальный Supabase: supabase start и npm run test:e2e:db'
@@ -41,6 +43,23 @@ export async function insertOwnedRows(
     .from(table)
     .insert(rows.map((row) => ({ ...row, owner_id: owner.id })))
   if (error) throw new Error(`insertOwnedRows(${table}): ${error.message}`, { cause: error })
+}
+
+type SeededRows = { table: string; count: number; sqlByColumn: Record<string, string> }
+
+export async function seedOwnedRows(owner: TestUser, rows: SeededRows): Promise<void> {
+  const names = Object.keys(rows.sqlByColumn).join(', ')
+  const values = Object.values(rows.sqlByColumn).join(', ')
+  const sql = postgres(databaseUrl, { max: 1 })
+  try {
+    await sql.unsafe(
+      `insert into public.${rows.table} (owner_id, ${names})
+       select $1::uuid, ${values} from generate_series(1, $2::int) as n`,
+      [owner.id, rows.count],
+    )
+  } finally {
+    await sql.end()
+  }
 }
 
 export async function insertNote(

@@ -1079,7 +1079,7 @@ const unitTestsConfig = {
 }
 const e2eTestsConfig = {
   ...playwright.configs['flat/recommended'],
-  files: ['tests/e2e/**/*.ts'],
+  files: ['tests/e2e/**/*.ts', 'tests/perf/**/*.ts'],
   rules: {
     ...playwright.configs['flat/recommended'].rules,
     'playwright/no-skipped-test': ['error', { allowConditional: true }],
