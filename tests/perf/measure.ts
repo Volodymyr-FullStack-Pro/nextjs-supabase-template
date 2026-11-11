@@ -71,7 +71,7 @@ const BYTES_PER_SECOND_IN_KBPS = 1024 / 8
 const HTTP_OK = 200
 const MAIN_THREAD_QUIET_MS = 500
 const LONG_TASK_MS = 50
-const DATA_VISIBLE_MARK = 'perf:data-visible'
+const DATA_ARRIVED_MARK = 'perf:data-arrived'
 
 export type Metrics = {
   serverResponseMs: number
@@ -79,45 +79,36 @@ export type Metrics = {
   largestContentfulPaintMs: number
   totalBlockingTimeMs: number
   cumulativeLayoutShift: number
-  dataVisibleMs?: number
+  dataArrivedMs?: number
 }
 export type PageSpeed = Metrics & { lighthouseScore: number }
 
-function markWhenTextLeavesHiddenStream({ text, mark }: { text: string; mark: string }) {
-  const observer = new MutationObserver((records) => {
-    const isOnScreen = records
-      .flatMap((record) => [...record.addedNodes])
-      .some(
-        (node) =>
-          node.textContent?.includes(text) === true &&
-          (node instanceof Element ? node : node.parentElement)?.closest('[hidden]') === null,
-      )
-    if (!isOnScreen) return
+function markWhenDataArrives({ text, mark }: { text: string; mark: string }) {
+  const textInMarkup = `//body//text()[contains(., "${text}")][not(ancestor::*[self::script or self::style or self::template])]`
+  const observer = new MutationObserver(() => {
+    const arrived = document.evaluate(
+      `boolean(${textInMarkup})`,
+      document,
+      null,
+      XPathResult.BOOLEAN_TYPE,
+    )
+    if (!arrived.booleanValue) return
     performance.mark(mark)
     observer.disconnect()
   })
-  observer.observe(document, { childList: true, subtree: true })
+  observer.observe(document, { childList: true, subtree: true, characterData: true })
 }
 
-type ServerTimings = { requestToFirstByteMs: number; dataVisibleMs: number | null }
+type ServerTimings = { requestToFirstByteMs: number; dataArrivedMs: number | null }
 
-async function readServerTimingsAfterFirstPaint(dataMark: string): Promise<ServerTimings> {
-  const firstPaintMs = await new Promise<number>((resolve) => {
-    new PerformanceObserver((list, observer) => {
-      const [paint] = list.getEntriesByName('first-contentful-paint')
-      if (!paint) return
-      observer.disconnect()
-      resolve(paint.startTime)
-    }).observe({ type: 'paint', buffered: true })
-  })
+function readServerTimings(dataMark: string): ServerTimings {
   const [navigation] = performance.getEntriesByType('navigation')
-  const [dataInDocument] = performance.getEntriesByName(dataMark)
   return {
     requestToFirstByteMs:
       navigation instanceof PerformanceNavigationTiming
         ? navigation.responseStart - navigation.requestStart
-        : Number.NaN,
-    dataVisibleMs: dataInDocument ? Math.max(dataInDocument.startTime, firstPaintMs) : null,
+        : Infinity,
+    dataArrivedMs: performance.getEntriesByName(dataMark)[0]?.startTime ?? null,
   }
 }
 
@@ -175,11 +166,9 @@ export type Visit = {
 }
 type Subject = { browser: Browser; target: MeasuredPage; profile: Profile; visit: Visit }
 
-async function openUntilContentIsOnScreen(page: Page, target: MeasuredPage) {
+async function open(page: Page, target: MeasuredPage) {
   const response = await page.goto(target.path, { waitUntil: 'commit' })
   expect(response?.status(), `${target.path} не открылась`).toBe(HTTP_OK)
-  await page.getByRole('heading', { level: 1 }).waitFor()
-  if (target.seed) await page.getByText(target.seed.textOnScreen).first().waitFor()
   expect(
     new URL(page.url()).pathname,
     `${target.path} увела на другой адрес — замерена была бы не она; странице за входом нужен signedIn в tests/perf/pages.ts`,
@@ -191,13 +180,19 @@ async function serverTimingsWithoutThrottling({ browser, target, profile, visit 
   try {
     const page = await context.newPage()
     if (target.seed) {
-      await page.addInitScript(markWhenTextLeavesHiddenStream, {
+      await page.addInitScript(markWhenDataArrives, {
         text: target.seed.textOnScreen,
-        mark: DATA_VISIBLE_MARK,
+        mark: DATA_ARRIVED_MARK,
       })
     }
-    await openUntilContentIsOnScreen(page, target)
-    return await page.evaluate(readServerTimingsAfterFirstPaint, DATA_VISIBLE_MARK)
+    await open(page, target)
+    if (target.seed) {
+      await page.waitForFunction(
+        (mark) => performance.getEntriesByName(mark).length > 0,
+        DATA_ARRIVED_MARK,
+      )
+    }
+    return await page.evaluate(readServerTimings, DATA_ARRIVED_MARK)
   } finally {
     await context.close()
   }
@@ -217,7 +212,9 @@ async function renderTimingsUnderThrottling({ browser, target, profile, visit }:
       uploadThroughput: throttling.uploadKbps * BYTES_PER_SECOND_IN_KBPS,
     })
     await devtools.send('Emulation.setCPUThrottlingRate', { rate: throttling.cpuSlowdown })
-    await openUntilContentIsOnScreen(page, target)
+    await open(page, target)
+    await page.getByRole('heading', { level: 1 }).waitFor()
+    if (target.seed) await page.getByText(target.seed.textOnScreen).first().waitFor()
     await page.waitForLoadState('load')
     return await page.evaluate(readRenderTimingsOnceMainThreadIsQuiet, {
       forMs: MAIN_THREAD_QUIET_MS,
@@ -240,7 +237,7 @@ async function measureOnce(subject: Subject): Promise<Metrics> {
     largestContentfulPaintMs: render.largestContentfulPaintMs,
     totalBlockingTimeMs: sum(blockingAfterFirstPaint),
     cumulativeLayoutShift: sum(render.layoutShifts),
-    ...(server.dataVisibleMs === null ? {} : { dataVisibleMs: server.dataVisibleMs }),
+    ...(server.dataArrivedMs === null ? {} : { dataArrivedMs: server.dataArrivedMs }),
   }
 }
 
@@ -299,7 +296,7 @@ export async function measureMedian(subject: Subject): Promise<PageSpeed> {
       Math.round(medianOf((sample) => sample.cumulativeLayoutShift) * LAYOUT_SHIFT_PRECISION) /
       LAYOUT_SHIFT_PRECISION,
     ...(subject.target.seed
-      ? { dataVisibleMs: Math.round(medianOf((sample) => sample.dataVisibleMs ?? Infinity)) }
+      ? { dataArrivedMs: Math.round(medianOf((sample) => sample.dataArrivedMs ?? Infinity)) }
       : {}),
   }
   return {

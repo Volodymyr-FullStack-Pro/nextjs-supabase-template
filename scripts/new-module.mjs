@@ -261,6 +261,6 @@ npm run gate пройдёт после двух шагов, которые ге�
   2. npm run build && npm run budget -- --update-baseline  — маршрут ${route} в perf-baseline.json
 Дальше — под сущность, тремя задачами (.claude/rules/docs.md): база и pgTAP → ядро и unit (${unitTests}) → экран и e2e (${specs}).
 Замер скорости (npm run perf) меряет ${route} на 50 тыс. строк по записи в ${SPEED_PAGES}: поменяли поля таблицы —
-поправьте там выражения колонок (sqlByColumn) и текст, по которому видно данные на экране (textOnScreen).
+поправьте там выражения колонок (sqlByColumn) и текст из этих строк, который страница показывает (textOnScreen).
 Поля в миграции меняются до supabase migration up; если она уже применена — supabase db reset.
 Тексты заготовки: заголовок «Название раздела» в src/app/${moduleName}/page.tsx, подписи формы и словарь ui/messages.ts.`)

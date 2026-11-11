@@ -16,7 +16,7 @@ const HEADER = [
   'TBT, мс',
   'CLS',
   'оценка',
-  'данные видны, мс',
+  'данные пришли, мс',
 ]
 
 const cell = (value: number | undefined, limit?: number) => {
@@ -33,7 +33,7 @@ const toCells = ({ path, profile, speed, budget }: Row) => [
   cell(speed.totalBlockingTimeMs, budget.totalBlockingTimeMs),
   cell(speed.cumulativeLayoutShift, budget.cumulativeLayoutShift),
   cell(speed.lighthouseScore, budget.lighthouseScore),
-  cell(speed.dataVisibleMs, budget.dataVisibleMs),
+  cell(speed.dataArrivedMs, budget.dataArrivedMs),
 ]
 
 export default class TableReporter implements Reporter {

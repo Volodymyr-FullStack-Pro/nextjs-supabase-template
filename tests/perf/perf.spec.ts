@@ -45,9 +45,9 @@ const overBudget = (speed: PageSpeed, budget: Budget): string[] =>
       `CLS ${String(speed.cumulativeLayoutShift)} > ${String(budget.cumulativeLayoutShift)}`,
     speed.lighthouseScore < budget.lighthouseScore &&
       `оценка ${String(speed.lighthouseScore)} < ${String(budget.lighthouseScore)}`,
-    speed.dataVisibleMs !== undefined &&
-      speed.dataVisibleMs > budget.dataVisibleMs &&
-      `данные видны через ${String(speed.dataVisibleMs)} мс > ${String(budget.dataVisibleMs)}`,
+    speed.dataArrivedMs !== undefined &&
+      speed.dataArrivedMs > budget.dataArrivedMs &&
+      `данные пришли через ${String(speed.dataArrivedMs)} мс > ${String(budget.dataArrivedMs)}`,
   ].filter((line) => line !== false)
 
 for (const target of MEASURED_PAGES) {

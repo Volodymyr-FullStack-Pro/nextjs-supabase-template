@@ -8,7 +8,7 @@ export type Budget = {
   totalBlockingTimeMs: number
   cumulativeLayoutShift: number
   lighthouseScore: number
-  dataVisibleMs: number
+  dataArrivedMs: number
 }
 
 export const BUDGET: Record<Profile, Budget> = {
@@ -18,7 +18,7 @@ export const BUDGET: Record<Profile, Budget> = {
     totalBlockingTimeMs: 200,
     cumulativeLayoutShift: 0.1,
     lighthouseScore: 0.9,
-    dataVisibleMs: 500,
+    dataArrivedMs: 500,
   },
   phone: {
     serverResponseMs: 200,
@@ -26,7 +26,7 @@ export const BUDGET: Record<Profile, Budget> = {
     totalBlockingTimeMs: 400,
     cumulativeLayoutShift: 0.1,
     lighthouseScore: 0.9,
-    dataVisibleMs: 500,
+    dataArrivedMs: 500,
   },
 }
 
