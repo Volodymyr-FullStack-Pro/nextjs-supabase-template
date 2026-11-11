@@ -447,11 +447,11 @@ const actionClient = syntaxRule('next-safe-action импортирует тол�
   },
 ])
 
-// Клиент Supabase и подключение к базе создаёт только shared/infrastructure: свой createClient(url, secretKey)
-// или postgres(databaseUrl) в репозитории — тот же обход RLS, что и createAdminClient(), но мимо запрета BYPASSES_RLS.
-const RAW_CLIENT_PACKAGE = '/^(@supabase\\/(supabase-js|ssr)|postgres|drizzle-orm\\/postgres-js)$/'
+// Клиент Supabase создаёт только shared/infrastructure: свой createClient(url, secretKey) в репозитории — тот же обход
+// RLS, что и createAdminClient(), но мимо запрета BYPASSES_RLS.
+const RAW_CLIENT_PACKAGE = '/^@supabase\\/(supabase-js|ssr)$/'
 const RAW_CLIENT =
-  'клиент Supabase и подключение к базе создаёт только src/shared/infrastructure: в репозитории — createClient() из @/shared/infrastructure/supabase/server (тип можно: import type)'
+  'клиент Supabase создаёт только src/shared/infrastructure: в репозитории — createClient() из @/shared/infrastructure/supabase/server (тип можно: import type)'
 const rawClient = syntaxRule('Клиент базы создаёт только shared/infrastructure', [
   {
     selector: `ImportDeclaration[importKind!="type"][source.value=${RAW_CLIENT_PACKAGE}]`,
@@ -460,15 +460,37 @@ const rawClient = syntaxRule('Клиент базы создаёт только 
   { selector: `ImportExpression[source.value=${RAW_CLIENT_PACKAGE}]`, message: RAW_CLIENT },
 ])
 
-// Динамический import() не виден no-restricted-imports: те же запреты обхода RLS повторены для него, а источник,
+// Прямого подключения к базе в приложении нет вовсе: драйвер Postgres (postgres, pg) и ORM поверх него (drizzle-orm)
+// ходят ролью с полным доступом мимо RLS, как createAdminClient(), но без его запрета и без *.admin.ts. Поэтому запрет —
+// на весь src без исключений, shared/infrastructure тоже, и на import type; пакет postgres — только scripts/ и tests/.
+// С ним стали не нужны запреты sql.raw и env.databaseUrl: без драйвера в src нет ни сырого SQL, ни смысла в адресе базы.
+// Вернуть прямой SQL-клиент — решением D-NNN, по .claude/rules/db.md, вместе с этими двумя запретами.
+const DIRECT_DATABASE_PACKAGE = '/^(postgres|pg|drizzle-orm)(\\/.*)?$/'
+const DIRECT_DATABASE =
+  'прямого подключения к базе в приложении нет: драйвер Postgres ходит мимо RLS. Данные пользователя — createClient() из @/shared/infrastructure/supabase/server, задача без сессии — createAdminClient() в *.admin.ts; пакет postgres — только scripts/ и tests/'
+const directDatabase = syntaxRule('Драйвера Postgres и ORM в приложении нет', [
+  {
+    selector: `ImportDeclaration[source.value=${DIRECT_DATABASE_PACKAGE}]`,
+    message: DIRECT_DATABASE,
+  },
+  {
+    selector: `ImportExpression[source.value=${DIRECT_DATABASE_PACKAGE}]`,
+    message: DIRECT_DATABASE,
+  },
+  {
+    selector: `:matches(ExportNamedDeclaration, ExportAllDeclaration)[source.value=${DIRECT_DATABASE_PACKAGE}]`,
+    message: DIRECT_DATABASE,
+  },
+])
+
+// Динамический import() не виден no-restricted-imports: тот же запрет обхода RLS повторён для него, а источник,
 // который не строка, проверить нельзя вовсе.
-const RLS_BYPASS_FILE =
-  '/(^|\\/)infrastructure\\/(db(\\/[^\\/]+)?|supabase\\/admin)(\\.[cm]?[jt]s)?$/'
+const RLS_BYPASS_FILE = '/(^|\\/)infrastructure\\/supabase\\/admin(\\.[cm]?[jt]s)?$/'
 const dynamicImport = syntaxRule('Динамический import не обходит запреты импорта', [
   {
     selector: `ImportExpression[source.value=${RLS_BYPASS_FILE}]`,
     message:
-      'db() и createAdminClient() обходят RLS: только в shared/infrastructure и *.admin.ts — и через import() тоже',
+      'createAdminClient() обходит RLS: только в shared/infrastructure и *.admin.ts — и через import() тоже',
   },
   {
     selector: 'ImportExpression:not([source.type="Literal"])',
@@ -495,11 +517,6 @@ const dataAccess = syntaxRule('Репозиторий проверяет error �
     selector: 'CallExpression[callee.property.name="getSession"]',
     message:
       'getSession() не проверяет подпись токена: пользователь приходит параметром из сессии (requireVerifiedSession() в ui, ctx.session в action)',
-  },
-  {
-    selector: 'CallExpression[callee.object.name="sql"][callee.property.name="raw"]',
-    message:
-      'sql.raw вставляет строку в запрос как есть: значения — только интерполяцией внутри sql`…`',
   },
 ])
 
@@ -742,6 +759,7 @@ const local = {
     'behind-sign-in': behindSignIn,
     'action-client': actionClient,
     'raw-client': rawClient,
+    'direct-database': directDatabase,
     'dynamic-import': dynamicImport,
     'data-access': dataAccess,
     'no-unchecked-response': noUncheckedResponse,
@@ -806,6 +824,11 @@ const rawClientConfig = {
   ignores: ['src/shared/infrastructure/**', 'src/proxy.ts'],
   plugins: { local },
   rules: { 'local/raw-client': 'error' },
+}
+const directDatabaseConfig = {
+  files: ['src/**/*.{ts,tsx}'],
+  plugins: { local },
+  rules: { 'local/direct-database': 'error' },
 }
 const repositoryConfig = {
   files: ['src/modules/*/infrastructure/**'],
@@ -1079,7 +1102,7 @@ const unitTestsConfig = {
 }
 const e2eTestsConfig = {
   ...playwright.configs['flat/recommended'],
-  files: ['tests/e2e/**/*.ts'],
+  files: ['tests/e2e/**/*.ts', 'tests/perf/**/*.ts'],
   rules: {
     ...playwright.configs['flat/recommended'].rules,
     'playwright/no-skipped-test': ['error', { allowConditional: true }],
@@ -1131,9 +1154,9 @@ const boundaryOnlyTypesConfig = {
 }
 
 // Переменные окружения — только через env.ts (секреты и адреса) и runtime.ts (режим сборки).
-// Секретный ключ Supabase и адрес базы — это и есть обход RLS: их читает только shared/infrastructure.
+// Секретный ключ Supabase — это и есть обход RLS: его читает только shared/infrastructure.
 const SECRET_ACCESS =
-  'секретный ключ Supabase и адрес базы читает только src/shared/infrastructure (createAdminClient, db): запрос с ними идёт мимо RLS'
+  'секретный ключ Supabase читает только src/shared/infrastructure (createAdminClient): запрос с ним идёт мимо RLS'
 const envAccessConfig = {
   files: ['src/**/*.{ts,tsx}'],
   ignores: ['src/shared/infrastructure/**', 'src/shared/lib/runtime.ts'],
@@ -1147,7 +1170,6 @@ const envAccessConfig = {
           'переменные окружения — через src/shared/infrastructure/env.ts, режим сборки — isProduction из src/shared/lib/runtime.ts',
       },
       { object: 'env', property: 'supabaseSecretKey', message: SECRET_ACCESS },
-      { object: 'env', property: 'databaseUrl', message: SECRET_ACCESS },
     ],
   },
 }
@@ -1212,22 +1234,15 @@ const vendorUiConfig = {
   },
 }
 
-// Прямое подключение к базе (db(), локально и в CI) и клиент Supabase на секретном ключе (createAdminClient,
-// серверные задачи без сессии) обходят RLS: только в shared/infrastructure и в файлах *.admin.ts инфраструктуры
-// модуля (плановая задача в src/app/api/cron зовёт server.ts модуля). Паттерны ловят и алиас, и относительный путь.
+// Клиент Supabase на секретном ключе (createAdminClient, серверные задачи без сессии) обходит RLS: только
+// в shared/infrastructure и в файлах *.admin.ts инфраструктуры модуля (плановая задача в src/app/api/cron зовёт
+// server.ts модуля). Паттерны ловят и алиас, и относительный путь.
 // shared/lib — техника Next.js для ui и app: инфраструктуру видят только сессия, actions и проверка секрета
 // планировщика (cron.ts читает env), иначе обход RLS просочился бы в ui через реэкспорт.
 const BYPASSES_RLS = {
-  group: [
-    '@/shared/infrastructure/db',
-    '@/shared/infrastructure/db/*',
-    '@/shared/infrastructure/supabase/admin',
-    '**/infrastructure/db',
-    '**/infrastructure/db/*',
-    '**/infrastructure/supabase/admin',
-  ],
+  group: ['@/shared/infrastructure/supabase/admin', '**/infrastructure/supabase/admin'],
   message:
-    'db() и createAdminClient() обходят RLS: только в shared/infrastructure и *.admin.ts; данные пользователя — через клиент Supabase с сессией',
+    'createAdminClient() обходит RLS: только в shared/infrastructure и *.admin.ts; данные пользователя — через клиент Supabase с сессией',
 }
 // Глобальный Decimal из decimal.js считает с точностью 20 и округляет от нуля, а money() — клон с точностью 64
 // и округлением к чётному: смешение двух классов теряет цифры. Расчёты денег — только через money().
@@ -1304,6 +1319,7 @@ export default defineConfig([
     'coverage/**',
     'src/shared/infrastructure/supabase/types.ts', // генерирует npm run db:types
     'tests/lint-rules/fixtures/**', // пробы правил: заведомо плохой код, проверяет npm run lint:rules
+    'scripts/module-template/**', // шаблоны генератора с метками вместо имён: результат проверяет npm run generator:check
   ]),
   ...nextVitals,
   ...nextTs,
@@ -1326,6 +1342,7 @@ export default defineConfig([
   useCaseConfig,
   behindSignInConfig,
   rawClientConfig,
+  directDatabaseConfig,
   repositoryConfig,
   cronRouteConfig,
   a11yConfig,

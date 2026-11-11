@@ -23,7 +23,3 @@ export async function countAll(): Promise<number> {
   const found = [everything.data, embedded.data, inserted.data, session.data.session]
   return (count ?? 0) + found.length
 }
-
-export function orderBy(sql: { raw(text: string): string }, column: string): string {
-  return sql.raw(column) // expect: local/data-access
-}

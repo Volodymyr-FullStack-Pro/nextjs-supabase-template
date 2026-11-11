@@ -2,6 +2,40 @@
 
 Что менялось в шаблоне. Проект, созданный раньше, переносит нужное руками и записывает это строкой D-NNN.
 
+## 2026-11-11 — выпуск в production на GitHub Team: подтверждение — слияние PR
+
+- На плане Team в приватном репозитории у окружений нет required reviewers и таймера ожидания (они — только в публичном репозитории или на Enterprise), поэтому выпуск подтверждается слиянием PR `main → production` в защищённую ветку `production`, а окружение `production` принимает только эту ветку: `docs/release.md`, B00-T01 и README блока B00, комментарий в `deploy-db.yml`. В `docs/release.md` — минуты Actions на Team ( в месяц, около 3000 минут Linux).
+- Задача «Закрытие блока» в `docs/blocks/_template/tasks.md` включает `npm run perf`, как и список проверок в `CLAUDE.md`.
+- Проекту, созданному раньше: убрать required reviewer у окружения `production`, если он был задан, и перенести тексты.
+
+## 2026-11-11 — Drizzle убран: приложение работает с базой только через API Supabase
+
+- Удалены `src/shared/infrastructure/db/` (`db()` и рукописная копия таблиц `schema.ts`), `drizzle.config.ts`, команды `db:generate` и `db:studio`, пакеты `drizzle-orm`, `drizzle-kit` и `dotenv` (его читал только `drizzle.config.ts`), override `@esbuild-kit/core-utils`. Причина: у `db()` не было ни одного вызова, копию таблиц ничто не сверяло с миграциями, а приложение ходит в базу через API Supabase с токеном пользователя — иначе RLS не действует. Что вместо него и как вернуть прямой SQL-клиент, если проекту он понадобится, — `.claude/rules/db.md`.
+- `postgres` — в devDependencies: нужен только скриптам `db-types.mjs` и `seed-test-user.mjs` и `seedOwnedRows` (`tests/e2e/support/users.ts`, строки для `npm run perf`), адрес локальной базы им передаёт `with-local-supabase.mjs`. `DATABASE_URL` и `DATABASE_CA_CERT` убраны из `env.ts`, `env.d.ts`, `.env.example` и документов выпуска.
+- Удалён браузерный клиент `src/shared/infrastructure/supabase/client.ts`: его никто не импортировал, а `connect-src 'self'` не пускает браузер к Supabase.
+- Линтер: сняты части защит, сторожившие только удалённое, — `sql.raw` в `local/data-access`, путь `infrastructure/db` в запрете обхода RLS и в `local/dynamic-import`, `env.databaseUrl`, пакет `drizzle-orm/postgres-js` в `local/raw-client`. Вместо них — `local/direct-database`: импорт `postgres`, `pg` и `drizzle-orm` закрыт во всём `src`, включая `shared/infrastructure` (раньше `postgres` там был разрешён), `import type`, реэкспорт и `import()` тоже; без драйвера в `src` запреты `sql.raw` и `env.databaseUrl` сторожить нечего.
+- `allowScripts`: запись `esbuild` убрана — пакет был в дереве только из-за `drizzle-kit`.
+- Проекту, созданному раньше: если `db()` нигде не вызывается — удалить то же и убрать `DATABASE_URL` из `.env.local`; если вызывается — оставить и записать причину строкой D-NNN.
+
+## 2026-11-11 — замер скорости в Playwright вместо Lighthouse CI
+
+- `npm run perf` — тест Playwright (`tests/perf`, `playwright.perf.config.ts`): страницы production-сборки в Chromium на компьютере и телефоне, три прогона, медиана против порога, таблица «страница × профиль × величина». Пороги прежние (TTFB 200 мс; LCP 1,5 и 2,5 с; TBT 200 и 400 мс; CLS 0,1; оценка 0,9) и новый — «данные пришли» ≤ 500 мс (от начала перехода до строки из базы в документе, без троттлинга). Пороги и список страниц — один файл `tests/perf/pages.ts`.
+- Страница за входом меряется с сессией пользователя со вторым фактором и на таблице в 50 тыс. строк: `seedOwnedRows` (`tests/e2e/support/users.ts`) вставляет их одной командой SQL, `deleteTestUser` убирает.
+- TBT считается до окна тишины, как TTI у Lighthouse: после загрузки 5 с без долгих задач и без завершённых запросов. Долгая задача, начатая через 0,7 с после загрузки (ленивый график, таблица), попадает в замер; прогон всех страниц — около трёх минут вместо минуты.
+- Троттлинг настоящий, через протокол DevTools, с константами Lighthouse (телефон: 562,5 мс на запрос, 1,47 Мбит/с, процессор ×4); сервер меряется отдельным заходом без троттлинга. Проверяется медиана, а не лучший из трёх прогонов, как делал LHCI по умолчанию.
+- Убраны `@lhci/cli` (234 пакета в lock-файле), `lighthouserc.cjs`, `lighthouserc.mobile.cjs`, override `basic-ftp`, `.lighthouseci` в `.gitignore` и `.prettierignore`, e2e-замер TTFB главной с порогом 1000 мс (`build.spec.ts`). Шаг CI — «Speed budget», на сборке шага e2e.
+- Генератор дописывает страницу модуля в `MEASURED_PAGES`; `npm run generator:check` меряет её на 50 тыс. строк (плюс около 30 секунд).
+- Проекту, созданному раньше: перенести `tests/perf/`, `playwright.perf.config.ts`, `seedOwnedRows`, скрипт `perf`, шаг CI и `'tests/perf/**/*.ts'` в `eslint.config.mjs`; удалить `@lhci/cli`, оба `lighthouserc*.cjs` и override `basic-ftp`; вписать свои страницы в `MEASURED_PAGES`.
+
+## 2026-11-11 — генератор полного среза и его проверка
+
+- Генератор: `npm run new:module <модуль> <запись>` создаёт полный рабочий срез одной сущности из шаблонов `scripts/module-template/` (настоящие файлы с метками вместо имён): четыре слоя и `server.ts`, форма с ключом повтора и ошибкой сервера у формы, список со скелетоном, словарь, action, страница, одна миграция таблицы (политики владельца, второй фактор, права по колонкам, журнал, запрет `truncate`, индексы, проверки), её pgTAP, unit-тесты и e2e с `checkPageQuality` на странице с данными — 20 файлов, около 1 250 строк; страницу и таблицу сам дописывает в `SIGNED_IN_PAGES` и `OWNED_TABLES`. Раньше — 10 файлов и около 100 строк, только список.
+- Проверка шаблонов: `npm run generator:check` создаёт модуль `generator-probes`, применяет миграцию, прогоняет линтер, самопроверку защит, типы, unit с порогами, knip, jscpd, prettier, advisors, db lint, pgTAP, Squawk, e2e модуля на двух устройствах и бюджет JS, затем удаляет модуль и таблицу; в CI — последний шаг задания `e2e`, в `npm run gate` не входит.
+- Прерывание и чужие файлы: `generator:check` держит снимок изменяемых файлов и список созданных в `node_modules/.cache/generator-check/snapshot.json` — проверку, прерванную без уборки (SIGHUP от закрытого терминала обрабатывается как SIGINT; `kill -9`, падение), следующий запуск сначала возвращает по нему. До любой уборки проверяет, что база отвечает; остатки модуля без снимка, расхождение файлов миграций с базой (свой неприменённый черновик) она называет и останавливается, ничего не удаляя; удаляет только созданное в этом запуске. При грязном дереве сообщение об упавшем шаге называет и незакоммиченные правки. Генератор не принимает имя `generator-probes`, имена, которые шаблоны используют сами (`items`, `result`, `promise`…), и имя из одной буквы.
+- Общий код: ключ повтора формы — `keepRequestId` и `resetRequestId` (`src/shared/ui/form/request-id.ts`), иначе вторая форма денег дублирует первую (jscpd); таблицы с владельцем для e2e — список `OWNED_TABLES` и `insertOwnedRows` в `tests/e2e/support/users.ts`.
+- Правила: новая сущность — три задачи (база и pgTAP; ядро и unit; экран и e2e) поверх среза из генератора (`.claude/rules/docs.md`); после удаления примера `notes` исполняемый образец — шаблоны генератора, а не история git (B00-T03); тесты pgTAP таблиц продукта — с номера `100`.
+- Проекту, созданному раньше: перенести `scripts/module-template/`, `scripts/new-module.mjs`, `scripts/generator-check.mjs`, скрипт `generator:check` и шаг CI, исключение шаблонов в `eslint.config.mjs` и `tsconfig.json`, `request-id.ts`, `OWNED_TABLES` и `insertOwnedRows`.
+
 ## 2026-11-10 — третья перепроверка: функции базы закрыты, линтер ловит ошибки денег и доступа, одно «готово», исполнимые задачи B00
 
 - База: новая функция в `public` недоступна `anon` и `authenticated` (`*_functions_closed_by_default.sql`: `alter default privileges for role postgres revoke execute on functions from public`; функции, которую зовёт политика или клиент через `rpc`, нужен явный `grant execute`), pgTAP `006`; `audit.record()` берёт `row_id` из строки до изменения и запрещает смену `id` (`*_audit_record_identity.sql`, pgTAP `007`); общий pgTAP `900-table-conventions.sql` проверяет соглашения у каждой таблицы `public`, исключения — списком в самом тесте с номером D-NNN.

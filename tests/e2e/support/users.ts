@@ -3,12 +3,14 @@ import { randomUUID } from 'node:crypto'
 import { expect, type Page } from '@playwright/test'
 import { createClient } from '@supabase/supabase-js'
 import { generate } from 'otplib'
+import postgres from 'postgres'
 
 import { AFTER_SIGN_IN_PATH } from '@/shared/domain/routes'
 
 const supabaseUrl = process.env['NEXT_PUBLIC_SUPABASE_URL'] ?? ''
 const secretKey = process.env['SUPABASE_SECRET_KEY'] ?? ''
 const publishableKey = process.env['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'] ?? ''
+const databaseUrl = process.env['DATABASE_URL'] ?? ''
 
 export const hasDatabase = supabaseUrl !== '' && secretKey !== ''
 export const NEEDS_DATABASE = 'нужен локальный Supabase: supabase start и npm run test:e2e:db'
@@ -22,22 +24,49 @@ export const afterSignInUrl = new RegExp(`${AFTER_SIGN_IN_PATH}$`, 'u')
 
 const NO_SESSION = { auth: { persistSession: false, autoRefreshToken: false } }
 
+function serviceClient() {
+  return createClient(supabaseUrl, secretKey, NO_SESSION)
+}
+
 function adminAuth() {
-  return createClient(supabaseUrl, secretKey, NO_SESSION).auth.admin
+  return serviceClient().auth.admin
+}
+
+const OWNED_TABLES: string[] = ['notes']
+
+export async function insertOwnedRows(
+  table: string,
+  owner: TestUser,
+  rows: Record<string, string>[],
+): Promise<void> {
+  const { error } = await serviceClient()
+    .from(table)
+    .insert(rows.map((row) => ({ ...row, owner_id: owner.id })))
+  if (error) throw new Error(`insertOwnedRows(${table}): ${error.message}`, { cause: error })
+}
+
+type SeededRows = { table: string; count: number; sqlByColumn: Record<string, string> }
+
+export async function seedOwnedRows(owner: TestUser, rows: SeededRows): Promise<void> {
+  const names = Object.keys(rows.sqlByColumn).join(', ')
+  const values = Object.values(rows.sqlByColumn).join(', ')
+  const sql = postgres(databaseUrl, { max: 1 })
+  try {
+    await sql.unsafe(
+      `insert into public.${rows.table} (owner_id, ${names})
+       select $1::uuid, ${values} from generate_series(1, $2::int) as n`,
+      [owner.id, rows.count],
+    )
+  } finally {
+    await sql.end()
+  }
 }
 
 export async function insertNote(
   owner: TestUser,
   note: { title: string; amount: string; currency: string },
 ): Promise<void> {
-  const { error } = await createClient(supabaseUrl, secretKey, NO_SESSION).from('notes').insert({
-    owner_id: owner.id,
-    title: note.title,
-    amount: note.amount,
-    currency: note.currency,
-    client_request_id: randomUUID(),
-  })
-  if (error) throw new Error(`insertNote: ${error.message}`, { cause: error })
+  await insertOwnedRows('notes', owner, [{ ...note, client_request_id: randomUUID() }])
 }
 
 export async function signedInClient(user: TestUser) {
@@ -56,11 +85,11 @@ export async function createTestUser(label: string): Promise<TestUser> {
 }
 
 export async function deleteTestUser(user: TestUser): Promise<void> {
-  const { error: notesError } = await createClient(supabaseUrl, secretKey, NO_SESSION)
-    .from('notes')
-    .delete()
-    .eq('owner_id', user.id)
-  if (notesError) throw new Error(`deleteTestUser: ${notesError.message}`, { cause: notesError })
+  const cleared = await Promise.all(
+    OWNED_TABLES.map((table) => serviceClient().from(table).delete().eq('owner_id', user.id)),
+  )
+  const refusal = cleared.find((result) => result.error)?.error
+  if (refusal) throw new Error(`deleteTestUser: ${refusal.message}`, { cause: refusal })
   const { error } = await adminAuth().deleteUser(user.id)
   if (error) throw new Error(`deleteTestUser: ${error.message}`, { cause: error })
 }

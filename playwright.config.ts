@@ -40,7 +40,7 @@ export default defineConfig({
     {
       name: 'mobile',
       use: { ...devices['iPhone 15'] },
-      testIgnore: /build\.spec\.ts/, // проверки сборки и TTFB не зависят от устройства
+      testIgnore: /build\.spec\.ts/, // проверки сборки не зависят от устройства
       dependencies: ['setup'],
     },
   ],

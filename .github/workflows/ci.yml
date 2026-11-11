@@ -70,12 +70,23 @@ jobs:
           path: ~/.cache/ms-playwright
           key: ${{ steps.playwright.outputs.key }}
       - run: npx playwright install --with-deps chromium webkit
+        timeout-minutes: 8 # обычно 2–3 минуты; при сбое сети раннера apt повторяет попытки до таймаута задания
       - name: Playwright with the local database
         run: npm run test:e2e:db # адрес и ключи берёт из supabase status, сценарии за входом не пропускаются
         env:
           CI: 'true'
-      - name: Lighthouse budget
-        run: npm run perf # production-сборка уже сделана webServer Playwright
+      # Замер скорости (tests/perf): страницы production-сборки в Chromium на компьютере и телефоне, страница за входом —
+      # на 50 тыс. строк. Сборка уже сделана шагом e2e (CI=true: замер её не пересобирает); пороги — tests/perf/pages.ts.
+      - name: Speed budget
+        run: npm run perf
+        env:
+          CI: 'true'
+      # Шаблоны генератора модуля (scripts/module-template) стоят вне линтера и tsc: здесь из них создаётся модуль,
+      # проходит линтер, типы, unit, проверки базы, свой e2e и бюджет JS — и удаляется. Идёт последним: пересобирает .next.
+      - name: Generated module passes every gate
+        run: npm run generator:check
+        env:
+          CI: 'true'
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:

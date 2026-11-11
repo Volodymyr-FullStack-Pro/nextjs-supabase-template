@@ -26,7 +26,9 @@ jobs:
     if: ${{ !github.event.repository.is_template && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # Секреты и переменные — в GitHub Environment; у production обязательное подтверждение (required reviewers).
+    # Секреты и переменные — в GitHub Environment; production принимает только ветку production. Подтверждение
+    # выпуска — слияние PR main → production в защищённую ветку: required reviewers окружения на GitHub Team
+    # в приватном репозитории нет (только публичный репозиторий или Enterprise).
     # Секрет получает только шаг, которому он нужен (env шага): сторонние actions — checkout, setup-cli — их не видят.
     environment: ${{ github.ref == 'refs/heads/production' && 'production' || 'staging' }}
     steps:

@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs'
 
 import { expect, test } from '@playwright/test'
 
-const TTFB_LIMIT_MS = 1000
 const HTTP_OK = 200
 const HTTP_REDIRECT = 307
 const HTTP_UNAUTHORIZED = 401
@@ -33,13 +32,4 @@ for (const { path, refusals } of NESTED_IMAGE_PATHS) {
 test('serves a top-level static file to a signed-out visitor', async ({ request }) => {
   const response = await request.get('/favicon.ico', { maxRedirects: 0 })
   expect(response.status()).toBe(HTTP_OK)
-})
-
-test('serves the home page shell quickly', async ({ page }) => {
-  await page.goto('/')
-  const ttfb = await page.evaluate(
-    () =>
-      (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming).responseStart,
-  )
-  expect(ttfb).toBeLessThan(TTFB_LIMIT_MS)
 })
