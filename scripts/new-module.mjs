@@ -1,175 +1,222 @@
 #!/usr/bin/env node
-import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { execFileSync, spawnSync } from 'node:child_process'
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
+import { dirname, join, relative } from 'node:path'
 
-const KEBAB = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/
-const name = process.argv[2]
-const entity = process.argv[3] ?? name
-if (!name || !KEBAB.test(name) || !KEBAB.test(entity)) {
-  console.error(
-    'Использование: npm run new:module <модуль> <запись>  (строчные буквы, цифры, дефис; например, businesses business)',
-  )
+const TEMPLATE_ROOT = join(import.meta.dirname, 'module-template')
+const MIGRATIONS = 'supabase/migrations'
+const DATABASE_TESTS = 'supabase/tests'
+const E2E_TESTS = 'tests/e2e'
+const QUALITY_SPEC = 'tests/e2e/ui-quality.spec.ts'
+const E2E_USERS = 'tests/e2e/support/users.ts'
+const KEBAB = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/u
+const PLACEHOLDER =
+  /__(module-name|module_name|moduleName|ModuleName|MODULE_NAME|entity-name|entity_name|entityName|EntityName|ENTITY_NAME)__/gu
+const UNKNOWN_PLACEHOLDER = /__(?:module|entity)[-_a-z]*__/iu
+const NUMBERED_TEST = /^(\d{3})-/u
+const FIRST_TABLE_TEST = 100
+const SHARED_TESTS_FROM = 900
+const TEST_NUMBER_WIDTH = 3
+const TABLE_NAME_MAX = 28
+const RESERVED_WORDS = new Set(
+  'break case catch class const continue debugger default delete do else enum export extends false finally for function if import in instanceof new null return super switch this throw true try typeof var void while with yield let static await'.split(
+    ' ',
+  ),
+)
+
+const fail = (message) => {
+  console.error(message)
   process.exit(1)
 }
-const toPascal = (kebab) =>
-  kebab.replaceAll(/(^|-)([a-z0-9])/g, (_, __, letter) => letter.toUpperCase())
-const Pascal = toPascal(name)
-const Entity = toPascal(entity)
-if (entity === name) {
-  console.warn(
-    `Имя одной записи не задано — тип будет ${Entity}. Для «${name}» обычно нужно единственное число: npm run new:module ${name} <запись>`,
+
+const [moduleName, entityName] = process.argv.slice(2)
+if (!moduleName || !entityName || !KEBAB.test(moduleName) || !KEBAB.test(entityName)) {
+  fail(
+    'Использование: npm run new:module <модуль> <запись> — модуль во множественном числе, запись в единственном; строчные буквы, цифры, дефис (businesses business, bank-accounts bank-account)',
   )
 }
-const camel = Pascal[0].toLowerCase() + Pascal.slice(1)
-const moduleRoot = join('src', 'modules', name)
-const pageRoot = join('src', 'app', name)
-const testsRoot = join('tests', 'unit', 'modules', name)
+if (moduleName === entityName) {
+  fail(
+    `Имя записи совпадает с именем модуля «${moduleName}»: модуль и одна его запись называются по-разному (equipment equipment-item)`,
+  )
+}
 
-const routeSegmentExists = (directory) => {
-  for (const entry of readdirSync(directory)) {
+const casings = (kebab) => {
+  const words = kebab.split('-')
+  const pascal = words.map((word) => word[0].toUpperCase() + word.slice(1)).join('')
+  return {
+    kebab,
+    snake: words.join('_'),
+    camel: pascal[0].toLowerCase() + pascal.slice(1),
+    pascal,
+    constant: words.join('_').toUpperCase(),
+  }
+}
+const names = { module: casings(moduleName), entity: casings(entityName) }
+const table = names.module.snake
+const replacements = Object.fromEntries(
+  Object.entries(names).flatMap(([kind, forms]) => [
+    [`${kind}-name`, forms.kebab],
+    [`${kind}_name`, forms.snake],
+    [`${kind}Name`, forms.camel],
+    [`${casings(kind).pascal}Name`, forms.pascal],
+    [`${kind.toUpperCase()}_NAME`, forms.constant],
+  ]),
+)
+const render = (text) => text.replaceAll(PLACEHOLDER, (_, key) => replacements[key])
+
+for (const forms of Object.values(names)) {
+  if (RESERVED_WORDS.has(forms.camel)) {
+    fail(
+      `«${forms.kebab}» — зарезервированное слово JavaScript: в коде оно станет именем переменной. Назовите иначе (imports import-batch)`,
+    )
+  }
+}
+if (table.length > TABLE_NAME_MAX) {
+  fail(
+    `Имя таблицы ${table} длиннее ${String(TABLE_NAME_MAX)} символов: имя ограничения ключа повтора не поместится в 63 символа Postgres`,
+  )
+}
+
+const templateFiles = (directory) =>
+  readdirSync(directory).flatMap((entry) => {
     const full = join(directory, entry)
-    if (!statSync(full).isDirectory()) continue
-    if (entry === name) return true
-    if (entry.startsWith('(') && routeSegmentExists(full)) return true
-  }
-  return false
+    return statSync(full).isDirectory() ? templateFiles(full) : [full]
+  })
+
+const routeSegmentExists = (directory) =>
+  readdirSync(directory).some((entry) => {
+    const full = join(directory, entry)
+    if (!statSync(full).isDirectory()) return false
+    return entry === moduleName || (entry.startsWith('(') && routeSegmentExists(full))
+  })
+
+const rendered = templateFiles(TEMPLATE_ROOT).map((file) => ({
+  path: render(relative(TEMPLATE_ROOT, file)),
+  content: render(readFileSync(file, 'utf8')),
+}))
+const unknown = rendered.find(({ path, content }) =>
+  UNKNOWN_PLACEHOLDER.test(`${path}\n${content}`),
+)
+if (unknown) {
+  fail(
+    `В шаблоне ${unknown.path} осталась неизвестная метка ${UNKNOWN_PLACEHOLDER.exec(`${unknown.path}\n${unknown.content}`)?.[0] ?? ''}: список меток — в начале scripts/new-module.mjs`,
+  )
 }
-const taken = [moduleRoot, pageRoot, testsRoot].filter((path) => existsSync(path))
+
+const migrationTemplate = `${MIGRATIONS}/${table}.sql`
+const databaseTestTemplate = `${DATABASE_TESTS}/${moduleName}.sql`
+const tableFiles = (directory, suffix) =>
+  readdirSync(directory).filter((file) => file.endsWith(suffix))
+const taken = [
+  ...rendered
+    .map(({ path }) => path)
+    .filter((path) => path !== migrationTemplate && path !== databaseTestTemplate)
+    .filter((path) => existsSync(path)),
+  ...tableFiles(MIGRATIONS, `_${table}.sql`).map((file) => `${MIGRATIONS}/${file}`),
+  ...tableFiles(DATABASE_TESTS, `-${moduleName}.sql`).map((file) => `${DATABASE_TESTS}/${file}`),
+]
 if (taken.length > 0 || routeSegmentExists('src/app')) {
-  console.error(
-    `Имя «${name}» уже занято: ${taken.join(', ') || `маршрут /${name} в src/app`}. Выберите другое.`,
+  fail(
+    `Имя «${moduleName}» уже занято: ${taken.join(', ') || `маршрут /${moduleName} в src/app`}. Выберите другое.`,
   )
-  process.exit(1)
 }
 
-const files = {
-  [`${moduleRoot}/domain/${entity}.ts`]: `import { z } from 'zod'
-
-export const ${Entity}Schema = z.object({ id: z.string(), name: z.string().min(1) })
-export type ${Entity} = z.infer<typeof ${Entity}Schema>
-`,
-  [`${moduleRoot}/application/${name}-repository.ts`]: `import type { ${Entity} } from '../domain/${entity}'
-
-export interface ${Pascal}Repository {
-  listForUser(userId: string): Promise<${Entity}[]>
-}
-`,
-  [`${moduleRoot}/application/list-${name}.ts`]: `import type { ${Entity} } from '../domain/${entity}'
-import type { ${Pascal}Repository } from './${name}-repository'
-
-export function makeList${Pascal}({ repository }: { repository: ${Pascal}Repository }) {
-  return (ctx: { userId: string }): Promise<${Entity}[]> => repository.listForUser(ctx.userId)
-}
-`,
-  [`${moduleRoot}/infrastructure/${name}-repository.supabase.ts`]: `import 'server-only'
-
-import type { ${Pascal}Repository } from '../application/${name}-repository'
-
-export const supabase${Pascal}Repository: ${Pascal}Repository = {
-  listForUser: () =>
-    Promise.reject(new Error('${Pascal}Repository.listForUser: реализуйте запрос к таблице ${name}')),
-}
-`,
-  [`${moduleRoot}/infrastructure/${name}-repository.fake.ts`]: `import type { ${Pascal}Repository } from '../application/${name}-repository'
-import type { ${Entity} } from '../domain/${entity}'
-
-type Stored = ${Entity} & { ownerId: string }
-
-export function fake${Pascal}Repository(seed: Stored[] = []) {
-  const rows: Stored[] = [...seed]
-  const repository: ${Pascal}Repository = {
-    listForUser: (userId) =>
-      Promise.resolve(rows.filter((row) => row.ownerId === userId).map(({ id, name }) => ({ id, name }))),
+const createMigration = () => {
+  const before = new Set(readdirSync(MIGRATIONS))
+  try {
+    execFileSync('node', [join(import.meta.dirname, 'db-new.mjs'), table], {
+      stdio: ['ignore', 'ignore', 'inherit'],
+    })
+  } catch {
+    fail(
+      `Миграция ${table} не создана (scripts/db-new.mjs): нужен Supabase CLI в PATH. Файлы среза не записаны.`,
+    )
   }
-  return { repository, rows }
+  const created = readdirSync(MIGRATIONS).find((file) => !before.has(file))
+  if (!created) fail(`scripts/db-new.mjs не создал миграцию ${table} в ${MIGRATIONS}`)
+  return `${MIGRATIONS}/${created}`
 }
-`,
-  [`${moduleRoot}/server.ts`]: `import 'server-only'
 
-import { makeList${Pascal} } from './application/list-${name}'
-import { supabase${Pascal}Repository } from './infrastructure/${name}-repository.supabase'
-
-export const ${camel} = {
-  list: makeList${Pascal}({ repository: supabase${Pascal}Repository }),
+const nextDatabaseTest = () => {
+  const numbers = readdirSync(DATABASE_TESTS)
+    .map((file) => Number.parseInt(NUMBERED_TEST.exec(file)?.[1] ?? '', 10))
+    .filter((number) => number >= FIRST_TABLE_TEST && number < SHARED_TESTS_FROM)
+  const next = Math.max(FIRST_TABLE_TEST - 1, ...numbers) + 1
+  return `${DATABASE_TESTS}/${String(next).padStart(TEST_NUMBER_WIDTH, '0')}-${moduleName}.sql`
 }
-`,
-  [`${moduleRoot}/ui/${name}-list.tsx`]: `import { requireVerifiedSession } from '@/shared/lib/session'
 
-import { ${camel} } from '../server'
+const appendToList = (file, constant, value) => {
+  if (!existsSync(file)) return false
+  const list = new RegExp(String.raw`(const ${constant}\b[^=]*= \[)([^\]]*)\]`, 'u')
+  const source = readFileSync(file, 'utf8')
+  if (!list.test(source)) return false
+  writeFileSync(
+    file,
+    source.replace(list, (_, start, items) => {
+      const kept = items.trim().replace(/,$/u, '')
+      return `${start}${kept === '' ? '' : `${kept}, `}'${value}']`
+    }),
+  )
+  return true
+}
 
-export async function ${Pascal}List() {
-  const session = await requireVerifiedSession()
-  const items = await ${camel}.list({ userId: session.userId })
-  if (items.length === 0) return <p className="text-sm text-muted-foreground">Пока пусто</p>
-  return (
-    <ul className="flex flex-col gap-2">
-      {items.map((item) => (
-        <li key={item.id}>{item.name}</li>
-      ))}
-    </ul>
+const written = []
+for (const { path, content } of rendered) {
+  if (path === migrationTemplate) {
+    const migration = createMigration()
+    appendFileSync(migration, content)
+    written.push(migration)
+    continue
+  }
+  const target = path === databaseTestTemplate ? nextDatabaseTest() : path
+  mkdirSync(dirname(target), { recursive: true })
+  writeFileSync(target, content)
+  written.push(target)
+}
+
+const route = `/${moduleName}`
+const registries = [
+  { file: QUALITY_SPEC, constant: 'SIGNED_IN_PAGES', value: route, what: `страница ${route}` },
+  { file: E2E_USERS, constant: 'OWNED_TABLES', value: table, what: `таблица ${table}` },
+].map((registry) => ({
+  ...registry,
+  done: appendToList(registry.file, registry.constant, registry.value),
+}))
+
+const code = [
+  ...written.filter((path) => !path.endsWith('.sql')),
+  ...registries.filter(({ done }) => done).map(({ file }) => file),
+]
+spawnSync('npx', ['eslint', '--fix', '--fix-type', 'layout', ...code], { stdio: 'ignore' })
+execFileSync('npx', ['prettier', '--write', '--log-level', 'warn', ...code], { stdio: 'inherit' })
+
+const lines = written
+  .map((path) => readFileSync(path, 'utf8').split('\n').length - 1)
+  .reduce((sum, count) => sum + count, 0)
+for (const path of written.toSorted()) console.log(`  + ${path}`)
+for (const { file, constant, value, what, done } of registries) {
+  console.log(
+    done
+      ? `  ~ ${file}: ${what} добавлена в ${constant}`
+      : `  ! ${file}: список ${constant} не найден — добавьте в него '${value}' руками`,
   )
 }
-`,
-  [`${pageRoot}/page.tsx`]: `import { Suspense } from 'react'
-
-import { ${Pascal}List } from '@/modules/${name}/ui/${name}-list'
-
-export default function ${Pascal}Page() {
-  return (
-    <main className="mx-auto flex max-w-xl flex-col gap-6 p-6">
-      <h1 className="text-2xl font-semibold">Название раздела</h1>
-      <Suspense fallback={<p className="text-sm text-muted-foreground">Загружаю…</p>}>
-        <${Pascal}List />
-      </Suspense>
-    </main>
-  )
-}
-`,
-  [`${testsRoot}/${entity}.test.ts`]: `import { describe, expect, it } from 'vitest'
-
-import { ${Entity}Schema } from '@/modules/${name}/domain/${entity}'
-
-describe('${Entity}Schema', () => {
-  it('accepts an object with an id and a name', () => {
-    expect(${Entity}Schema.safeParse({ id: '1', name: 'Первый' }).success).toBe(true)
-  })
-
-  it('rejects an empty name', () => {
-    expect(${Entity}Schema.safeParse({ id: '1', name: '' }).success).toBe(false)
-  })
-})
-`,
-  [`${testsRoot}/list-${name}.test.ts`]: `import { describe, expect, it } from 'vitest'
-
-import { makeList${Pascal} } from '@/modules/${name}/application/list-${name}'
-import { fake${Pascal}Repository } from '@/modules/${name}/infrastructure/${name}-repository.fake'
-
-describe('list${Pascal}', () => {
-  it('lists only the items of the current user', async () => {
-    const { repository } = fake${Pascal}Repository([
-      { id: '1', name: 'Мой', ownerId: 'u1' },
-      { id: '2', name: 'Чужой', ownerId: 'u2' },
-    ])
-    const items = await makeList${Pascal}({ repository })({ userId: 'u1' })
-    expect(items.map((item) => item.name)).toEqual(['Мой'])
-  })
-})
-`,
-}
-
-const written = Object.keys(files)
-for (const [path, content] of Object.entries(files)) {
-  mkdirSync(dirname(path), { recursive: true })
-  writeFileSync(path, content)
-  console.log(`  + ${path}`)
-}
-execFileSync('npx', ['prettier', '--write', '--log-level', 'warn', ...written], {
-  stdio: 'inherit',
-})
-console.log(
-  `\nМодуль ${name} создан. Дальше: заголовок «Название раздела» в ${pageRoot}/page.tsx — на название раздела; npm run lint && npm run typecheck && npm test, затем domain → use cases → репозиторий.`,
-)
-console.log(
-  'Таблица — миграцией по образцу из .claude/rules/db.md (в шаблоне — notes; образцы SQL — examples.md скила dev-kit:supabase-rls): политики владельца, ограничивающая политика второго фактора, триггер журнала, check (amount <> NaN); деньги — numeric рядом с currency, выбор текстом (amount::text), ввод через parseDecimalInput (скил dev-kit:money-decimal). Тексты ошибок — ui/messages.ts по кодам.',
-)
+const unitTests = `tests/unit/modules/${moduleName}`
+const specs = `${E2E_TESTS}/${moduleName}.spec.ts ${E2E_TESTS}/${moduleName}-quality.spec.ts`
+console.log(`
+Срез ${moduleName} создан: ${String(written.length)} файлов, ${String(lines)} строк. Это рабочий образец с полями title, amount, currency;
+npm run gate пройдёт после двух шагов, которые генератор за вас не делает (нужны запущенная база и сборка):
+  1. supabase migration up && npm run db:types          — таблица в локальной базе и её типы; до этого typecheck красный
+  2. npm run build && npm run budget -- --update-baseline  — маршрут ${route} в perf-baseline.json
+Дальше — под сущность, тремя задачами (.claude/rules/docs.md): база и pgTAP → ядро и unit (${unitTests}) → экран и e2e (${specs}).
+Поля в миграции меняются до supabase migration up; если она уже применена — supabase db reset.
+Тексты заготовки: заголовок «Название раздела» в src/app/${moduleName}/page.tsx, подписи формы и словарь ui/messages.ts.`)

@@ -1304,6 +1304,7 @@ export default defineConfig([
     'coverage/**',
     'src/shared/infrastructure/supabase/types.ts', // генерирует npm run db:types
     'tests/lint-rules/fixtures/**', // пробы правил: заведомо плохой код, проверяет npm run lint:rules
+    'scripts/module-template/**', // шаблоны генератора с метками вместо имён: результат проверяет npm run generator:check
   ]),
   ...nextVitals,
   ...nextTs,
