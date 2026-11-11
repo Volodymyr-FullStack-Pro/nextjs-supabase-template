@@ -55,8 +55,6 @@ docs/_scratch/
 # next dev пишет его сам, если agentRules включён (в next.config.ts выключен); инструкции агенту — в CLAUDE.md
 /AGENTS.md
 
-# lighthouse ci
-.lighthouseci/
 
 # drizzle-kit generate (сверка со схемой; миграции — в supabase/migrations)
 drizzle/

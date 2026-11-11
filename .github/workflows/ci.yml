@@ -74,8 +74,12 @@ jobs:
         run: npm run test:e2e:db # адрес и ключи берёт из supabase status, сценарии за входом не пропускаются
         env:
           CI: 'true'
-      - name: Lighthouse budget
-        run: npm run perf # production-сборка уже сделана webServer Playwright
+      # Замер скорости (tests/perf): страницы production-сборки в Chromium на компьютере и телефоне, страница за входом —
+      # на 50 тыс. строк. Сборка уже сделана шагом e2e (CI=true: замер её не пересобирает); пороги — tests/perf/pages.ts.
+      - name: Speed budget
+        run: npm run perf
+        env:
+          CI: 'true'
       # Шаблоны генератора модуля (scripts/module-template) стоят вне линтера и tsc: здесь из них создаётся модуль,
       # проходит линтер, типы, unit, проверки базы, свой e2e и бюджет JS — и удаляется. Идёт последним: пересобирает .next.
       - name: Generated module passes every gate

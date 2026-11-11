@@ -67,7 +67,6 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",
     "@eslint-community/eslint-plugin-eslint-comments": "^4.8.1",
-    "@lhci/cli": "^0.16.0",
     "@next/bundle-analyzer": "^16.4.5",
     "@playwright/test": "^1.65.0",
     "@tailwindcss/turbopack": "^4",
@@ -107,7 +106,6 @@
     "vitest": "^5.1.0"
   },
   "overrides": {
-    "basic-ftp": "^6.2.6",
     "minimatch@^10.0.0": "^11.0.5",
     "@esbuild-kit/core-utils": {
       "esbuild": "^0.25.12"
