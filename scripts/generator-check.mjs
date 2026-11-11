@@ -14,6 +14,7 @@ const CHANGED_FILES = [
   'src/shared/infrastructure/supabase/types.ts',
   'tests/e2e/ui-quality.spec.ts',
   'tests/e2e/support/users.ts',
+  'tests/perf/pages.ts',
   BASELINE_FILE,
 ]
 const CREATED_PATHS = [
@@ -91,6 +92,10 @@ const steps = [
     () => run('npm', ['run', 'test:e2e:db', '--', MODULE, 'ui-quality']),
   ],
   ['бюджет JS с новым маршрутом', acceptNewRoute],
+  [
+    'замер скорости новой страницы на 50 тыс. строк',
+    () => run('npm', ['run', 'perf', '--', '-g', ROUTE]),
+  ],
 ]
 
 const removeProbe = () => {

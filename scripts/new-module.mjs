@@ -17,6 +17,8 @@ const DATABASE_TESTS = 'supabase/tests'
 const E2E_TESTS = 'tests/e2e'
 const QUALITY_SPEC = 'tests/e2e/ui-quality.spec.ts'
 const E2E_USERS = 'tests/e2e/support/users.ts'
+const SPEED_PAGES = 'tests/perf/pages.ts'
+const SPEED_PAGES_END = /(export const MEASURED_PAGES\b[^=]*= \[\n[\s\S]*?\n)\]\n/u
 const KEBAB = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/u
 const PLACEHOLDER =
   /__(module-name|module_name|moduleName|ModuleName|MODULE_NAME|entity-name|entity_name|entityName|EntityName|ENTITY_NAME)__/gu
@@ -172,6 +174,34 @@ const appendToList = (file, constant, value) => {
   return true
 }
 
+const measuredPage = (route) => `  {
+    path: '${route}',
+    signedIn: true,
+    seed: {
+      table: '${table}',
+      sqlByColumn: {
+        title: \`'\${SEEDED_TEXT} ' || n\`,
+        amount: 'n + 0.5',
+        currency: \`'EUR'\`,
+        client_request_id: 'gen_random_uuid()',
+        created_at: \`now() - n * interval '1 minute'\`,
+      },
+      textOnScreen: SEEDED_TEXT,
+    },
+  },
+`
+
+const appendMeasuredPage = (route) => {
+  if (!existsSync(SPEED_PAGES)) return false
+  const source = readFileSync(SPEED_PAGES, 'utf8')
+  if (!SPEED_PAGES_END.test(source)) return false
+  writeFileSync(
+    SPEED_PAGES,
+    source.replace(SPEED_PAGES_END, (_, pages) => `${pages}${measuredPage(route)}]\n`),
+  )
+  return true
+}
+
 const written = []
 for (const { path, content } of rendered) {
   if (path === migrationTemplate) {
@@ -188,12 +218,21 @@ for (const { path, content } of rendered) {
 
 const route = `/${moduleName}`
 const registries = [
-  { file: QUALITY_SPEC, constant: 'SIGNED_IN_PAGES', value: route, what: `страница ${route}` },
-  { file: E2E_USERS, constant: 'OWNED_TABLES', value: table, what: `таблица ${table}` },
-].map((registry) => ({
-  ...registry,
-  done: appendToList(registry.file, registry.constant, registry.value),
-}))
+  ...[
+    { file: QUALITY_SPEC, constant: 'SIGNED_IN_PAGES', value: route, what: `страница ${route}` },
+    { file: E2E_USERS, constant: 'OWNED_TABLES', value: table, what: `таблица ${table}` },
+  ].map((registry) => ({
+    ...registry,
+    done: appendToList(registry.file, registry.constant, registry.value),
+  })),
+  {
+    file: SPEED_PAGES,
+    constant: 'MEASURED_PAGES',
+    value: route,
+    what: `страница ${route} с объёмом данных для замера скорости`,
+    done: appendMeasuredPage(route),
+  },
+]
 
 const code = [
   ...written.filter((path) => !path.endsWith('.sql')),
@@ -221,5 +260,7 @@ npm run gate пройдёт после двух шагов, которые ге�
   1. supabase migration up && npm run db:types          — таблица в локальной базе и её типы; до этого typecheck красный
   2. npm run build && npm run budget -- --update-baseline  — маршрут ${route} в perf-baseline.json
 Дальше — под сущность, тремя задачами (.claude/rules/docs.md): база и pgTAP → ядро и unit (${unitTests}) → экран и e2e (${specs}).
+Замер скорости (npm run perf) меряет ${route} на 50 тыс. строк по записи в ${SPEED_PAGES}: поменяли поля таблицы —
+поправьте там выражения колонок (sqlByColumn) и текст, по которому видно данные на экране (textOnScreen).
 Поля в миграции меняются до supabase migration up; если она уже применена — supabase db reset.
 Тексты заготовки: заголовок «Название раздела» в src/app/${moduleName}/page.tsx, подписи формы и словарь ui/messages.ts.`)
