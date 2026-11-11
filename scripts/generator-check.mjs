@@ -102,6 +102,7 @@ const restore = () => {
     ...tableFiles(DATABASE_TESTS, `-${MODULE}.sql`),
   ]
   for (const path of created) rmSync(path, { recursive: true, force: true })
+  run('npx', ['next', 'typegen'])
 }
 
 const precondition = async () => {

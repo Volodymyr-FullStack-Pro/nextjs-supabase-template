@@ -5,6 +5,7 @@ import { useHookFormAction } from '@next-safe-action/adapter-react-hook-form/hoo
 import { toast } from 'sonner'
 
 import { failureMessage } from '@/shared/ui/form/messages'
+import { keepRequestId, resetRequestId } from '@/shared/ui/form/request-id'
 import { SubmitButton } from '@/shared/ui/form/submit-button'
 import { TextField } from '@/shared/ui/form/text-field'
 
@@ -33,24 +34,17 @@ export function NotesForm() {
         onError: ({ error }) => {
           if (error.validationErrors !== undefined) return
           toast.error(failureMessage(error.serverError, notesMessages))
-          if (error.serverError?.rule === NOTE_MESSAGE_KEYS.requestReused) {
-            form.setValue('clientRequestId', '')
-          }
+          if (error.serverError?.rule === NOTE_MESSAGE_KEYS.requestReused) resetRequestId(form)
         },
       },
     },
   )
   const notSaved = action.hasErrored && action.result.validationErrors === undefined
-  const keepRequestId = () => {
-    if (form.getValues('clientRequestId') === '') {
-      form.setValue('clientRequestId', crypto.randomUUID())
-    }
-  }
 
   return (
     <form
       onSubmit={(event) => {
-        keepRequestId()
+        keepRequestId(form)
         void handleSubmitWithAction(event)
       }}
       className="flex flex-col gap-4"
