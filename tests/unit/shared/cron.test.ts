@@ -1,10 +1,12 @@
+import { randomUUID } from 'node:crypto'
+
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { isCronRequest } from '@/shared/lib/cron'
 
 vi.mock('server-only', () => ({}))
 
-const SECRET = 'scheduler-secret-0123456789abcdef'
+const SECRET = `${randomUUID()}${randomUUID()}`
 
 function cronRequest(authorization?: string): Request {
   const headers = new Headers()
