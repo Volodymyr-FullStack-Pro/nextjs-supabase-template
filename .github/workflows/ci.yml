@@ -76,6 +76,12 @@ jobs:
           CI: 'true'
       - name: Lighthouse budget
         run: npm run perf # production-сборка уже сделана webServer Playwright
+      # Шаблоны генератора модуля (scripts/module-template) стоят вне линтера и tsc: здесь из них создаётся модуль,
+      # проходит линтер, типы, unit, проверки базы, свой e2e и бюджет JS — и удаляется. Идёт последним: пересобирает .next.
+      - name: Generated module passes every gate
+        run: npm run generator:check
+        env:
+          CI: 'true'
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:

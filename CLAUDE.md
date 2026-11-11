@@ -30,7 +30,8 @@ npm run perf           # Lighthouse по бюджету (после build); npm 
 npm run knip           # мёртвый код и зависимости
 npm run jscpd          # дубли
 npm run req:check      # реестр требований заказчика: номера, статусы, непокрытые требования
-npm run new:module businesses business   # каркас модуля: имя модуля и одной записи
+npm run new:module businesses business   # полный срез модуля из шаблонов scripts/module-template: слои, экран, миграция, pgTAP, unit, e2e
+npm run generator:check   # срез из шаблонов проходит все проверки gate и убирается; после правки шаблонов, src/shared, tests/e2e/support, линтера; в CI — всегда
 npm run build
 supabase start         # локальный Supabase; supabase test db — pgTAP; supabase db advisors и db lint — проверки; npm run db:check-migrations — Squawk
 npm run db:new <имя>   # новая миграция с lock_timeout и statement_timeout; применить — supabase migration up
