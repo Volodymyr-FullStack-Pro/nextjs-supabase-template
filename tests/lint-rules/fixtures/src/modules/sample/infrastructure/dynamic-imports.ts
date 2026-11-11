@@ -6,7 +6,7 @@ export async function adminClient() {
 }
 
 export async function adminClientByRelativePath() {
-  return import('../../../../../../../src/shared/infrastructure/supabase/admin') // expect: local/dynamic-import
+  return import('../../../shared/infrastructure/supabase/admin') // expect: local/dynamic-import
 }
 
 export async function rawClient(url: string, key: string) {

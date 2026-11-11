@@ -1,3 +1,5 @@
+import { dirname, resolve, sep } from 'node:path'
+
 import eslintComments from '@eslint-community/eslint-plugin-eslint-comments/configs'
 import vitest from '@vitest/eslint-plugin'
 import { defineConfig, globalIgnores } from 'eslint/config'
@@ -498,55 +500,150 @@ const dataAccess = syntaxRule('Репозиторий проверяет error �
   },
 ])
 
-// Тот же отказ базы, когда ответ не деструктурирован: result.data ?? [] или .then(({ data }) => …). Правило смотрит на тип:
-// у ответа PostgREST, в котором ещё возможен отказ (PostgrestResponseFailure), data и count читать нельзя; после
-// if (result.error) throw … компилятор сужает тип до успешного ответа, и обращение становится законным.
+// Тот же отказ базы, когда ответ не деструктурирован: result.data ?? [], .then(({ data }) => …), result.status. Правило
+// смотрит на тип: у ответа PostgREST, в котором ещё возможен отказ (PostgrestResponseFailure), читать можно только
+// error и success; после if (result.error) throw … компилятор сужает тип до успешного ответа, и остальное законно.
+// Запись, ответ которой не читают вовсе, — тот же случай: await … в позиции оператора выбрасывает отказ базы,
+// а построитель без await (или под void) ленив — запрос в базу не уходит. Ответ и построитель из async-функции
+// наружу не возвращаются; построитель из обычной функции — можно (общая часть запроса), её вызов проверяется так же.
 const RESPONSE_FIELDS = new Set(['data', 'count'])
+const RESPONSE_CHECKS = new Set(['error', 'success'])
+const POSTGREST_BUILDER = /^Postgrest\w*Builder$/
+const FUNCTIONS = new Set(['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression'])
 const propertyName = (node) => {
   if (node.type === 'Identifier') return node.name
   return node.type === 'Literal' ? String(node.value) : undefined
 }
+const withoutVoid = (node) =>
+  node.type === 'UnaryExpression' && node.operator === 'void' ? node.argument : node
+const isInAsyncFunction = (node) => {
+  let current = node.parent
+  while (current && !FUNCTIONS.has(current.type)) current = current.parent
+  return Boolean(current?.async)
+}
+const CHECK_ERROR =
+  "const { error } = await …; if (error) throw databaseError('модуль.действие', error) (или if (result.error) throw …)"
 const noUncheckedResponse = {
   meta: {
     type: 'problem',
-    docs: { description: 'data и count ответа Supabase читаются после проверки error' },
+    docs: {
+      description:
+        'Ответ Supabase читается, возвращается и выбрасывается только после проверки error',
+    },
     messages: {
-      unchecked:
-        "ответ Supabase прочитан без проверки error: сначала if (result.error) throw databaseError('модуль.действие', result.error) или const { data, error } = await … — иначе отказ базы выглядит как пустой список",
+      unchecked: `ответ Supabase прочитан без проверки error: сначала ${CHECK_ERROR} — иначе отказ базы выглядит как пустой список`,
+      discarded: `ответ Supabase выброшен: ${CHECK_ERROR} — иначе отказ базы (RLS, check) выглядит как «сохранено»`,
+      notSent: `запрос Supabase не отправлен: построитель ленив и уходит в базу только по await — ${CHECK_ERROR}`,
+      returned: `наружу уходит ответ Supabase, а не модель домена: ${CHECK_ERROR}, затем верните разобранные данные`,
     },
     schema: [],
   },
   create(context) {
     const services = context.sourceCode.parserServices
-    const mayHaveFailed = (node) =>
-      typeParts(services.getTypeAtLocation(node)).some(
-        (part) => part.getSymbol()?.getName() === 'PostgrestResponseFailure',
-      )
+    const symbolNames = (node) =>
+      typeParts(services.getTypeAtLocation(node)).map((part) => part.getSymbol()?.getName() ?? '')
+    const mayHaveFailed = (node) => symbolNames(node).includes('PostgrestResponseFailure')
+    const isBuilder = (node) => symbolNames(node).some((name) => POSTGREST_BUILDER.test(name))
+    const checkReturned = (node) => {
+      if (mayHaveFailed(node) || (isBuilder(node) && isInAsyncFunction(node))) {
+        context.report({ node, messageId: 'returned' })
+      }
+    }
     return {
       MemberExpression(node) {
         const name =
           node.computed && node.property.type !== 'Literal'
             ? undefined
             : propertyName(node.property)
-        if (name !== undefined && RESPONSE_FIELDS.has(name) && mayHaveFailed(node.object)) {
-          context.report({ node, messageId: 'unchecked' })
-        }
+        if (name === undefined || RESPONSE_CHECKS.has(name)) return
+        if (mayHaveFailed(node.object)) context.report({ node, messageId: 'unchecked' })
       },
       ObjectPattern(node) {
-        // объявление const { data } = await … уже ловит local/data-access — здесь параметры и остальные формы
-        if (
-          node.parent.type === 'VariableDeclarator' &&
-          node.parent.init?.type === 'AwaitExpression'
-        )
-          return
         const names = node.properties.map((property) =>
           property.type === 'Property' ? propertyName(property.key) : undefined,
         )
-        if (names.includes('error') || !names.some((name) => RESPONSE_FIELDS.has(name))) return
+        if (names.some((name) => RESPONSE_CHECKS.has(name))) return
+        // объявление const { data } = await … уже ловит local/data-access — здесь параметры и остальные формы
+        const isDeclaredFromAwait =
+          node.parent.type === 'VariableDeclarator' && node.parent.init?.type === 'AwaitExpression'
+        if (isDeclaredFromAwait && names.some((name) => RESPONSE_FIELDS.has(name))) return
         if (mayHaveFailed(node)) context.report({ node, messageId: 'unchecked' })
+      },
+      ExpressionStatement(node) {
+        const expression = withoutVoid(node.expression)
+        if (expression.type === 'AssignmentExpression') return
+        if (isBuilder(expression)) context.report({ node, messageId: 'notSent' })
+        else if (mayHaveFailed(expression)) context.report({ node, messageId: 'discarded' })
+      },
+      ReturnStatement(node) {
+        if (node.argument) checkReturned(node.argument)
+      },
+      'ArrowFunctionExpression[expression=true]'(node) {
+        checkReturned(node.body)
       },
     }
   },
+}
+
+// Запреты импорта (обход RLS, verifySession, свой клиент) сверяют текст пути: «…/supabase/./admin» и
+// «…/supabase/../supabase/admin» ведут в тот же файл, а под запрет не попадают. Поэтому путь импорта обязан быть
+// записан в нормальной форме, а относительный путь из src не выходит за src — вне src защиты не действуют.
+const importPath = {
+  meta: {
+    type: 'problem',
+    docs: { description: 'Путь импорта нормализован и не выходит за src' },
+    messages: {
+      normalised:
+        'путь импорта «{{source}}» записан не в нормальной форме (/./, /../ или // внутри пути): запреты импорта сверяют текст пути — пишите путь без лишних сегментов',
+      outside:
+        'импорт «{{source}}» выходит за пределы src: код приложения живёт в src, границы слоёв и защиты линтера действуют только там',
+    },
+    schema: [],
+  },
+  create(context) {
+    const sourceRoot = resolve(context.cwd, 'src') + sep
+    const check = (node) => {
+      if (node?.type !== 'Literal' || typeof node.value !== 'string') return
+      const source = node.value
+      const segments = source.split('/')
+      const leading = segments[0] === '.' ? 1 : segments.findIndex((segment) => segment !== '..')
+      const rest = leading < 0 ? [] : segments.slice(leading)
+      if (rest.some((segment) => segment === '.' || segment === '..' || segment === '')) {
+        context.report({ node, messageId: 'normalised', data: { source } })
+      } else if (
+        source.startsWith('.') &&
+        !(resolve(dirname(context.filename), source) + sep).startsWith(sourceRoot)
+      ) {
+        context.report({ node, messageId: 'outside', data: { source } })
+      }
+    }
+    const checkSource = (node) => check(node.source)
+    return {
+      ImportDeclaration: checkSource,
+      ExportNamedDeclaration: checkSource,
+      ExportAllDeclaration: checkSource,
+      ImportExpression: checkSource,
+      TSImportType: (node) => check(node.source ?? node.argument?.literal),
+    }
+  },
+}
+
+// В src — только .ts и .tsx: объекты защит перечисляют именно эти расширения, а Next собирает и .js (allowJs).
+const typescriptOnly = {
+  meta: {
+    type: 'problem',
+    docs: { description: 'В src только .ts и .tsx' },
+    messages: {
+      extension:
+        'в src — только файлы .ts и .tsx: на остальные расширения не действуют границы слоёв и защиты денег и доступа',
+    },
+    schema: [],
+  },
+  create: (context) => ({
+    Program() {
+      context.report({ loc: { line: 1, column: 0 }, messageId: 'extension' })
+    },
+  }),
 }
 
 // Текст ошибки уходит в лог и в Sentry (reportUnexpectedError). Postgres цитирует в message введённое значение
@@ -597,7 +694,14 @@ const CRON_SECRET =
   'маршрут /api/cron/* открыт в proxy.ts: первая строка обработчика — if (!isCronRequest(request)) return new Response(null, { status: 401 }) — isCronRequest из @/shared/lib/cron'
 const CRON_HANDLER_IN_PLACE =
   'обработчик плановой задачи объявляется в route.ts: export function GET(request) { if (!isCronRequest(request)) return … } — переэкспорт, деструктуризация и обёртка прячут обработчик от проверки секрета'
+const CRON_CHECK_IMPORT =
+  'Program:not(:has(> ImportDeclaration[source.value="@/shared/lib/cron"]:has(> ImportSpecifier[imported.name="isCronRequest"][local.name="isCronRequest"])))'
 const cronSecret = syntaxRule('Плановая задача проверяет секрет', [
+  {
+    selector: CRON_CHECK_IMPORT,
+    message:
+      "плановая задача проверяет секрет функцией isCronRequest из @/shared/lib/cron: import { isCronRequest } from '@/shared/lib/cron' — своя функция с тем же именем секрет не сверяет",
+  },
   {
     selector: `ExportNamedDeclaration > FunctionDeclaration[id.name=${HTTP_HANDLER}]:not(${cronCheckFirst('body.body')})`,
     message: CRON_SECRET,
@@ -638,6 +742,8 @@ const local = {
     'dynamic-import': dynamicImport,
     'data-access': dataAccess,
     'no-unchecked-response': noUncheckedResponse,
+    'import-path': importPath,
+    'typescript-only': typescriptOnly,
     'error-by-code': errorByCode,
     'cron-secret': cronSecret,
     'no-enum': noEnum,
@@ -662,7 +768,13 @@ const guardsConfig = {
 const accessGuardsConfig = {
   files: ['src/**/*.{ts,tsx}'],
   plugins: { local },
-  rules: { 'local/server-action': 'error' },
+  rules: { 'local/server-action': 'error', 'local/import-path': 'error' },
+}
+const typescriptOnlyConfig = {
+  files: ['src/**/*.{js,jsx,mjs,cjs,mts,cts}'],
+  ...tseslint.configs.disableTypeChecked,
+  plugins: { local },
+  rules: { ...tseslint.configs.disableTypeChecked.rules, 'local/typescript-only': 'error' },
 }
 const actionClientConfig = {
   files: ['src/**/*.{ts,tsx}'],
@@ -698,8 +810,9 @@ const repositoryConfig = {
   plugins: { local },
   rules: { 'local/data-access': 'error', 'local/error-by-code': 'error' },
 }
+// Адрес /api/cron/* дают и группа маршрутов (src/app/(jobs)/api/cron/…), и route.tsx — глоб покрывает оба.
 const cronRouteConfig = {
-  files: ['src/app/api/cron/**/route.ts'],
+  files: ['src/app/**/api/cron/**/route.{ts,tsx}'],
   plugins: { local },
   rules: { 'local/cron-secret': 'error' },
 }
@@ -857,6 +970,8 @@ const codeStyleTsConfig = {
       'error',
       { checksVoidReturn: { attributes: false } },
     ],
+    // построитель запроса Supabase — thenable, не Promise: без checkThenables забытый await не виден
+    '@typescript-eslint/no-floating-promises': ['error', { checkThenables: true }],
     // Next требует async у 'use cache', Server Actions и серверных компонентов даже без await
     '@typescript-eslint/require-await': 'off',
     '@typescript-eslint/consistent-type-imports': [
@@ -927,6 +1042,7 @@ export const UNDISABLEABLE = [
   '!local/no-comments',
   '@typescript-eslint/no-explicit-any',
   '@typescript-eslint/consistent-type-assertions',
+  '@typescript-eslint/no-require-imports',
 ]
 const guardDirectivesConfig = {
   ...eslintComments.recommended,
@@ -1117,12 +1233,20 @@ const GLOBAL_DECIMAL = {
   message:
     'Расчёты денег — через money() из @/shared/domain/money: у глобального Decimal другая точность и округление',
 }
+// require() запреты импорта не видят: сам require запрещён (@typescript-eslint/no-require-imports, в списке
+// неотключаемых), а createRequire из node:module — здесь; пути повторяются в каждом объекте no-restricted-imports.
+const NO_CREATE_REQUIRE = ['node:module', 'module'].map((name) => ({
+  name,
+  message:
+    'createRequire даёт require(), которого не видят запреты импорта (обход RLS, свой клиент базы): в src — только import',
+}))
+const RESTRICTED_PACKAGES = [GLOBAL_DECIMAL, ...NO_CREATE_REQUIRE]
 const RLS_BYPASS_ALLOWED = ['src/shared/infrastructure/**', 'src/**/*.admin.ts']
 const bypassesRlsConfig = {
   files: ['src/**/*.{ts,tsx}'],
   ignores: RLS_BYPASS_ALLOWED,
   rules: {
-    'no-restricted-imports': ['error', { paths: [GLOBAL_DECIMAL], patterns: [BYPASSES_RLS] }],
+    'no-restricted-imports': ['error', { paths: RESTRICTED_PACKAGES, patterns: [BYPASSES_RLS] }],
   },
 }
 const dynamicImportConfig = {
@@ -1133,20 +1257,22 @@ const dynamicImportConfig = {
 }
 const globalDecimalConfig = {
   files: RLS_BYPASS_ALLOWED,
-  rules: { 'no-restricted-imports': ['error', { paths: [GLOBAL_DECIMAL] }] },
+  rules: { 'no-restricted-imports': ['error', { paths: RESTRICTED_PACKAGES }] },
 }
 const moneyConfig = {
   files: ['src/shared/domain/money.ts'],
-  rules: { 'no-restricted-imports': ['error', { patterns: [BYPASSES_RLS] }] },
+  rules: {
+    'no-restricted-imports': ['error', { paths: NO_CREATE_REQUIRE, patterns: [BYPASSES_RLS] }],
+  },
 }
 const sharedLibConfig = {
-  files: ['src/shared/lib/**/*.ts'],
+  files: ['src/shared/lib/**/*.{ts,tsx}'],
   ignores: ['src/shared/lib/session.ts', 'src/shared/lib/safe-action.ts', 'src/shared/lib/cron.ts'],
   rules: {
     'no-restricted-imports': [
       'error',
       {
-        paths: [GLOBAL_DECIMAL],
+        paths: RESTRICTED_PACKAGES,
         patterns: [
           BYPASSES_RLS,
           {
@@ -1216,5 +1342,6 @@ export default defineConfig([
     files: ['**/*.{js,mjs,cjs}', '*.config.{ts,mts}'],
     ...tseslint.configs.disableTypeChecked,
   },
+  typescriptOnlyConfig,
   eslintConfigPrettier,
 ])

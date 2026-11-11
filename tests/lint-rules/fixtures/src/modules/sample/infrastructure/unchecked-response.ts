@@ -38,3 +38,39 @@ export async function listCheckedTooLate(supabase: SupabaseClient): Promise<Entr
   if (result.error) throw databaseError('entries.list', result.error)
   return rows
 }
+
+export async function closeDiscarded(supabase: SupabaseClient, id: string): Promise<void> {
+  await supabase.from('entries').update({ closed: true }).eq('id', id) // expect: local/no-unchecked-response
+}
+
+export function closeNeverSent(supabase: SupabaseClient, id: string): void {
+  supabase.from('entries').update({ closed: true }).eq('id', id) // expect: local/no-unchecked-response, @typescript-eslint/no-floating-promises
+}
+
+export function closeVoided(supabase: SupabaseClient, id: string): void {
+  void supabase.from('entries').update({ closed: true }).eq('id', id) // expect: local/no-unchecked-response
+}
+
+export async function closeRaw(supabase: SupabaseClient, id: string) {
+  return supabase.from('entries').update({ closed: true }).eq('id', id) // expect: local/no-unchecked-response
+}
+
+export const closeRawByArrow = async (supabase: SupabaseClient, id: string) =>
+  supabase.from('entries').update({ closed: true }).eq('id', id) // expect: local/no-unchecked-response
+
+export async function closeAwaitedRaw(supabase: SupabaseClient, id: string) {
+  return await supabase.from('entries').delete().eq('id', id) // expect: local/no-unchecked-response
+}
+
+export async function removeStatusOnly(supabase: SupabaseClient, id: string): Promise<number> {
+  const result = await supabase.from('entries').delete().eq('id', id)
+  return result.status // expect: local/no-unchecked-response
+}
+
+export async function removeStatusDestructured(
+  supabase: SupabaseClient,
+  id: string,
+): Promise<number> {
+  const { status } = await supabase.from('entries').delete().eq('id', id) // expect: local/no-unchecked-response
+  return status
+}

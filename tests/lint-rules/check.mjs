@@ -8,8 +8,8 @@
 // 2. Пробы обхода. «// expect-strict: <правило>» — срабатывание, которое обычный проход не видит, потому что
 //    комментарий в файле отключил и защиту, и правило, запрещающее её отключать. Его обязан показать строгий проход:
 //    тот же конфиг с allowInlineConfig: false, где комментарии ESLint не действуют.
-// 3. Строгий проход по настоящему src: любое сообщение неотключаемого правила (UNDISABLEABLE в eslint.config.mjs)
-//    значит, что защиту в коде сняли комментарием — npm run lint этого не видит.
+// 3. Строгий проход по настоящему src: любое сообщение неотключаемого правила (UNDISABLEABLE в eslint.config.mjs) —
+//    ошибка. После зелёного npm run lint такое сообщение значит, что защиту в коде сняли комментарием.
 import { readFileSync } from 'node:fs'
 import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -24,7 +24,7 @@ const CONFIG_FILE = join(root, 'eslint.config.mjs')
 const GUARDS = [
   /^local\/(?!no-comments$)/,
   /^no-restricted-(properties|imports|syntax)$/,
-  /^@typescript-eslint\/(no-unsafe-type-assertion|consistent-type-assertions|no-explicit-any)$/,
+  /^@typescript-eslint\/(no-unsafe-type-assertion|consistent-type-assertions|no-explicit-any|no-require-imports|no-floating-promises)$/,
   /^@eslint-community\/eslint-comments\/(no-restricted-disable|no-use)$/,
 ]
 const MARKER = /expect: (?<rules>[^\n]+?)\s*(?:\*\/\}?)?$/
@@ -140,10 +140,14 @@ if (strictFixtures.length === 0) {
 }
 
 const sourceEslint = new ESLint({ ...strictOptions, cwd: root })
-const disabledInSource = undisableableIn(await sourceEslint.lintFiles(['src']))
-for (const { filePath, line, ruleId } of disabledInSource) {
+const brokenInSource = new Set(
+  undisableableIn(await sourceEslint.lintFiles(['src'])).map(
+    ({ filePath, line, ruleId }) => `${relative(root, filePath)}:${String(line)} ${ruleId}`,
+  ),
+)
+for (const place of brokenInSource) {
   failures.push(
-    `${relative(root, filePath)}:${String(line)} ${ruleId} — защита отключена комментарием в коде: уберите комментарий и исправьте причину`,
+    `${place} — защита нарушена в коде; если npm run lint этого не показывает, нарушение скрыто комментарием ESLint: уберите комментарий и исправьте причину`,
   )
 }
 

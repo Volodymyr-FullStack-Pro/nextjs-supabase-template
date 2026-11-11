@@ -2,7 +2,7 @@ import Decimal from 'decimal.js' // expect: no-restricted-imports
 
 import { createAdminClient } from '@/shared/infrastructure/supabase/admin' // expect: no-restricted-imports
 
-import { createAdminClient as adminByRelativePath } from '../../../../../../../src/shared/infrastructure/supabase/admin' // expect: no-restricted-imports
+import { createAdminClient as adminByRelativePath } from '../../../shared/infrastructure/supabase/admin' // expect: no-restricted-imports
 
 export { createAdminClient as adminClient } from '@/shared/infrastructure/supabase/admin' // expect: no-restricted-imports
 
