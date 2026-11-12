@@ -4,9 +4,11 @@
 
 - [requirements.md](requirements.md) — реестр требований заказчика: каждый ответ и решение из анкет, переписки и созвонов, с трактовкой, разделом спецификации и статусом.
 - [decisions.md](decisions.md) — индекс решений (одна строка на решение); крупные решения — ADR в [decisions/](decisions/) с контекстом, альтернативами и последствиями.
-- Архитектура и правила кода — README репозитория (раздел «Архитектура») и `.claude/rules/`.
+- [../architecture.md](../architecture.md) — как устроена система и почему: действующие архитектурные решения, правила кода и бизнес-правила заказчика; правила кода по областям — `.claude/rules/`.
 - [open-questions.md](open-questions.md) — что ещё не решено и где это спрашивается.
 - [../roadmap.md](../roadmap.md) — где мы сейчас, спринты и блоки; блоки — [../blocks/](../blocks/); понятия — [../glossary.md](../glossary.md).
+
+Роли и пределы этих файлов — `.claude/rules/docs.md`, их проверяет `npm run docs:check` (входит в `check` и CI).
 
 ## Статус на <дата>
 
@@ -18,14 +20,15 @@
 
 ## Где что лежит
 
-| Путь                                    | Что там                                            |
-| --------------------------------------- | -------------------------------------------------- |
-| `src/app`                               | только маршруты и Suspense                         |
-| `src/modules/<домен>`                   | domain, application, infrastructure, ui, server.ts |
-| `src/shared`                            | domain (деньги, Result), infrastructure, lib, ui   |
-| `supabase/migrations`, `supabase/tests` | SQL-миграции (источник правды) и pgTAP             |
-| `tests/unit`, `tests/e2e`               | Vitest и Playwright                                |
-| `docs/roadmap.md`, `docs/blocks`        | поставка: спринты, блоки, задачи                   |
+| Путь                                    | Что там                                                                                                                                |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/app`                               | только маршруты и Suspense                                                                                                             |
+| `src/modules/<домен>`                   | domain, application, infrastructure, ui, server.ts                                                                                     |
+| `src/shared`                            | domain (деньги, Result), infrastructure, lib, ui                                                                                       |
+| `supabase/migrations`, `supabase/tests` | SQL-миграции (источник правды) и pgTAP                                                                                                 |
+| `tests/unit`, `tests/e2e`               | Vitest и Playwright                                                                                                                    |
+| `docs/roadmap.md`, `docs/blocks`        | поставка: спринты, блоки, задачи                                                                                                       |
+| `.claude/handoff.md`                    | состояние посреди задачи: пишет `/dev-kit:handoff`, читает `/dev-kit:resume`; их запускает человек, когда Claude предлагает новое окно |
 
 ## Люди
 

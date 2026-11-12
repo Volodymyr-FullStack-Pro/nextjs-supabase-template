@@ -22,6 +22,10 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # A PR needs its base commit here: no token is left for a later git fetch. Strings, because a bare 0 is falsy in && ||.
+          fetch-depth: ${{ github.event_name == 'pull_request' && '0' || '1' }}
       - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
         with:
           version: 3.0.0 # та же версия, что на машинах разработчиков (supabase --version); обновлять вместе
@@ -31,7 +35,6 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          git fetch --no-tags --depth=1 origin "$BASE_SHA"
           changed=$(git diff --name-only --diff-filter=MDR "$BASE_SHA" HEAD -- supabase/migrations)
           if [ -n "$changed" ]; then
             echo "::error::Миграции из main не меняют и не удаляют — исправление новой миграцией вперёд (docs/release.md):"

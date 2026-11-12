@@ -68,6 +68,24 @@ const readJson = (file) => JSON.parse(readFileSync(file, 'utf8'))
 
 let databaseError = ''
 
+const tryParseJson = (text) => {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return undefined
+  }
+}
+
+const parseQueryOutput = (output) => {
+  for (const { 0: opener, index } of output.matchAll(/^[[{]/gmu)) {
+    const parsed = tryParseJson(
+      output.slice(index, output.lastIndexOf(opener === '[' ? ']' : '}') + 1),
+    )
+    if (parsed !== undefined) return parsed
+  }
+  return undefined
+}
+
 const databaseState = () => {
   try {
     const output = execFileSync(
@@ -75,8 +93,8 @@ const databaseState = () => {
       ['db', 'query', '--output-format', 'json', DATABASE_STATE],
       { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
     )
-    const json = output.slice(output.indexOf('{'), output.lastIndexOf('}') + 1)
-    const row = JSON.parse(json).rows?.[0]
+    const parsed = parseQueryOutput(output)
+    const row = (Array.isArray(parsed) ? parsed : parsed?.rows)?.[0]
     if (row === undefined) databaseError = `нет строки в ответе: ${output.slice(0, 300)}`
     return row ?? null
   } catch (error) {
