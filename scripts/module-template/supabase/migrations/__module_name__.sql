@@ -1,4 +1,4 @@
--- Таблица __module_name__ целиком, одной миграцией (.claude/rules/db.md). Заголовок с lock_timeout и
+-- Таблица __module_name__ целиком, одной миграцией (.claude/rules/db-tables.md). Заголовок с lock_timeout и
 -- statement_timeout вписывает scripts/db-new.mjs. Колонки title, amount, currency — заготовка: замените их
 -- полями сущности до supabase migration up; всё остальное нужно любой таблице с данными пользователя, и
 -- наличие каждого пункта проверяет по каталогу supabase/tests/900-table-conventions.sql.

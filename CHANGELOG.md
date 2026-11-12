@@ -2,6 +2,19 @@
 
 Что менялось в шаблоне. Проект, созданный раньше, переносит нужное руками и записывает это строкой D-NNN.
 
+## 2026-11-12 — CI at checkpoints, gate fingerprint, knowledge limits, rules split
+
+Entries are in English from this one on; earlier entries are not translated.
+
+- CI: heavy checks (speed budget, `generator:check`) run at checkpoints — push to `main`, a PR leaving draft (`ready_for_review`), a weekly schedule. gitleaks and actionlint run as binaries verified by SHA-256, with no license key; every checkout has `persist-credentials: false`; `db.yml` gets the PR base commit from checkout instead of a later `git fetch`.
+- `npm run gate` writes a working-tree fingerprint to the git directory (`scripts/gate-stamp.mjs`, `scripts/gate-fingerprint.mjs`) when the tree did not change during the run; `npm run gate:quick -- <e2e files>` is the reduced set; `gate:db` is the database part of both.
+- `npm run docs:check` (in `check` and CI): size limits of the knowledge files and the links between `docs/architecture.md` and the decision journal; a `docs/architecture.md` skeleton.
+- `npm run ci:usage`: Actions minutes for the month and a forecast; included minutes come from `CI_INCLUDED_MINUTES` (3000 by default).
+- Rules split by size: `db.md` → `db.md`, `db-tables.md`, `db-money.md`; `security.md` → `security.md`, `auth.md`.
+- `CLAUDE.md`: review by risk in the task path (a risky task gets `/code-review high` and an agent running the `/security-review` prompt on the task diff), windows by token count, `gate:quick`; `docs/release.md`: gitleaks scans every branch, how to find the branch of a finding.
+- `.mcp.json`: the remote Context7 server (`https://mcp.context7.com/mcp`), no `npx` package outside the lock file.
+- For a project created earlier: delete the `GITLEAKS_LICENSE` secret; take a block PR out of draft before merging, otherwise `generator:check` and the speed check are skipped; turn rebase merging off (`docs/github/branch-protection.json`); copy the scripts, workflows and the rules split.
+
 ## 2026-11-11 — выпуск в production на GitHub Team: подтверждение — слияние PR
 
 - На плане Team в приватном репозитории у окружений нет required reviewers и таймера ожидания (они — только в публичном репозитории или на Enterprise), поэтому выпуск подтверждается слиянием PR `main → production` в защищённую ветку `production`, а окружение `production` принимает только эту ветку: `docs/release.md`, B00-T01 и README блока B00, комментарий в `deploy-db.yml`. В `docs/release.md` — минуты Actions на Team ( в месяц, около 3000 минут Linux).

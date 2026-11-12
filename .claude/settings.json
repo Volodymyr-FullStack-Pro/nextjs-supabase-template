@@ -33,7 +33,10 @@
       "Bash(gh pr checks:*)",
       "Bash(gh run list:*)",
       "Bash(gh run view:*)",
-      "Bash(git push origin --delete:*)"
+      "Bash(git push origin --delete:*)",
+      "Bash(npm run docs:check:*)",
+      "Bash(npm run perf:*)",
+      "Bash(gh pr list:*)"
     ],
     "deny": [
       "Read(./.env)",
