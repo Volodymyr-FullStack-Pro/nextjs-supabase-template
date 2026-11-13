@@ -27,6 +27,7 @@
     "playwright-report",
     "test-results",
     "coverage",
-    "scripts/module-template"
+    "scripts/module-template",
+    ".next/dev"
   ]
 }

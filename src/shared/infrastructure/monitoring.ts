@@ -10,7 +10,9 @@ function describe(error: unknown) {
 export function reportUnexpectedError(type: string, error: unknown): void {
   console.error(JSON.stringify({ type, ...describe(error) }))
   Sentry.captureException(
-    error instanceof Error ? error : new Error(`${type}: брошено не Error (${typeof error})`),
+    error instanceof Error
+      ? error
+      : new Error(`${type}: thrown value is not an Error (${typeof error})`),
   )
 }
 

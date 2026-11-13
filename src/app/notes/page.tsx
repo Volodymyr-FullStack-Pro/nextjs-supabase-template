@@ -7,7 +7,7 @@ import { NotesTips } from '@/modules/notes/ui/notes-tips'
 
 export default function NotesPage({ searchParams }: PageProps<'/notes'>) {
   return (
-    <main className="mx-auto flex max-w-xl flex-col gap-6 p-6">
+    <main className="mx-auto flex w-full max-w-xl flex-col gap-6 p-6">
       <h1 className="text-2xl font-semibold">Заметки</h1>
       <NotesTips />
       <NotesForm />

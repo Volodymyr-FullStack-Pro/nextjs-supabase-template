@@ -28,8 +28,8 @@ describe('failureMessage', () => {
 
   it('shows the developer detail of an unexpected error outside production', () => {
     expect(
-      failureMessage({ code: 'UNEXPECTED', detail: 'Не задана переменная окружения' }, {}),
-    ).toBe('Не задана переменная окружения')
+      failureMessage({ code: 'UNEXPECTED', detail: 'Environment variable is not set' }, {}),
+    ).toBe('Environment variable is not set')
   })
 
   it('shows the generic text for an unknown or missing failure', () => {

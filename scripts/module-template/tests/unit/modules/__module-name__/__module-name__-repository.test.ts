@@ -60,10 +60,10 @@ const duplicateOf = (constraint: string) =>
 
 async function failureOf(operation: Promise<unknown>): Promise<Error> {
   const failure: unknown = await operation.then(
-    () => new Error('операция не отклонена'),
+    () => new Error('operation was not rejected'),
     (error: unknown) => error,
   )
-  if (!(failure instanceof Error)) throw new TypeError('отклонено не ошибкой')
+  if (!(failure instanceof Error)) throw new TypeError('rejected with a non-error value')
   return failure
 }
 

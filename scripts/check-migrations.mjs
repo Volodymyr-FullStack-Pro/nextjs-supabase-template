@@ -21,7 +21,7 @@ const untracked = gitLines(['ls-files', '--others', '--exclude-standard', '--', 
 const newMigrations = [...new Set([...committed, ...untracked])].toSorted()
 
 if (newMigrations.length === 0) {
-  console.log(`Новых миграций относительно ${baseRef} нет`)
+  console.log(`No new migrations since ${baseRef}`)
   process.exit(0)
 }
 console.log(`Squawk: ${newMigrations.join(', ')}`)

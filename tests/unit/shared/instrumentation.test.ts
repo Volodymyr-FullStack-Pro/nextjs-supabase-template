@@ -116,11 +116,11 @@ describe('Sentry events', () => {
     logged.mockRestore()
 
     const notANumber =
-      '{"type":"action-error","error":"RangeError","message":"money: ожидается конечное десятичное число"}'
+      '{"type":"action-error","error":"RangeError","message":"money: expected a finite decimal number"}'
     expect(leakedIn(sent)).toEqual([])
     expect(sent).toContain('notes.insert: 22P02')
-    expect(sent).toContain('money: ожидается конечное десятичное число')
-    expect(sent).toContain('action-error: брошено не Error (object)')
+    expect(sent).toContain('money: expected a finite decimal number')
+    expect(sent).toContain('action-error: thrown value is not an Error (object)')
     expect(lines).toEqual([
       '{"type":"action-error","error":"Error","message":"notes.insert: 22P02"}',
       notANumber,

@@ -44,7 +44,8 @@ const PROTECTED = {
   setup: MFA_PATHS.setup,
   verify: MFA_PATHS.verify,
 } as const
-const PUBLIC = ['/', '/login', '/api/vitals', '/api/cron/daily', '/api/webhooks/bank']
+const PUBLIC = ['/', '/login', '/api/cron/daily']
+const CLOSED = ['/api/vitals', '/api/webhooks/bank']
 
 type Expected = Record<keyof typeof PROTECTED, string>
 const UNAUTHORIZED = '401 {"error":"unauthorized"}'
@@ -149,16 +150,19 @@ describe('proxy', () => {
 
     await expect(outcomeOf(await visit('/login/reports'))).resolves.toBe('redirect /login')
     await expect(outcomeOf(await visit('/api/cron'))).resolves.toBe(UNAUTHORIZED)
-    await expect(outcomeOf(await visit('/api/vitals/raw'))).resolves.toBe(UNAUTHORIZED)
+  })
+
+  it.each(CLOSED)('asks for a session at %s, which is no longer public', async (path) => {
+    setAuthState(SIGNED_OUT)
+
+    await expect(outcomeOf(await visit(path))).resolves.toBe(UNAUTHORIZED)
   })
 
   it('does not treat a path that merely contains a public prefix as public', async () => {
     setAuthState(SIGNED_OUT)
 
     await expect(outcomeOf(await visit('/reports/api/cron/daily'))).resolves.toBe('redirect /login')
-    await expect(outcomeOf(await visit('/api/reports/api/webhooks/bank'))).resolves.toBe(
-      UNAUTHORIZED,
-    )
+    await expect(outcomeOf(await visit('/api/reports/api/cron/daily'))).resolves.toBe(UNAUTHORIZED)
   })
 
   it('reports an Auth outage but not a revoked session', async () => {

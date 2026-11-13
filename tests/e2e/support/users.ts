@@ -13,7 +13,7 @@ const publishableKey = process.env['NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'] ?? ''
 const databaseUrl = process.env['DATABASE_URL'] ?? ''
 
 export const hasDatabase = supabaseUrl !== '' && secretKey !== ''
-export const NEEDS_DATABASE = 'нужен локальный Supabase: supabase start и npm run test:e2e:db'
+export const NEEDS_DATABASE = 'needs the local Supabase: supabase start and npm run test:e2e:db'
 
 export type TestUser = { id: string; email: string; password: string }
 type Credentials = Pick<TestUser, 'email' | 'password'>

@@ -40,7 +40,7 @@ export type MeasuredPage = {
 }
 
 const SIGN_IN_STEP =
-  'шаг входа: страницу открывает сессия посреди входа, до второго фактора, а замер идёт с сессией после входа; форма — из тех же компонентов, что /login'
+  'sign-in step: the page is opened by a session in the middle of sign-in, before the second factor, while the measurement runs signed in; the form is built from the same components as /login'
 
 export const NOT_MEASURED: Record<string, string> = {
   '/mfa/setup': SIGN_IN_STEP,

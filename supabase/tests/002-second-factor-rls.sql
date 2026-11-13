@@ -1,8 +1,6 @@
--- Второй фактор: поведение private.mfa_ok() и ограничивающей политики, которую несёт каждая таблица public
--- (наличие и текст политики у каждой таблицы проверяет 900 по каталогу). С подтверждённым TOTP данные видны
--- и меняются только в сессии aal2; без фактора — как раньше.
--- Таблица создаётся внутри теста: проверяется сама функция, а не таблица-пример, и файл остаётся после её удаления.
--- Проверка самого теста: временно замените тело private.mfa_ok() на true — тесты «aal1 with factor» должны упасть.
+-- Behaviour of private.mfa_ok() and the restrictive policy every public table carries (that each table has it is
+-- checked by 900 from the catalog): with a verified TOTP, rows are visible and writable only in an aal2 session.
+-- Self-check: replace the body of private.mfa_ok() with true and the "aal1 with factor" tests fail.
 begin;
 select plan(13);
 

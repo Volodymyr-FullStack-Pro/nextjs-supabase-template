@@ -6,7 +6,7 @@ export class EnvironmentError extends Error {
 
 function required(name: string, value: string | undefined): string {
   if (!value)
-    throw new EnvironmentError(`Не задана переменная окружения ${name} (см. .env.example)`)
+    throw new EnvironmentError(`Environment variable ${name} is not set (see .env.example)`)
   return value
 }
 

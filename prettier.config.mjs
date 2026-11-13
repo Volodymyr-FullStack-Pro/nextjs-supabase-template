@@ -5,7 +5,7 @@ const config = {
   printWidth: 100,
   trailingComma: 'all',
   plugins: ['prettier-plugin-tailwindcss'],
-  tailwindStylesheet: './src/app/globals.css', // порядок классов Tailwind — автоматически
+  tailwindStylesheet: './src/app/globals.css',
 }
 
 export default config

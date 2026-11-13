@@ -28,8 +28,8 @@ jobs:
           fetch-depth: ${{ github.event_name == 'pull_request' && '0' || '1' }}
       - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
         with:
-          version: 3.0.0 # та же версия, что на машинах разработчиков (supabase --version); обновлять вместе
-      # Слитая миграция уже выложена на staging: правка или удаление разведут базу и историю миграций.
+          version: 3.0.0 # same as developer machines (supabase --version); update together
+      # A merged migration is already on staging: editing or deleting it diverges the database from its migration history.
       - name: Merged migrations are not changed
         if: github.event_name == 'pull_request'
         env:
@@ -37,14 +37,14 @@ jobs:
         run: |
           changed=$(git diff --name-only --diff-filter=MDR "$BASE_SHA" HEAD -- supabase/migrations)
           if [ -n "$changed" ]; then
-            echo "::error::Миграции из main не меняют и не удаляют — исправление новой миграцией вперёд (docs/release.md):"
+            echo "::error::Migrations from main are not edited or deleted; fix forward with a new migration (docs/release.md):"
             printf '%s\n' "$changed"
             exit 1
           fi
       - name: Start local Supabase (applies supabase/migrations)
         run: supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector
       - name: Security and performance advisors
-        run: supabase db advisors --fail-on warn # без флага команда всегда завершается успешно
+        run: supabase db advisors --fail-on warn # without the flag the command always succeeds
       - name: Database functions compile (plpgsql_check)
         run: supabase db lint --fail-on warning
       - name: pgTAP
@@ -54,7 +54,6 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      # Новые миграции — без операций, опасных для живой базы (блокировки без lock_timeout, удаление колонок, int вместо bigint)
       - name: Migration safety (Squawk)
         if: github.event_name == 'pull_request'
         env:
@@ -64,7 +63,7 @@ jobs:
         run: |
           npm run db:types
           git diff --exit-code -- src/shared/infrastructure/supabase/types.ts || {
-            echo "::error file=src/shared/infrastructure/supabase/types.ts::Типы устарели: supabase start, npm run db:types и закоммитить файл"
+            echo "::error file=src/shared/infrastructure/supabase/types.ts::Types are stale: run supabase start and npm run db:types, then commit the file"
             exit 1
           }
       - if: always()

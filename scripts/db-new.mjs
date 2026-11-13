@@ -8,7 +8,7 @@ const NAME_PATTERN = /^[a-z][a-z0-9_]*$/u
 const name = process.argv[2]
 if (!name || !NAME_PATTERN.test(name)) {
   console.error(
-    'Использование: npm run db:new <имя> — имя миграции латиницей в нижнем регистре, цифры и подчёркивания (accounts, notes_currency)',
+    'Usage: npm run db:new <name>, lowercase Latin letters, digits and underscores (accounts, notes_currency)',
   )
   process.exit(1)
 }
@@ -24,5 +24,5 @@ if (result.status !== 0) {
 }
 
 const { path } = JSON.parse(result.stdout)
-console.log(`Создана миграция ${relative(process.cwd(), path)} с lock_timeout и statement_timeout`)
-console.log('Дальше: SQL в файл → supabase migration up → npm run db:types → supabase test db')
+console.log(`Created ${relative(process.cwd(), path)} with lock_timeout and statement_timeout`)
+console.log('Next: SQL in the file → supabase migration up → npm run db:types → supabase test db')

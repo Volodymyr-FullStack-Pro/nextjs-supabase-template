@@ -1,13 +1,11 @@
--- Журнал изменений: каждая вставка, правка и удаление строки — запись с автором, старым и новым значением;
--- роли API (anon, authenticated, service_role) журнал не читают и не меняют, а владелец базы не может его
--- править, удалять и очищать; очистка аудируемой таблицы запрещена триггером audit.forbid_truncate().
--- Таблица создаётся внутри теста: проверяется сам журнал, а не таблица-пример, и файл остаётся после её удаления
--- (наличие триггеров у каждой таблицы public проверяет 900 по каталогу).
--- Проверка самого теста: снимите триггер log_append_only или выдайте grant select on audit.log — тест упадёт.
+-- Every insert, update and delete is logged with its actor and the old and new row; API roles neither read nor
+-- change the log, the database owner cannot edit, delete or truncate it, and truncating an audited table is rejected.
+-- That every public table has these triggers is checked by 900 from the catalog.
+-- Self-check: drop the log_append_only trigger or grant select on audit.log and the test fails.
 begin;
 select plan(19);
 
--- Локальная база общая с e2e, и в журнале уже есть строки: тест смотрит только на строки после этой отметки.
+-- The local database is shared with e2e, so the log already has rows: the test looks only past this mark.
 create temp table log_start on commit drop as select coalesce(max(id), 0) as id from audit.log;
 
 create table public.audit_log_probe (
@@ -47,15 +45,15 @@ select is(
   1,
   'links all three entries to the same row id'
 );
-select throws_ok('update audit.log set op = op', '42501', null, 'the database owner cannot change the log');
-select throws_ok('delete from audit.log', '42501', null, 'the database owner cannot delete from the log');
-select throws_ok('truncate audit.log', '42501', null, 'the database owner cannot truncate the log');
+select throws_ok('update audit.log set op = op', '42501', 'audit.log is append-only: UPDATE is not allowed', 'the database owner cannot change the log');
+select throws_ok('delete from audit.log', '42501', 'audit.log is append-only: DELETE is not allowed', 'the database owner cannot delete from the log');
+select throws_ok('truncate audit.log', '42501', 'audit.log is append-only: TRUNCATE is not allowed', 'the database owner cannot truncate the log');
 
 insert into public.audit_log_probe (title) values ('kept');
 select throws_ok(
   'truncate public.audit_log_probe',
   '42501',
-  'truncate audit_log_probe запрещён: строки удаляются по одной и попадают в журнал',
+  'truncate audit_log_probe is not allowed: rows are deleted one by one so that each reaches the audit log',
   'the database owner cannot truncate an audited table'
 );
 select is((select count(*)::int from public.audit_log_probe), 1, 'the row survives the truncate attempt');

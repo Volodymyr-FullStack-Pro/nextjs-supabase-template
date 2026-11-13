@@ -170,10 +170,10 @@ type Subject = { browser: Browser; target: MeasuredPage; profile: Profile; visit
 
 async function open(page: Page, target: MeasuredPage) {
   const response = await page.goto(target.path, { waitUntil: 'commit' })
-  expect(response?.status(), `${target.path} не открылась`).toBe(HTTP_OK)
+  expect(response?.status(), `${target.path} did not open`).toBe(HTTP_OK)
   expect(
     new URL(page.url()).pathname,
-    `${target.path} увела на другой адрес — замерена была бы не она; странице за входом нужен signedIn в tests/perf/pages.ts`,
+    `${target.path} redirected elsewhere, so another page would be measured; a page behind sign-in needs signedIn in tests/perf/pages.ts`,
   ).toBe(target.path)
 }
 

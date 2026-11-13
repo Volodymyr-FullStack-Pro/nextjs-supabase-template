@@ -4,7 +4,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Встроенная палитра Tailwind закрыта: в коде только роли дизайн-системы (docs/design/design-system.md). */
+/* The built-in Tailwind palette is closed: code uses only design-system roles (docs/design/design-system.md). */
 @theme {
   --color-*: initial;
   --color-white: #fff;
@@ -70,7 +70,7 @@
   --popover-foreground: oklch(0.145 0 0);
   --primary: oklch(0.205 0 0);
   --primary-foreground: oklch(0.985 0 0);
-  /* hover уводит фон от цвета подписи: контраст при наведении не ниже, чем в покое */
+  /* hover moves the background away from the label color: contrast on hover is not lower than at rest */
   --primary-hover: color-mix(in oklch, var(--primary) 85%, black);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -147,12 +147,12 @@
   * {
     @apply border-border outline-ring;
   }
-  /* Фокус — сплошной контур 2px цвета --ring; компоненты не гасят его через outline-none (иначе пропадёт и в режиме высокой контрастности) */
+  /* Focus is a solid 2px --ring outline; components must not remove it with outline-none, or it also disappears in high contrast mode */
   :focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
-  /* iPhone: без задержки двойного касания; вырезы экрана слева и справа (viewportFit: cover в layout.tsx) */
+  /* iPhone: no double-tap delay; side screen cutouts (viewportFit: cover in layout.tsx) */
   html {
     touch-action: manipulation;
   }

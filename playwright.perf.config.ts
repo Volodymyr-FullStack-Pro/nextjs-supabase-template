@@ -3,9 +3,8 @@ import { defineConfig } from '@playwright/test'
 import { DEFAULT_LOCALE } from './src/shared/domain/locale'
 import { APP_TIME_ZONE } from './src/shared/domain/time'
 
-// Замер скорости (npm run perf): страницы и пороги — tests/perf/pages.ts. Отдельно от e2e: один поток, чтобы
-// прогоны не мешали друг другу; только Chromium (LCP, сдвиги разметки и долгие задачи есть в его API);
-// без повторов — шум гасит медиана трёх прогонов, а не повтор упавшего теста.
+// One worker so runs do not disturb each other; Chromium only (LCP, layout shifts and long tasks are in its API);
+// no retries: the median of three runs absorbs noise.
 const PORT = 3100
 const baseURL = `http://localhost:${String(PORT)}`
 const isCI = Boolean(process.env['CI'])
@@ -19,10 +18,10 @@ export default defineConfig({
   reporter: [[isCI ? 'github' : 'list'], ['./tests/perf/table-reporter.ts']],
   use: { baseURL, locale: DEFAULT_LOCALE, timezoneId: APP_TIME_ZONE },
   webServer: {
-    // В CI сборка уже сделана шагом e2e; локально собираем сами — замер не идёт по устаревшей сборке.
+    // CI reuses the e2e build; locally build first so a stale build is never measured
     command: isCI ? start : `npm run build && ${start}`,
     url: baseURL,
-    env: { AUTH_REQUIRE_MFA: 'true' }, // как в production: второй фактор обязателен
+    env: { AUTH_REQUIRE_MFA: 'true' },
     reuseExistingServer: false,
     timeout: 180_000,
   },

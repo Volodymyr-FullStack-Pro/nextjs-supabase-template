@@ -46,17 +46,17 @@ const fail = (message) => {
 const [moduleName, entityName] = process.argv.slice(2)
 if (!moduleName || !entityName || !KEBAB.test(moduleName) || !KEBAB.test(entityName)) {
   fail(
-    'Использование: npm run new:module <модуль> <запись> — модуль во множественном числе, запись в единственном; строчные буквы, цифры, дефис (businesses business, bank-accounts bank-account)',
+    'Usage: npm run new:module <module> <record>, module in plural and record in singular; lowercase letters, digits, hyphen (businesses business, bank-accounts bank-account)',
   )
 }
 if (moduleName === GENERATOR_CHECK_MODULE && process.env['GENERATOR_CHECK'] !== '1') {
   fail(
-    `Имя «${GENERATOR_CHECK_MODULE}» занято проверкой шаблонов: npm run generator:check создаёт и удаляет модуль с этим именем. Выберите другое.`,
+    `«${GENERATOR_CHECK_MODULE}» is reserved: npm run generator:check creates and removes a module with this name. Choose another.`,
   )
 }
 if (moduleName === entityName) {
   fail(
-    `Имя записи совпадает с именем модуля «${moduleName}»: модуль и одна его запись называются по-разному (equipment equipment-item)`,
+    `The record name equals the module name «${moduleName}»: a module and its record need different names (equipment equipment-item)`,
   )
 }
 
@@ -87,20 +87,20 @@ const render = (text) => text.replaceAll(PLACEHOLDER, (_, key) => replacements[k
 for (const forms of Object.values(names)) {
   if (RESERVED_WORDS.has(forms.camel)) {
     fail(
-      `«${forms.kebab}» — зарезервированное слово JavaScript: в коде оно станет именем переменной. Назовите иначе (imports import-batch)`,
+      `«${forms.kebab}» is a reserved JavaScript word and would become a variable name. Choose another (imports import-batch)`,
     )
   }
 }
 for (const forms of Object.values(names)) {
   if (forms.camel.length < NAME_LENGTH_MIN) {
     fail(
-      `«${forms.kebab}» — имя из одной буквы: линтер требует у имён в коде не меньше ${String(NAME_LENGTH_MIN)} символов (id-length). Назовите словом`,
+      `«${forms.kebab}» is one letter: lint requires at least ${String(NAME_LENGTH_MIN)} characters (id-length). Use a word`,
     )
   }
 }
 if (table.length > TABLE_NAME_MAX) {
   fail(
-    `Имя таблицы ${table} длиннее ${String(TABLE_NAME_MAX)} символов: имя ограничения ключа повтора не поместится в 63 символа Postgres`,
+    `Table name ${table} is longer than ${String(TABLE_NAME_MAX)} characters: the repeat-key constraint name would not fit Postgres's 63`,
   )
 }
 
@@ -119,7 +119,7 @@ const clashes = namesTakenByTemplates(templateFiles(TEMPLATE_ROOT), {
 if (clashes.length > 0) {
   const named = clashes.map(({ name, file }) => `${name} (${relative(TEMPLATE_ROOT, file)})`)
   fail(
-    `Шаблон scripts/module-template сам объявляет или зовёт это имя: ${[...new Set(named)].join(', ')} — срез может не скомпилироваться. Назовите иначе (items → stock-items, result → test-result)`,
+    `scripts/module-template itself declares or calls this name: ${[...new Set(named)].join(', ')}, so the slice may not compile. Choose another (items → stock-items, result → test-result)`,
   )
 }
 
@@ -139,7 +139,7 @@ const unknown = rendered.find(({ path, content }) =>
 )
 if (unknown) {
   fail(
-    `В шаблоне ${unknown.path} осталась неизвестная метка ${UNKNOWN_PLACEHOLDER.exec(`${unknown.path}\n${unknown.content}`)?.[0] ?? ''}: список меток — PLACEHOLDER в scripts/new-module.mjs`,
+    `Template ${unknown.path} has an unknown placeholder ${UNKNOWN_PLACEHOLDER.exec(`${unknown.path}\n${unknown.content}`)?.[0] ?? ''}: placeholders are listed in PLACEHOLDER in scripts/new-module.mjs`,
   )
 }
 
@@ -160,7 +160,7 @@ const taken = [
 ]
 if (taken.length > 0 || routeSegmentExists('src/app')) {
   fail(
-    `Имя «${moduleName}» уже занято: ${taken.join(', ') || `маршрут /${moduleName} в src/app`}. Выберите другое.`,
+    `«${moduleName}» is taken: ${taken.join(', ') || `route /${moduleName} in src/app`}. Choose another.`,
   )
 }
 
@@ -172,11 +172,11 @@ const createMigration = () => {
     })
   } catch {
     fail(
-      `Миграция ${table} не создана (scripts/db-new.mjs): нужен Supabase CLI в PATH. Файлы среза не записаны.`,
+      `Migration ${table} not created (scripts/db-new.mjs): Supabase CLI must be in PATH. No slice files written.`,
     )
   }
   const created = readdirSync(MIGRATIONS).find((file) => !before.has(file))
-  if (!created) fail(`scripts/db-new.mjs не создал миграцию ${table} в ${MIGRATIONS}`)
+  if (!created) fail(`scripts/db-new.mjs did not create migration ${table} in ${MIGRATIONS}`)
   return `${MIGRATIONS}/${created}`
 }
 
@@ -248,8 +248,8 @@ for (const { path, content } of rendered) {
 const route = `/${moduleName}`
 const registries = [
   ...[
-    { file: QUALITY_SPEC, constant: 'SIGNED_IN_PAGES', value: route, what: `страница ${route}` },
-    { file: E2E_USERS, constant: 'OWNED_TABLES', value: table, what: `таблица ${table}` },
+    { file: QUALITY_SPEC, constant: 'SIGNED_IN_PAGES', value: route, what: `page ${route}` },
+    { file: E2E_USERS, constant: 'OWNED_TABLES', value: table, what: `table ${table}` },
   ].map((registry) => ({
     ...registry,
     done: appendToList(registry.file, registry.constant, registry.value),
@@ -258,7 +258,7 @@ const registries = [
     file: SPEED_PAGES,
     constant: 'MEASURED_PAGES',
     value: route,
-    what: `страница ${route} с объёмом данных для замера скорости`,
+    what: `page ${route} with seeded rows for the speed check`,
     done: appendMeasuredPage(route),
   },
 ]
@@ -277,19 +277,19 @@ for (const path of written.toSorted()) console.log(`  + ${path}`)
 for (const { file, constant, value, what, done } of registries) {
   console.log(
     done
-      ? `  ~ ${file}: ${what} добавлена в ${constant}`
-      : `  ! ${file}: список ${constant} не найден — добавьте в него '${value}' руками`,
+      ? `  ~ ${file}: ${what} added to ${constant}`
+      : `  ! ${file}: list ${constant} not found; add '${value}' by hand`,
   )
 }
 const unitTests = `tests/unit/modules/${moduleName}`
 const specs = `${E2E_TESTS}/${moduleName}.spec.ts ${E2E_TESTS}/${moduleName}-quality.spec.ts`
 console.log(`
-Срез ${moduleName} создан: ${String(written.length)} файлов, ${String(lines)} строк. Это рабочий образец с полями title, amount, currency;
-npm run gate пройдёт после двух шагов, которые генератор за вас не делает (нужны запущенная база и сборка):
-  1. supabase migration up && npm run db:types          — таблица в локальной базе и её типы; до этого typecheck красный
-  2. npm run build && npm run budget -- --update-baseline  — маршрут ${route} в perf-baseline.json
-Дальше — под сущность, тремя задачами (.claude/rules/docs.md): база и pgTAP → ядро и unit (${unitTests}) → экран и e2e (${specs}).
-Замер скорости (npm run perf) меряет ${route} на 50 тыс. строк по записи в ${SPEED_PAGES}: поменяли поля таблицы —
-поправьте там выражения колонок (sqlByColumn) и текст из этих строк, который страница показывает (textOnScreen).
-Поля в миграции меняются до supabase migration up; если она уже применена — supabase db reset.
-Тексты заготовки: заголовок «Название раздела» в src/app/${moduleName}/page.tsx, подписи формы и словарь ui/messages.ts.`)
+Slice ${moduleName} created: ${String(written.length)} files, ${String(lines)} lines, a working sample with title, amount, currency.
+npm run gate passes after two steps the generator does not do (they need a running database and a build):
+  1. supabase migration up && npm run db:types          — the table in the local database and its types; typecheck is red until then
+  2. npm run build && npm run budget -- --update-baseline  — route ${route} in perf-baseline.json
+Then adapt it to the entity in three tasks (.claude/rules/docs.md): database and pgTAP → core and unit (${unitTests}) → screen and e2e (${specs}).
+npm run perf measures ${route} on 50k rows from its entry in ${SPEED_PAGES}: when table fields change,
+update the column expressions (sqlByColumn) and the text the page shows from those rows (textOnScreen).
+Change migration fields before supabase migration up; if it is applied already, supabase db reset.
+Placeholder UI texts: the «Название раздела» heading in src/app/${moduleName}/page.tsx, form labels and ui/messages.ts.`)

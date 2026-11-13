@@ -1,11 +1,10 @@
-# Настройки gitleaks: стандартные правила плюс исключения для примеров.
 title = "nextjs-supabase-template"
 
 [extend]
 useDefault = true
 
 [[allowlists]]
-description = "Образцы и фикстуры без настоящих секретов"
+description = "Samples and fixtures without real secrets"
 paths = [
   '''\.env\.example$''',
   '''supabase/tests/.*\.sql$''',

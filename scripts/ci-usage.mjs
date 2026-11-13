@@ -21,14 +21,14 @@ const FREE_EVENTS = new Set(['dynamic'])
 const INCLUDED_MINUTES = includedMinutesFrom(process.env.CI_INCLUDED_MINUTES)
 if (INCLUDED_MINUTES === undefined) {
   console.error(
-    'CI_INCLUDED_MINUTES — целое число минут Actions, включённых в тариф организации (README, npm run ci:usage)',
+    'CI_INCLUDED_MINUTES is a whole number of Actions minutes included in the organization plan (README, npm run ci:usage)',
   )
   process.exit(USAGE_EXIT_CODE)
 }
 const STATUS_TEXT = {
-  ok: 'в пределах включённого',
-  warning: `выше ${String(warningMinutes(INCLUDED_MINUTES))} — пора экономить минуты (README, npm run ci:usage)`,
-  over: `выше включённых ${String(INCLUDED_MINUTES)} — доплата $0,006 за минуту, пока не кончится бюджет`,
+  ok: 'within the included minutes',
+  warning: `above ${String(warningMinutes(INCLUDED_MINUTES))}: time to save minutes (README, npm run ci:usage)`,
+  over: `above the included ${String(INCLUDED_MINUTES)}: $0.006 per minute until the budget runs out`,
 }
 
 const run = (command, args) =>
@@ -117,17 +117,17 @@ const affordable = tasksAffordable({
   minutesPerTask,
   includedMinutes: INCLUDED_MINUTES,
 })
-const month = now.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+const month = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
 
 console.info(
-  `CI ${owner} (репозиториев: ${String(repositories.length)}), ${month}: ${String(usedMinutes)} мин из ${String(INCLUDED_MINUTES)} включённых (${String(Math.round((usedMinutes * PERCENT) / INCLUDED_MINUTES))} %), прогонов ${String(thisMonth.length)}`,
+  `CI ${owner} (repositories: ${String(repositories.length)}), ${month}: ${String(usedMinutes)} of ${String(INCLUDED_MINUTES)} included min (${String(Math.round((usedMinutes * PERCENT) / INCLUDED_MINUTES))} %), runs ${String(thisMonth.length)}`,
 )
 console.info(
-  `За 7 дней: ${String(lastWeekMinutes)} мин, прогонов ${String(lastWeek.length)}, принятых задач ${String(tasks)}${tasks === 0 ? '' : `, около ${String(minutesPerTask)} мин CI на задачу`}`,
+  `Last 7 days: ${String(lastWeekMinutes)} min, runs ${String(lastWeek.length)}, accepted tasks ${String(tasks)}${tasks === 0 ? '' : `, about ${String(minutesPerTask)} CI min per task`}`,
 )
 console.info(
-  `Прогноз к концу месяца (${String(forecast.daysLeft)} дн. в темпе последней недели): ${String(forecast.projectedMinutes)} мин — ${STATUS_TEXT[forecast.status]}`,
+  `Month-end forecast (${String(forecast.daysLeft)} days at last week's pace): ${String(forecast.projectedMinutes)} min, ${STATUS_TEXT[forecast.status]}`,
 )
 if (affordable !== null) {
-  console.info(`Включённых минут в этом месяце хватит ещё примерно на ${String(affordable)} задач`)
+  console.info(`Included minutes this month cover about ${String(affordable)} more tasks`)
 }

@@ -3,23 +3,23 @@ import { defineConfig, devices } from '@playwright/test'
 import { DEFAULT_LOCALE } from './src/shared/domain/locale'
 import { APP_TIME_ZONE } from './src/shared/domain/time'
 
-// Свой порт: локальный dev-сервер на 3000 не подменяет production-сборку
+// own port, so a dev server on 3000 is never tested instead of the production build
 const E2E_PORT = 3100
-// Та же сборка с обязательным вторым фактором (AUTH_REQUIRE_MFA=true) — для tests/e2e/mfa.spec.ts.
 const MFA_REQUIRED_PORT = 3101
 const baseURL = process.env['PLAYWRIGHT_BASE_URL'] ?? `http://localhost:${String(E2E_PORT)}`
 const isCI = Boolean(process.env['CI'])
 const hasDatabase = Boolean(process.env['SUPABASE_SECRET_KEY'])
+// npm run gate has just built the app in npm run check, run under scripts/with-local-supabase.mjs:
+// NEXT_PUBLIC_* values are inlined at build time, so the build must see the local Supabase ones
+const isPrebuilt = process.env['E2E_PREBUILT'] === '1'
+const start = `npm run start -- -p ${String(E2E_PORT)}`
 
-// E2E против production-сборки (next build && next start), как рекомендует Next.js.
-// Каждый сценарий проходит на компьютере (Chrome, 1440×900) и на iPhone (Safari, WebKit):
-// так проверяются разметка на ширине телефона, касания и движок Safari, на котором сидят пользователи iOS.
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,
-  failOnFlakyTests: isCI, // тест, прошедший только с повтора, — красный, а не тихо зелёный
+  failOnFlakyTests: isCI,
   reporter: isCI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL,
@@ -29,8 +29,6 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   projects: [
-    // Вход тестовых пользователей (alice, bob с TOTP; carol без фактора) через admin API и форму входа → playwright/.auth/*.json.
-    // Без локального Supabase (npm run test:e2e без :db) пропускается вместе со сценариями за входом.
     { name: 'setup', testMatch: /\.setup\.ts$/ },
     {
       name: 'desktop',
@@ -40,16 +38,16 @@ export default defineConfig({
     {
       name: 'mobile',
       use: { ...devices['iPhone 15'] },
-      testIgnore: /build\.spec\.ts/, // проверки сборки не зависят от устройства
+      testIgnore: /build\.spec\.ts/, // build checks do not depend on the device
       dependencies: ['setup'],
     },
   ],
-  // Серверы запускаются по очереди: второй стартует, когда первый собрал проект.
+  // servers start in order: the second one starts after the first has built the app
   webServer: [
     {
-      command: `npm run build && npm run start -- -p ${String(E2E_PORT)}`,
+      command: isPrebuilt ? start : `npm run build && ${start}`,
       url: baseURL,
-      // Второй фактор проверяет отдельный сервер ниже; здесь он выключен, даже если включён в .env.local.
+      // the server below checks the second factor; here it is off even if .env.local turns it on
       env: { AUTH_REQUIRE_MFA: 'false' },
       reuseExistingServer: !isCI,
       timeout: 180_000,

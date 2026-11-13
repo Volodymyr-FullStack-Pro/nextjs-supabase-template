@@ -34,9 +34,7 @@ describe('money', () => {
   it.each(['12 345,67 secret', 'NaN', '-Infinity', ''])(
     'refuses %j without quoting it: the text of the error goes to the log and to Sentry',
     (value) => {
-      expect(() => money(value)).toThrow(
-        new RangeError('money: ожидается конечное десятичное число'),
-      )
+      expect(() => money(value)).toThrow(new RangeError('money: expected a finite decimal number'))
     },
   )
 
@@ -47,7 +45,7 @@ describe('money', () => {
     ['shareOf (the value)', () => shareOf('12 345,67 secret', '0.5')],
     ['shareOf (the fraction)', () => shareOf('100', '12 345,67 secret')],
   ])('%s refuses a non-numeric amount without quoting it', (_name, run) => {
-    expect(run).toThrow(new RangeError('money: ожидается конечное десятичное число'))
+    expect(run).toThrow(new RangeError('money: expected a finite decimal number'))
   })
 })
 

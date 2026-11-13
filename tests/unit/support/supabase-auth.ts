@@ -46,7 +46,7 @@ export function setAuthState(state: AuthState | undefined): void {
 export const cookiesSeenBySupabase = () => seenCookies
 
 function authState(): AuthState {
-  if (!current) throw new Error('Тест не задал состояние Supabase Auth: setAuthState(...)')
+  if (!current) throw new Error('The test did not set the Supabase Auth state: setAuthState(...)')
   return current
 }
 

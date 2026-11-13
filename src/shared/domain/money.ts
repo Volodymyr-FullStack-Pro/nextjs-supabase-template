@@ -14,7 +14,7 @@ const MoneyDecimal = Decimal.clone({
 
 export type Money = Decimal
 
-const NOT_A_FINITE_DECIMAL = 'money: ожидается конечное десятичное число'
+const NOT_A_FINITE_DECIMAL = 'money: expected a finite decimal number'
 
 function toDecimal(value: string | Decimal): Money {
   try {

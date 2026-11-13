@@ -9,7 +9,7 @@ export default function ErrorPage({
   reset: () => void
 }) {
   return (
-    <main className="mx-auto flex max-w-xl flex-col gap-4 p-6">
+    <main className="mx-auto flex w-full max-w-xl flex-col gap-4 p-6">
       <h1 className="text-xl font-semibold">Что-то пошло не так</h1>
       <p className="text-sm text-muted-foreground">
         Попробуйте ещё раз. Если повторяется, сообщите администратору.

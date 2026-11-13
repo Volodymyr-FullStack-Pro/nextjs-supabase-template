@@ -9,8 +9,8 @@ import type { Database } from '@/shared/infrastructure/supabase/types'
 import { API_DENIALS, type ApiDenial } from '@/shared/lib/api-denial'
 
 const LOGIN_PATH = '/login'
-const PUBLIC_PATHS = ['/', LOGIN_PATH, '/api/vitals']
-const PUBLIC_PREFIXES = ['/api/cron/', '/api/webhooks/']
+const PUBLIC_PATHS = ['/', LOGIN_PATH]
+const PUBLIC_PREFIXES = ['/api/cron/']
 const HTTP_SERVICE_UNAVAILABLE = 503
 
 type ProxyState = { response: NextResponse; cacheHeaders: Headers }

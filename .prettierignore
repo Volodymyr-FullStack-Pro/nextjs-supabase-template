@@ -8,10 +8,11 @@ test-results
 package-lock.json
 next-env.d.ts
 supabase/.temp
-# реестр и журнал: Prettier выравнивает всю таблицу по длинной ячейке, и любая правка переписывает каждую строку
+# register and journal: Prettier aligns a whole table to its longest cell, so any edit rewrites every row
 docs/knowledge/requirements.md
 docs/knowledge/decisions.md
-# документы согласования с заказчиком (ТЗ, анкеты, доска дизайна, выгрузки ответов): переносятся как есть
+docs/knowledge/decisions/archive-*.md
+# client approval documents (spec, questionnaires, design board, answer exports) are kept as is
 docs/tz/
 docs/source/
 docs/stack/

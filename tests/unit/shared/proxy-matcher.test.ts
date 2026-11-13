@@ -14,7 +14,6 @@ const THROUGH_PROXY = [
   '/login',
   '/notes',
   '/mfa/setup',
-  '/api/vitals',
   '/api/export/2026.csv',
   '/api/documents/42/scan.png',
   '/api/reports/chart.svg',

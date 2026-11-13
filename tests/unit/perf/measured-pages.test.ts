@@ -33,7 +33,7 @@ describe('pages measured by npm run perf', () => {
     )
     expect(
       forgotten,
-      'страница без замера: запись в MEASURED_PAGES или причина в NOT_MEASURED (tests/perf/pages.ts)',
+      'page without a measurement: add it to MEASURED_PAGES or give a reason in NOT_MEASURED (tests/perf/pages.ts)',
     ).toEqual([])
   })
 

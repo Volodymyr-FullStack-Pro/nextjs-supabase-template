@@ -1,5 +1,3 @@
--- Образец поведения numeric в денежной колонке: что база отвергает сама, а что молча делает за приложение.
--- У суммы есть валюта: колонка обязательна, значения по умолчанию нет, формат — три заглавные буквы (ISO 4217).
 begin;
 select plan(9);
 
@@ -11,7 +9,7 @@ values (tests.get_supabase_uid('grace'), 'точная сумма', '12345678901
 select is(
   (select amount::text from public.notes where title = 'точная сумма'),
   '1234567890123456.78',
-  '16 значащих цифр хранятся и читаются текстом без потери'
+  '16 significant digits are stored and read back as text without loss'
 );
 
 select throws_ok(
@@ -19,7 +17,7 @@ select throws_ok(
      values (tests.get_supabase_uid('grace'), 'NaN', 'NaN'::numeric, 'EUR', gen_random_uuid()) $$,
   '23514',
   null,
-  'NaN отвергается ограничением notes_amount_finite'
+  'NaN is rejected by the notes_amount_finite constraint'
 );
 
 select throws_ok(
@@ -27,7 +25,7 @@ select throws_ok(
      values (tests.get_supabase_uid('grace'), 'переполнение', '99999999999999999.00', 'EUR', gen_random_uuid()) $$,
   '22003',
   null,
-  '17 целых цифр не помещаются в numeric(18,2): переполнение, а не обрезание'
+  '17 integer digits do not fit numeric(18,2): an overflow, not truncation'
 );
 
 select throws_ok(
@@ -35,7 +33,7 @@ select throws_ok(
      values (tests.get_supabase_uid('grace'), 'бесконечность', 'Infinity'::numeric, 'EUR', gen_random_uuid()) $$,
   '22003',
   null,
-  'бесконечность в колонку с масштабом не помещается (у numeric без масштаба её отвергает ограничение)'
+  'infinity does not fit a column with a scale (for numeric without a scale a constraint rejects it)'
 );
 
 insert into public.notes (owner_id, title, amount, currency, client_request_id)
@@ -43,7 +41,7 @@ values (tests.get_supabase_uid('grace'), 'половина', '2.665', 'EUR', gen
 select is(
   (select amount::text from public.notes where title = 'половина'),
   '2.67',
-  'при записи в колонку с масштабом Postgres округляет сам, от нуля: 2.665 → 2.67 (приложение к чётному дало бы 2.66) — округлять или отклонять до записи'
+  'a column with a scale makes Postgres round on its own, away from zero: 2.665 → 2.67 (half-even in the app would give 2.66), so round or reject before writing'
 );
 
 insert into public.notes (owner_id, title, amount, currency, client_request_id)
@@ -51,7 +49,7 @@ values (tests.get_supabase_uid('grace'), 'отрицательная полов�
 select is(
   (select amount::text from public.notes where title = 'отрицательная половина'),
   '-2.67',
-  'отрицательное значение округляется симметрично, от нуля'
+  'a negative value rounds symmetrically, away from zero'
 );
 
 select throws_ok(
@@ -59,21 +57,21 @@ select throws_ok(
      values (tests.get_supabase_uid('grace'), 'без валюты', '1', gen_random_uuid()) $$,
   '23502',
   null,
-  'сумма без валюты не записывается: значения по умолчанию у currency нет'
+  'an amount without a currency is not written: currency has no default'
 );
 select throws_ok(
   $$ insert into public.notes (owner_id, title, amount, currency, client_request_id)
      values (tests.get_supabase_uid('grace'), 'строчные буквы', '1', 'eur', gen_random_uuid()) $$,
   '23514',
   null,
-  'валюта строчными буквами отвергается ограничением notes_currency_format'
+  'a lowercase currency is rejected by the notes_currency_format constraint'
 );
 select throws_ok(
   $$ insert into public.notes (owner_id, title, amount, currency, client_request_id)
      values (tests.get_supabase_uid('grace'), 'четыре буквы', '1', 'EURO', gen_random_uuid()) $$,
   '23514',
   null,
-  'валюта не из трёх букв отвергается'
+  'a currency that is not three letters is rejected'
 );
 
 select * from finish();

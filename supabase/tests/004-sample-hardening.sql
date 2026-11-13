@@ -1,7 +1,3 @@
--- Образец защиты финансовой таблицы: строки не исчезают вместе с пользователем, очистка таблицы запрещена,
--- служебные колонки (id, владелец, время создания) клиент не задаёт и не меняет, повторная отправка с тем же
--- client_request_id не создаёт вторую строку.
--- Проверка самого теста: верните табличный grant insert, update — проверки служебных колонок должны упасть.
 begin;
 select plan(19);
 
@@ -12,124 +8,120 @@ select throws_ok(
   $$ delete from auth.users where id = tests.get_supabase_uid('frank') $$,
   '23503',
   null,
-  'пользователь с заметками не удаляется: on delete restrict'
+  'a user with notes cannot be deleted: on delete restrict'
 );
 
 select throws_ok(
   $$ truncate public.notes $$,
   '42501',
   null,
-  'truncate запрещён триггером audit.forbid_truncate'
+  'truncate is blocked by the audit.forbid_truncate trigger'
 );
 
 select is(
   (select count(*) from public.notes where owner_id = tests.get_supabase_uid('frank')),
   1::bigint,
-  'строка на месте после обеих попыток'
+  'the row survives both attempts'
 );
 
--- Служебные колонки клиент не задаёт и не меняет: права роли API выданы по колонкам, а не на таблицу целиком.
 select tests.authenticate_as('frank');
 select throws_ok(
   $$ insert into public.notes (owner_id, title, created_at, currency, client_request_id)
      values (tests.get_supabase_uid('frank'), 'задним числом', '2020-01-01', 'EUR', gen_random_uuid()) $$,
   '42501',
   'permission denied for table notes',
-  'клиент не задаёт created_at при вставке'
+  'the client does not set created_at on insert'
 );
 select throws_ok(
   $$ insert into public.notes (id, owner_id, title, currency, client_request_id)
      values (gen_random_uuid(), tests.get_supabase_uid('frank'), 'свой id', 'EUR', gen_random_uuid()) $$,
   '42501',
   'permission denied for table notes',
-  'клиент не задаёт id при вставке'
+  'the client does not set id on insert'
 );
 select throws_ok(
   $$ update public.notes set created_at = '2020-01-01' $$,
   '42501',
   'permission denied for table notes',
-  'клиент не меняет created_at'
+  'the client does not change created_at'
 );
 select throws_ok(
   $$ update public.notes set id = gen_random_uuid() $$,
   '42501',
   'permission denied for table notes',
-  'клиент не меняет id'
+  'the client does not change id'
 );
 select throws_ok(
   $$ update public.notes set owner_id = owner_id $$,
   '42501',
   'permission denied for table notes',
-  'клиент не меняет owner_id'
+  'the client does not change owner_id'
 );
 select lives_ok(
   $$ update public.notes set title = 'kept, renamed', amount = '10.50' $$,
-  'заголовок и сумму владелец меняет'
+  'the owner changes the title and the amount'
 );
 
 select tests.clear_authentication();
 select results_eq(
   $$ select title, amount::text from public.notes where owner_id = tests.get_supabase_uid('frank') $$,
   $$ values ('kept, renamed', '10.50') $$,
-  'правка разрешённых колонок дошла до строки'
+  'the edit of allowed columns reaches the row'
 );
 select throws_ok(
   $$ update public.notes set id = gen_random_uuid() where owner_id = tests.get_supabase_uid('frank') $$,
   '42501',
-  'смена id в notes запрещена: по id запись связана со своей историей в журнале',
-  'владелец базы тоже не меняет id: отклоняет триггер журнала'
+  'changing id in notes is not allowed: the id links a row to its history in the audit log',
+  'the database owner cannot change id either: the audit trigger rejects it'
 );
 
--- Идемпотентность: один client_request_id у одного владельца — одна строка.
 select tests.create_supabase_user('gina');
 select tests.authenticate_as('frank');
 select lives_ok(
   $$ insert into public.notes (owner_id, title, currency, client_request_id)
      values (tests.get_supabase_uid('frank'), 'первая отправка', 'EUR', '00000000-0000-4000-8000-000000000001') $$,
-  'первая отправка формы создаёт строку'
+  'the first form submission creates a row'
 );
 select throws_ok(
   $$ insert into public.notes (owner_id, title, currency, client_request_id)
      values (tests.get_supabase_uid('frank'), 'повтор', 'EUR', '00000000-0000-4000-8000-000000000001') $$,
   '23505',
   'duplicate key value violates unique constraint "notes_owner_id_client_request_id_key"',
-  'повтор с тем же client_request_id отклонён: репозиторий по этому коду возвращает уже созданную строку'
+  'a retry with the same client_request_id is rejected: on this code the repository returns the existing row'
 );
 select throws_ok(
   $$ update public.notes set client_request_id = gen_random_uuid() $$,
   '42501',
   'permission denied for table notes',
-  'клиент не меняет client_request_id'
+  'the client does not change client_request_id'
 );
 select throws_ok(
   $$ insert into public.notes (owner_id, title, currency)
      values (tests.get_supabase_uid('frank'), 'без ключа', 'EUR') $$,
   '23502',
   null,
-  'вставка без client_request_id отклонена'
+  'an insert without client_request_id is rejected'
 );
 select tests.authenticate_as('gina');
 select lives_ok(
   $$ insert into public.notes (owner_id, title, currency, client_request_id)
      values (tests.get_supabase_uid('gina'), 'чужой ключ', 'EUR', '00000000-0000-4000-8000-000000000001') $$,
-  'тот же ключ у другого владельца не мешает и не выдаёт чужую строку'
+  'the same key of another owner neither conflicts nor reveals their row'
 );
 select tests.clear_authentication();
 
--- Журнал и второй фактор на самой таблице-примере. Поведение журнала и private.mfa_ok() проверяют 003 и 002 на
--- своих таблицах; здесь — что notes подключена к обоим: правка заметки записана с автором, а сессия aal1
--- пользователя с подтверждённым фактором заметок не видит.
+-- 003 and 002 test the audit log and private.mfa_ok() on their own tables; here only that notes is wired to both.
 select results_eq(
   $$ select distinct actor from audit.log
      where table_name = 'notes' and op = 'UPDATE' and new ->> 'title' = 'kept, renamed' $$,
   $$ values (tests.get_supabase_uid('frank')) $$,
-  'правка заметки записана в журнал с автором'
+  'a note edit is logged with its author'
 );
 select tests.add_verified_totp('frank');
 select tests.authenticate_as('frank', 'aal1');
-select is_empty('select * from public.notes', 'с подтверждённым фактором в сессии aal1 заметки не видны');
+select is_empty('select * from public.notes', 'with a verified factor, an aal1 session sees no notes');
 select tests.authenticate_as('frank', 'aal2');
-select isnt_empty('select * from public.notes', 'в сессии aal2 заметки видны');
+select isnt_empty('select * from public.notes', 'an aal2 session sees the notes');
 select tests.clear_authentication();
 
 select * from finish();

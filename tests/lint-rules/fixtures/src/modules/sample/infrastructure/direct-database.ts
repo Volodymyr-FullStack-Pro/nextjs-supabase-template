@@ -1,9 +1,9 @@
 import type { Sql } from 'postgres' // expect: local/direct-database
 
-// @ts-expect-error -- pg в шаблоне не установлен, а запрет держит и его
+// @ts-expect-error -- pg is not installed, but the ban covers it too
 import { Pool } from 'pg' // expect: local/direct-database
 
-// @ts-expect-error -- drizzle-orm в шаблоне не установлен, а запрет держит и его
+// @ts-expect-error -- drizzle-orm is not installed, but the ban covers it too
 export { drizzle } from 'drizzle-orm/postgres-js' // expect: local/direct-database
 
 export async function rawRows(sql: Sql, pool: Pool) {

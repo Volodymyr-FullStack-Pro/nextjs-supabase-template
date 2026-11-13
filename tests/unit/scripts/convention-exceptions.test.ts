@@ -5,17 +5,17 @@ import { describe, expect, it } from 'vitest'
 import { exceptedObjects } from '../../../scripts/convention-exceptions.mjs'
 
 const ON_ONE_LINE = `
-insert into convention_exceptions values ('zz_rate', 'rpc_numeric', 'D-999: курс возвращается числом');
+insert into convention_exceptions values ('zz_rate', 'rpc_numeric', 'D-999: the rate is returned as a number');
 `
 const ON_SEPARATE_LINES = `
 insert into convention_exceptions values
-  ('currencies', 'audit', 'D-998: справочник'),
-  ( 'zz_rate' ,  'rpc_numeric' , 'D-999: курс возвращается числом'), ('zz_fee', 'rpc_numeric', 'D-997: комиссия');
+  ('currencies', 'audit', 'D-998: reference table'),
+  ( 'zz_rate' ,  'rpc_numeric' , 'D-999: the rate is returned as a number'), ('zz_fee', 'rpc_numeric', 'D-997: fee');
 `
 const COMMENTED_OUT = `
 -- insert into convention_exceptions values
---   ('zz_rate', 'rpc_numeric', 'D-999: пример в комментарии');
-  -- ('zz_fee', 'rpc_numeric', 'D-997: и с отступом');
+--   ('zz_rate', 'rpc_numeric', 'D-999: example in a comment');
+  -- ('zz_fee', 'rpc_numeric', 'D-997: indented too');
 `
 
 describe('exceptedObjects', () => {

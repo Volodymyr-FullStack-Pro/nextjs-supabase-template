@@ -1,1 +1,1 @@
-export const outside = 'вне src'
+export const outside = 'outside src'
