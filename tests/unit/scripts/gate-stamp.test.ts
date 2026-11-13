@@ -1,15 +1,18 @@
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import {
+  GATE_EXCLUDED_PATHS,
   gateStampResult,
   parseGateStampArgs,
   workingTreeId,
 } from '../../../scripts/gate-fingerprint.mjs'
+
+const HANDOFF = '.claude/handoff.md'
 
 describe('parseGateStampArgs', () => {
   it('reads the start of a run', () => {
@@ -30,12 +33,29 @@ describe('parseGateStampArgs', () => {
 })
 
 describe('gateStampResult', () => {
-  const run = { set: 'full', head: 'abc123', at: '2026-11-12T18:00:00.000Z' }
+  const run = {
+    excluded: ['.claude/handoff.md'],
+    set: 'full',
+    head: 'abc123',
+    at: '2026-11-12T18:00:00.000Z',
+  }
 
-  it('stamps the tree when it did not change during the run', () => {
+  it('stamps the tree and the paths left out of it when the tree did not change during the run', () => {
     expect(gateStampResult({ ...run, startTree: 'tree1', endTree: 'tree1' })).toEqual({
-      stamp: { tree: 'tree1', set: 'full', head: 'abc123', at: '2026-11-12T18:00:00.000Z' },
+      stamp: {
+        tree: 'tree1',
+        excluded: ['.claude/handoff.md'],
+        set: 'full',
+        head: 'abc123',
+        at: '2026-11-12T18:00:00.000Z',
+      },
     })
+  })
+
+  it('records the paths it was given, not a fixed list', () => {
+    expect(
+      gateStampResult({ ...run, excluded: [], startTree: 'tree1', endTree: 'tree1' }).stamp,
+    ).toMatchObject({ excluded: [] })
   })
 
   it('does not stamp a tree that changed during the run', () => {
@@ -120,5 +140,34 @@ describe('workingTreeId', () => {
     const clean = workingTreeId(repository)
     write('ignored.log', 'noise\n')
     expect(workingTreeId(repository)).toBe(clean)
+  })
+
+  describe('with the handoff note left out', () => {
+    beforeEach(() => {
+      mkdirSync(join(repository, '.claude'))
+      write(HANDOFF, '# Handoff 1\n')
+      git('add', '--all')
+      git('commit', '--quiet', '--message', 'handoff')
+    })
+
+    it('does not change when only the handoff note changes, and leaves the real index alone', () => {
+      const clean = workingTreeId(repository, GATE_EXCLUDED_PATHS)
+      write(HANDOFF, '# Handoff 2\n')
+      expect(workingTreeId(repository, GATE_EXCLUDED_PATHS)).toBe(clean)
+      git('add', HANDOFF)
+      git('commit', '--quiet', '--message', 'handoff 2')
+      expect(workingTreeId(repository, GATE_EXCLUDED_PATHS)).toBe(clean)
+      expect(git('status', '--porcelain')).toBe('')
+    })
+
+    it('still sees an edit of any other file', () => {
+      const clean = workingTreeId(repository, GATE_EXCLUDED_PATHS)
+      write('tracked.txt', 'two\n')
+      expect(workingTreeId(repository, GATE_EXCLUDED_PATHS)).not.toBe(clean)
+    })
+
+    it('takes the paths literally, not as patterns', () => {
+      expect(workingTreeId(repository, ['*.txt', '.claude'])).toBe(workingTreeId(repository))
+    })
   })
 })

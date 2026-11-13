@@ -5,6 +5,8 @@ import { join, resolve } from 'node:path'
 
 const GATE_SETS = new Set(['full', 'reduced'])
 
+export const GATE_EXCLUDED_PATHS = ['.claude/handoff.md']
+
 export function parseGateStampArgs(argv) {
   const [command, set, ...rest] = argv
   if (rest.length > 0) return undefined
@@ -13,7 +15,7 @@ export function parseGateStampArgs(argv) {
   return undefined
 }
 
-export function gateStampResult({ startTree, endTree, set, head, at }) {
+export function gateStampResult({ startTree, endTree, excluded, set, head, at }) {
   if (startTree === undefined) {
     return { error: 'no start of the run: call gate-stamp start before gate-stamp done' }
   }
@@ -22,10 +24,10 @@ export function gateStampResult({ startTree, endTree, set, head, at }) {
       skipped: 'working tree changed during the run, stamp not written: run the gate again',
     }
   }
-  return { stamp: { tree: endTree, set, head, at } }
+  return { stamp: { tree: endTree, excluded, set, head, at } }
 }
 
-export function workingTreeId(cwd) {
+export function workingTreeId(cwd, excluded = []) {
   const git = (args, environment = {}) =>
     execFileSync('git', args, {
       cwd,
@@ -42,6 +44,9 @@ export function workingTreeId(cwd) {
       utimesSync(index, atime, mtime)
     }
     git(['add', '--all'], { GIT_INDEX_FILE: index })
+    if (excluded.length > 0) {
+      git(['update-index', '--force-remove', '--', ...excluded], { GIT_INDEX_FILE: index })
+    }
     return git(['write-tree'], { GIT_INDEX_FILE: index })
   } finally {
     rmSync(directory, { recursive: true, force: true })

@@ -2,6 +2,10 @@
 
 Что менялось в шаблоне. Проект, созданный раньше, переносит нужное руками и записывает это строкой D-NNN.
 
+## 2026-11-13 — Gate fingerprint without the handoff note
+
+- `npm run gate` leaves `.claude/handoff.md` out of the working-tree fingerprint and lists it in the stamp (`excluded`; needs plugin dev-kit 0.18.3 or later, which reads it from there): a handoff commit after a green gate no longer turns `/dev-kit:explain` to "tree changed" and the Stop hook back to typecheck, though no code changed (D-108 Finance Hub).
+
 ## 2026-11-13 — English in code, one build in gate, closed API prefixes
 
 - Comments, script and linter messages, test names and workflow steps are in English; `npm run comments:check` (in `check` and CI) reports Cyrillic in comments, migrations merged before the rule are skipped. Error texts of the audit functions are English through a new migration `20261112235110_audit_messages_in_english.sql`; merged migrations are not edited.
