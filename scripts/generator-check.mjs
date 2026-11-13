@@ -33,7 +33,7 @@ const MS_IN_SECOND = 1000
 const DATABASE_STATE = `select coalesce(json_agg(version order by version), '[]') as applied, to_regclass('public.${TABLE}') is not null as probe_table, coalesce(bool_or(name = '${TABLE}'), false) as probe_migration from supabase_migrations.schema_migrations`
 const DROP_PROBE_TABLE = `do $$ begin drop table if exists public.${TABLE}; delete from supabase_migrations.schema_migrations where name = '${TABLE}'; perform pg_notify('pgrst', 'reload schema'); end $$;`
 
-const seconds = (startedAt) => `${String(Math.round((Date.now() - startedAt) / MS_IN_SECOND))} с`
+const seconds = (startedAt) => `${String(Math.round((Date.now() - startedAt) / MS_IN_SECOND))} s`
 
 const run = (command, args, extraEnvironment = {}) =>
   spawnSync(command, args, { stdio: 'inherit', env: { ...process.env, ...extraEnvironment } })
@@ -95,7 +95,7 @@ const databaseState = () => {
     )
     const parsed = parseQueryOutput(output)
     const row = (Array.isArray(parsed) ? parsed : parsed?.rows)?.[0]
-    if (row === undefined) databaseError = `нет строки в ответе: ${output.slice(0, 300)}`
+    if (row === undefined) databaseError = `no row in the output: ${output.slice(0, 300)}`
     return row ?? null
   } catch (error) {
     databaseError = [error.message, error.stdout, error.stderr]
@@ -146,10 +146,10 @@ const leftoversOfProbe = (state) => [
   ...CREATED_PATHS.filter((path) => existsSync(path)),
   ...probeTableFiles(),
   ...CHANGED_FILES.filter((file) => hasProbeLines(file)).map(
-    (file) => `строки ${MODULE} в ${file}`,
+    (file) => `${MODULE} lines in ${file}`,
   ),
-  ...(state.probe_table ? [`таблица public.${TABLE} в базе`] : []),
-  ...(state.probe_migration ? [`запись ${TABLE} в supabase_migrations.schema_migrations`] : []),
+  ...(state.probe_table ? [`table public.${TABLE} in the database`] : []),
+  ...(state.probe_migration ? [`${TABLE} row in supabase_migrations.schema_migrations`] : []),
 ]
 
 const unappliedMigrations = (state) => {
@@ -160,7 +160,7 @@ const unappliedMigrations = (state) => {
     ...files.filter((file) => !applied.has(file.split('_')[0])),
     ...state.applied
       .filter((version) => !versions.has(version))
-      .map((version) => `${version} (в базе, файла нет)`),
+      .map((version) => `${version} (in the database, no file)`),
   ]
 }
 
@@ -177,7 +177,7 @@ const acceptNewRoute = () => {
 
 const steps = [
   [
-    'генератор',
+    'generator',
     () => {
       const generated = run('node', ['scripts/new-module.mjs', MODULE, ENTITY], {
         GENERATOR_CHECK: '1',
@@ -187,12 +187,12 @@ const steps = [
       return generated
     },
   ],
-  ['миграция в локальную базу', () => run('supabase', ['migration', 'up'])],
-  ['типы базы', () => run('npm', ['run', 'db:types'])],
-  ['линтер', () => run('npm', ['run', 'lint'])],
-  ['самопроверка защит линтера', () => run('npm', ['run', 'lint:rules'])],
-  ['типы', () => run('npm', ['run', 'typecheck'])],
-  ['unit и пороги покрытия', () => run('npm', ['run', 'test:coverage'])],
+  ['migration into the local database', () => run('supabase', ['migration', 'up'])],
+  ['database types', () => run('npm', ['run', 'db:types'])],
+  ['lint', () => run('npm', ['run', 'lint'])],
+  ['lint guard self-check', () => run('npm', ['run', 'lint:rules'])],
+  ['types', () => run('npm', ['run', 'typecheck'])],
+  ['unit and coverage thresholds', () => run('npm', ['run', 'test:coverage'])],
   ['knip', () => run('npm', ['run', 'knip'])],
   ['jscpd', () => run('npm', ['run', 'jscpd'])],
   ['prettier', () => run('npm', ['run', 'format:check'])],
@@ -201,42 +201,39 @@ const steps = [
   ['pgTAP', () => run('supabase', ['test', 'db'])],
   ['Squawk', () => run('npm', ['run', 'db:check-migrations', '--', 'HEAD'])],
   [
-    'e2e на двух устройствах (собирает проект)',
+    'e2e on two devices (builds the project)',
     () => run('npm', ['run', 'test:e2e:db', '--', MODULE, 'ui-quality']),
   ],
-  ['бюджет JS с новым маршрутом', acceptNewRoute],
-  [
-    'замер скорости новой страницы на 50 тыс. строк',
-    () => run('npm', ['run', 'perf', '--', '-g', ROUTE]),
-  ],
+  ['JS budget with the new route', acceptNewRoute],
+  ['speed of the new page on 50k rows', () => run('npm', ['run', 'perf', '--', '-g', ROUTE])],
 ]
 
 const precondition = async () => {
   const busy = await Promise.all(E2E_PORTS.map((port) => portIsBusy(port)))
   const busyPorts = E2E_PORTS.filter((_, index) => busy[index])
   if (busyPorts.length > 0) {
-    return `Порт ${busyPorts.join(', ')} занят: остановите сервер — e2e должен собрать проект с новым модулем, а не взять работающую сборку`
+    return `Port ${busyPorts.join(', ')} is busy: stop the server, e2e must build the project with the new module instead of reusing a running build`
   }
   if (databaseState() === null) {
-    return `Локальная база не отвечает: supabase start (в клоне — SUPABASE_PROJECT_ID=<имя папки оригинала>)\n  ${databaseError}`
+    return `Local database does not respond: supabase start (in a clone, SUPABASE_PROJECT_ID=<original folder name>)\n  ${databaseError}`
   }
   if (existsSync(SNAPSHOT)) {
     console.log(
-      `── прошлая проверка прервана до уборки: возвращаю файлы и базу по снимку ${SNAPSHOT}`,
+      `── the previous check stopped before cleanup: restoring files and database from ${SNAPSHOT}`,
     )
     const { files, created } = readJson(SNAPSHOT)
     const withProbeLines = Object.entries(files).filter(([file]) => hasProbeLines(file))
     cleanUp({ files: Object.fromEntries(withProbeLines), created })
   }
   const state = databaseState()
-  if (state === null) return 'Локальная база не отвечает: supabase start'
+  if (state === null) return 'Local database does not respond: supabase start'
   const leftovers = leftoversOfProbe(state)
   if (leftovers.length > 0) {
-    return `Остатки прошлой проверки генератора без снимка ${SNAPSHOT} — проверка их не трогает:\n  ${leftovers.join('\n  ')}\nУберите их сами, свои правки в этих файлах сохраните (git diff)${state.probe_table || state.probe_migration ? `; таблицу и запись — supabase db reset или supabase db query "${DROP_PROBE_TABLE}"` : ''}`
+    return `Leftovers of a previous generator check without ${SNAPSHOT}, left untouched:\n  ${leftovers.join('\n  ')}\nRemove them yourself and keep your own edits in these files (git diff)${state.probe_table || state.probe_migration ? `; the table and row: supabase db reset or supabase db query "${DROP_PROBE_TABLE}"` : ''}`
   }
   const unapplied = unappliedMigrations(state)
   if (unapplied.length > 0) {
-    return `Миграции файлов и базы расходятся: ${unapplied.join(', ')}. Сначала supabase migration up (или supabase db reset): иначе проверка применит их вместе с пробой и назовёт их ошибку ошибкой шаблона, а база после уборки не вернётся к прежней`
+    return `Migration files and the database differ: ${unapplied.join(', ')}. Run supabase migration up (or supabase db reset) first, otherwise the check applies them with the probe, blames the template for their errors and cannot restore the database`
   }
   return null
 }
@@ -278,31 +275,27 @@ let failed = null
 try {
   failed = await firstFailure(steps)
 } finally {
-  console.log('\n── уборка: таблица, файлы модуля, изменённые файлы')
+  console.log('\n── cleanup: table, module files, changed files')
   cleanUp(snapshot)
 }
 
 const treeAfter = gitStatus()
 const leftovers = treeAfter === treeBefore ? '' : treeAfter
-console.log(`\nПроверка генератора (${MODULE}), ${seconds(startedAt)}:`)
+console.log(`\nGenerator check (${MODULE}), ${seconds(startedAt)}:`)
 console.log(report.join('\n'))
 if (leftovers !== '') {
   console.error(
-    `После уборки git status не тот, что до проверки, — генератор создал или изменил то, чего проверка не знает:\n${leftovers}`,
+    `After cleanup git status differs from before: the generator created or changed files the check does not know:\n${leftovers}`,
   )
 }
 if (interrupted) {
-  console.error(
-    `Проверка прервана на шаге «${failed ?? ''}»; файлы и база возвращены в состояние до проверки`,
-  )
+  console.error(`Check stopped at step «${failed ?? ''}»; files and database are restored`)
 } else if (failed !== null) {
   console.error(
-    `Срез из шаблонов scripts/module-template не проходит шаг «${failed}»: исправьте шаблон (или общий код, на который он опирается${treeBefore === '' ? '' : ', или незакоммиченные правки в дереве'}) и запустите снова`,
+    `The slice from scripts/module-template fails step «${failed}»: fix the template (or the shared code it relies on${treeBefore === '' ? '' : ', or uncommitted edits in the tree'}) and run again`,
   )
 }
 if (failed === null && leftovers === '') {
-  console.log(
-    'Срез из шаблонов проходит все проверки; файлы и база возвращены в состояние до проверки',
-  )
+  console.log('The template slice passes every check; files and database are restored')
 }
 process.exit(failed === null && leftovers === '' ? 0 : 1)

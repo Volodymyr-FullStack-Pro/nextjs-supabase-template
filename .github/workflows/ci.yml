@@ -4,23 +4,23 @@ on:
   push:
     branches: [main]
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review] # ready_for_review: a block PR left draft — full run with the speed budget
+    types: [opened, synchronize, reopened, ready_for_review]
   schedule:
-    - cron: '0 3 * * 1' # weekly (Mon 03:00 UTC): the speed budget on main catches a slow regression
+    - cron: '0 3 * * 1' # weekly perf run on main catches slow regressions
 
 concurrency:
-  # The scheduled run has its own group: otherwise it queues behind main and cancels a pending push run.
+  # the scheduled run has its own group: otherwise it queues behind main and cancels a pending push run
   group: ci-${{ github.event_name == 'schedule' && 'schedule' || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }} # прогоны main доходят до конца
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
 
-# Сторонние actions закреплены на commit SHA (тег — в комментарии); Dependabot обновляет их раз в месяц.
+# Third-party actions are pinned to a commit SHA (tag in the comment); Dependabot updates them monthly.
 jobs:
   quality:
     name: Lint, types, unit, dead code, build
-    if: github.event_name != 'schedule' # the weekly run is Playwright with the speed budget only
+    if: github.event_name != 'schedule' # the weekly run is Playwright and perf only
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -32,14 +32,15 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npm audit signatures # подписи и provenance пакетов из реестра
-      - run: npm audit --omit=dev --audit-level=high # production-зависимости без известных уязвимостей; dev — через Dependabot
-      - run: npm run licenses # production-зависимости без GPL, AGPL, SSPL и неизвестных лицензий
+      - run: npm audit signatures
+      - run: npm audit --omit=dev --audit-level=high # dev dependencies are covered by Dependabot
+      - run: npm run licenses
       - run: npm run lint
-      - run: npm run lint:rules # защиты денег и доступа ловят свои пробы и молчат на хорошем коде
+      - run: npm run lint:rules
       - run: npm run typecheck
       - run: npm run req:check
-      - run: npm run docs:check # roles and limits of knowledge files — .claude/rules/docs.md
+      - run: npm run docs:check
+      - run: npm run comments:check
       - run: npm run test:coverage
       - run: npm run knip
       - run: npm run jscpd
@@ -47,7 +48,6 @@ jobs:
       - run: npm run build
       - run: npm run budget
 
-  # Идёт одновременно с quality: ответ CI не ждёт линтера и сборки (около двух минут на каждый push).
   e2e:
     name: Playwright
     runs-on: ubuntu-latest
@@ -62,13 +62,12 @@ jobs:
           cache: npm
       - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
         with:
-          version: 3.0.0 # как в db.yml и на машинах разработчиков
+          version: 3.0.0 # same as db.yml and developer machines
       - name: Start local Supabase (Postgres, Auth, REST)
         run: supabase start -x studio,imgproxy,mailpit,edge-runtime,logflare,vector,realtime,storage-api,postgres-meta,supavisor
       - run: npm ci
-      # Кэш хранит только скачанные браузеры: ключ — образ раннера и установленная версия @playwright/test.
-      # Системные библиотеки (apt) в кэш не попадают, поэтому команда установки та же: с кэшем она пропускает
-      # скачивание, без кэша или с неполным кэшем — докачивает недостающее.
+      # The cache holds only browsers (apt packages are not cached), so the install command stays the same
+      # and skips the download on a cache hit.
       - name: Playwright browsers cache key
         id: playwright
         run: |
@@ -80,26 +79,20 @@ jobs:
           path: ~/.cache/ms-playwright
           key: ${{ steps.playwright.outputs.key }}
       - run: npx playwright install --with-deps chromium webkit
-        timeout-minutes: 8 # обычно 2–3 минуты; при сбое сети раннера apt повторяет попытки до таймаута задания
+        timeout-minutes: 8 # usually 2–3 minutes; apt retries on network failures until the job timeout
       - name: Playwright with the local database
-        run: npm run test:e2e:db # адрес и ключи берёт из supabase status, сценарии за входом не пропускаются
+        run: npm run test:e2e:db
         env:
           CI: 'true'
-      # Замер скорости (tests/perf): страницы production-сборки в Chromium на компьютере и телефоне, страница за входом —
-      # на 50 тыс. строк. Сборка уже сделана шагом e2e (CI=true: замер её не пересобирает); пороги — tests/perf/pages.ts.
-      # Checkpoints only: push to main, a PR out of draft (a block leaving draft, a main → production release, Dependabot)
-      # and the weekly run. A push of an accepted task to a draft block PR skips it: Claude measures locally when a page
-      # with data changes and when a block closes, so a block PR is measured before it merges.
+      # Perf (tests/perf) only at checkpoints: push to main, a PR out of draft and the weekly run.
+      # It reuses the e2e build (CI=true); thresholds are in tests/perf/pages.ts.
       - name: Speed budget
         if: github.event_name != 'pull_request' || !github.event.pull_request.draft
         run: npm run perf
         env:
           CI: 'true'
-      # Шаблоны генератора модуля (scripts/module-template) стоят вне линтера и tsc: здесь из них создаётся модуль,
-      # проходит линтер, типы, unit, проверки базы, свой e2e и бюджет JS — и удаляется. Идёт последним: пересобирает .next.
-      # The same checkpoints as the speed budget, without the weekly run. A draft block PR skips it (about 4 minutes on
-      # every task, while the templates rarely change): after editing them Claude runs npm run generator:check locally
-      # (.claude/rules/architecture.md).
+      # Generator templates (scripts/module-template) are outside lint and tsc: build a module from them, run every
+      # check and remove it. Runs last because it rebuilds .next; checkpoints only, like perf.
       - name: Generated module passes every gate
         if: github.event_name != 'schedule' && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
         run: npm run generator:check
@@ -114,13 +107,13 @@ jobs:
 
   security:
     name: Secrets
-    if: github.event_name != 'schedule' # the weekly run is Playwright with the speed budget only
+    if: github.event_name != 'schedule' # the weekly run is Playwright and perf only
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # gitleaks (MIT license) runs as a plain binary, not gitleaks-action: for an organization repository the action needs
-    # a license key registered to a developer and a secret in both Actions and Dependabot. actionlint is installed the
-    # same way. Version and SHA-256 of each archive come from the release's <tool>_<version>_checksums.txt; update them
-    # by hand, Dependabot does not see these steps.
+    # gitleaks binary (MIT) instead of gitleaks-action, which needs a license key for organizations.
+    # Version and archive SHA-256 from the release page (gitleaks_<version>_checksums.txt); update by hand,
+    # Dependabot does not see this step.
+    # actionlint checks the workflows the same way: version and SHA-256 from actionlint_<version>_checksums.txt.
     env:
       GITLEAKS_VERSION: 8.30.1
       GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
@@ -130,7 +123,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          fetch-depth: 0 # the whole history: a secret committed anywhere stays in it for good
+          fetch-depth: 0 # full history: a secret in any commit stays there forever
       - name: Install gitleaks
         run: |
           archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
@@ -138,7 +131,7 @@ jobs:
           echo "${GITLEAKS_SHA256}  ${archive}" | sha256sum --check --strict
           tar -xzf "$archive" gitleaks
       - name: gitleaks
-        run: ./gitleaks git --redact --no-banner --exit-code 1 . # rules — .gitleaks.toml, ignores by fingerprint — .gitleaksignore
+        run: ./gitleaks git --redact --no-banner --exit-code 1 .
       - name: Install actionlint
         run: |
           archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
@@ -150,10 +143,10 @@ jobs:
 
   semgrep:
     name: Semgrep
-    if: github.event_name != 'schedule' # the weekly run is Playwright with the speed budget only
+    if: github.event_name != 'schedule' # the weekly run is Playwright and perf only
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # semgrep/semgrep-action заархивирован; официальный путь — CLI в контейнере. Образ закреплён на digest.
+    # semgrep-action is archived; the official way is the CLI in a container, pinned by digest.
     container:
       image: semgrep/semgrep:1.182.1@sha256:451b3d875c00dac7ed5db5293e584a07de11449a409c10b3c2d2652f429630b6
     steps:

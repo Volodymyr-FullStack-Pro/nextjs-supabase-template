@@ -20,15 +20,15 @@ const isForbidden = (license) =>
 const dependencies = packages.filter((entry) => entry.location !== '')
 const problems = dependencies
   .filter((entry) => isForbidden(licenseOf(entry)))
-  .map((entry) => `${entry.name}@${entry.version}: ${licenseOf(entry) || 'лицензия не указана'}`)
+  .map((entry) => `${entry.name}@${entry.version}: ${licenseOf(entry) || 'no license'}`)
 
 if (problems.length > 0) {
   console.error(
-    'Production-зависимости с запрещённой или неизвестной лицензией (GPL, AGPL, SSPL, EUPL):',
+    'Production dependencies with a forbidden or unknown license (GPL, AGPL, SSPL, EUPL):',
   )
   for (const problem of problems) console.error(`  ${problem}`)
   process.exit(1)
 }
 console.log(
-  `Лицензии ${String(dependencies.length)} production-пакетов: без GPL, AGPL, SSPL и неизвестных`,
+  `Licenses of ${String(dependencies.length)} production packages: no GPL, AGPL, SSPL or unknown`,
 )

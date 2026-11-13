@@ -8,15 +8,15 @@ type Row = { path: string; profile: Profile; speed: PageSpeed; budget: Budget }
 const MS_IN_SECOND = 1000
 const GAP = '  '
 const HEADER = [
-  'страница',
-  'профиль',
-  'TTFB, мс',
-  'FCP, мс',
-  'LCP, мс',
-  'TBT, мс',
+  'page',
+  'profile',
+  'TTFB, ms',
+  'FCP, ms',
+  'LCP, ms',
+  'TBT, ms',
   'CLS',
-  'оценка',
-  'данные пришли, мс',
+  'score',
+  'data arrived, ms',
 ]
 
 const cell = (value: number | undefined, limit?: number) => {
@@ -50,13 +50,11 @@ export default class TableReporter implements Reporter {
     const widths = HEADER.map((_, column) =>
       Math.max(...lines.map((line) => line[column]?.length ?? 0)),
     )
-    console.log(
-      '\nЗамер скорости: медиана трёх прогонов (в скобках — порог из tests/perf/pages.ts)',
-    )
+    console.log('\nSpeed check: median of three runs (budget from tests/perf/pages.ts in brackets)')
     for (const line of lines) {
       const padded = line.map((text, column) => text.padEnd(widths[column] ?? 0))
       console.log(padded.join(GAP).trimEnd())
     }
-    console.log(`Всего: ${String(Math.round(result.duration / MS_IN_SECOND))} с`)
+    console.log(`Total: ${String(Math.round(result.duration / MS_IN_SECOND))} s`)
   }
 }

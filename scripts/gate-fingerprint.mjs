@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { copyFileSync, existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdtempSync, rmSync, statSync, utimesSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
@@ -36,7 +36,11 @@ export function workingTreeId(cwd) {
   const directory = mkdtempSync(join(tmpdir(), 'gate-stamp-'))
   const index = join(directory, 'index')
   try {
-    if (existsSync(realIndex)) copyFileSync(realIndex, index)
+    if (existsSync(realIndex)) {
+      copyFileSync(realIndex, index)
+      const { atime, mtime } = statSync(realIndex)
+      utimesSync(index, atime, mtime)
+    }
     git(['add', '--all'], { GIT_INDEX_FILE: index })
     return git(['write-tree'], { GIT_INDEX_FILE: index })
   } finally {

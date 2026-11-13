@@ -24,7 +24,7 @@ try {
       env: { ...ciLikeEnv, NPM_CONFIG_USERCONFIG: emptyUserConfig },
     },
   )
-  console.log(`package-lock.json принимается ${CI_NPM} (как в CI и на Vercel)`)
+  console.log(`package-lock.json is accepted by ${CI_NPM} (as in CI and on Vercel)`)
 } catch (error) {
   const output = String(error.stderr ?? error.message)
   console.error(
@@ -35,7 +35,7 @@ try {
       .join('\n'),
   )
   console.error(
-    `\nLock-файл рассинхронизирован для ${CI_NPM}. Пересоберите его: npx ${CI_NPM} install --package-lock-only`,
+    `\nThe lock file is out of sync for ${CI_NPM}. Rebuild it: npx ${CI_NPM} install --package-lock-only`,
   )
   process.exit(1)
 } finally {

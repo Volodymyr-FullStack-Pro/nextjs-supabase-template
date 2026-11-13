@@ -1,1 +1,1 @@
-export const legacy = 'файл .js в src' // expect: local/typescript-only
+export const legacy = 'a .js file in src' // expect: local/typescript-only

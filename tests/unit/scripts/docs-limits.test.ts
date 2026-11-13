@@ -70,11 +70,11 @@ describe('tableRows', () => {
 
 describe('sizeProblem', () => {
   it('reports a size over the limit with both numbers', () => {
-    expect(sizeProblem('CLAUDE.md', 1501, 1500, 'слов')).toBe('CLAUDE.md: 1501 слов, предел 1500')
+    expect(sizeProblem('CLAUDE.md', 1501, 1500, 'words')).toBe('CLAUDE.md: 1501 words, limit 1500')
   })
 
   it('accepts a size equal to the limit', () => {
-    expect(sizeProblem('CLAUDE.md', 1500, 1500, 'слов')).toBeUndefined()
+    expect(sizeProblem('CLAUDE.md', 1500, 1500, 'words')).toBeUndefined()
   })
 })
 
@@ -84,7 +84,7 @@ describe('ruleProblems', () => {
       { path: '.claude/rules/ui.md', text: words(LIMITS.ruleWords) },
       { path: '.claude/rules/db.md', text: words(LIMITS.ruleWords + 1) },
     ]
-    expect(ruleProblems(rules)).toEqual(['.claude/rules/db.md: 1001 слов, предел 1000'])
+    expect(ruleProblems(rules)).toEqual(['.claude/rules/db.md: 1001 words, limit 1000'])
   })
 
   it('does not limit the number of lines', () => {
@@ -115,7 +115,7 @@ describe('decisionProblems', () => {
     const text = journal(
       `| D-002 | 2026-11-02 | ${words(LIMITS.decisionRowWords)} | Разработчик | принято |`,
     )
-    expect(decisionProblems(text, '')).toEqual(['decisions.md, D-002: 44 слов, предел 40'])
+    expect(decisionProblems(text, '')).toEqual(['decisions.md, D-002: 44 words, limit 40'])
   })
 
   it('does not count the pipes between cells as words', () => {
@@ -132,7 +132,7 @@ describe('decisionProblems', () => {
         `| D-${String(index + 1).padStart(3, '0')} | 2026-11-02 | Решение | Разработчик | принято |`,
     )
     expect(decisionProblems(journal(...rows), '')).toEqual([
-      'decisions.md: 101 строк, предел 100 — заменённые и выполненные разовые решения перенести в decisions/archive-<год>-Q<N>.md',
+      'decisions.md: 101 rows, limit 100: move replaced and completed one-off decisions to decisions/archive-<year>-Q<N>.md',
     ])
   })
 
@@ -141,7 +141,7 @@ describe('decisionProblems', () => {
       '| D-020 | 2026-11-09 | Суммы — numeric | Разработчик | принято → architecture.md |',
     )
     expect(decisionProblems(text, '# Архитектура\n\nНичего о деньгах.\n')).toEqual([
-      'decisions.md, D-020: помечено «→ architecture.md», но в docs/architecture.md не упомянуто',
+      'decisions.md, D-020: marked «→ architecture.md», but docs/architecture.md does not mention it',
     ])
   })
 
@@ -175,7 +175,7 @@ describe('architectureReferenceProblems', () => {
 
   it('reports a decision number the journal and its archive do not have', () => {
     expect(architectureReferenceProblems('Основание: D-020, D-999.', [marked])).toEqual([
-      'docs/architecture.md: ссылка на D-999, которого нет в журнале и архиве решений',
+      'docs/architecture.md: links D-999, which is in neither the decision log nor its archive',
     ])
   })
 
@@ -186,7 +186,7 @@ describe('architectureReferenceProblems', () => {
   it('reports a cited decision whose journal row has no marker', () => {
     const unmarked = journal('| D-030 | 2026-11-12 | Генератор в CI | Разработчик | принято |')
     expect(architectureReferenceProblems('Основание: D-030.', [unmarked])).toEqual([
-      'docs/architecture.md: ссылка на D-030, а в журнале у него нет пометки «→ architecture.md» — действующее решение пометить, заменённое убрать из документа',
+      'docs/architecture.md: links D-030, which is not marked «→ architecture.md» in the log; mark a current decision, remove a replaced one from the document',
     ])
   })
 
@@ -225,7 +225,7 @@ describe('tableCellProblems', () => {
   it('reports a cell over the limit by the row number and column', () => {
     const table = `| № | Ответ |\n|---|---|\n| A1 | ${words(LIMITS.requirementCellWords + 1)} |\n`
     expect(tableCellProblems(table, 'requirements.md', LIMITS.requirementCellWords)).toEqual([
-      'requirements.md, A1, столбец 2: 41 слов, предел 40',
+      'requirements.md, A1, column 2: 41 words, limit 40',
     ])
   })
 
@@ -239,7 +239,7 @@ describe('glossaryProblems', () => {
   it('reports an entry longer than the limit by its heading', () => {
     const glossary = `# Глоссарий\n\n## Реестр требований\n\n${'строка\n'.repeat(LIMITS.glossaryEntryLines + 1)}`
     expect(glossaryProblems(glossary)).toEqual([
-      'glossary.md, «Реестр требований»: 5 строк, предел 4',
+      'glossary.md, «Реестр требований»: 5 lines, limit 4',
     ])
   })
 

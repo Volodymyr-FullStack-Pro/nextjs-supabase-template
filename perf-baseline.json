@@ -1,9 +1,9 @@
 {
-  "/": 210,
+  "/": 206,
   "/_global-error": 171,
-  "/_not-found": 210,
-  "/login": 262,
-  "/mfa/setup": 269,
-  "/mfa/verify": 263,
-  "/notes": 266
+  "/_not-found": 206,
+  "/login": 259,
+  "/mfa/setup": 265,
+  "/mfa/verify": 259,
+  "/notes": 263
 }

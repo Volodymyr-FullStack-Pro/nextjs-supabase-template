@@ -16,14 +16,14 @@ test('proxy is part of the production build', () => {
     readFileSync('.next/server/functions-config-manifest.json', 'utf8'),
   ) as { functions: Record<string, { matchers: { originalSource: string }[] }> }
   const proxy = manifest.functions['/_middleware']
-  expect(proxy, 'src/proxy.ts не попал в сборку').toBeDefined()
+  expect(proxy, 'src/proxy.ts is missing from the build').toBeDefined()
   expect(proxy?.matchers[0]?.originalSource).toContain('_next/static')
 })
 
 for (const { path, refusals } of NESTED_IMAGE_PATHS) {
   test(`refuses a signed-out request for ${path} in the proxy`, async ({ request }) => {
     const response = await request.get(path, { maxRedirects: 0 })
-    expect(refusals, 'ответил не proxy: путь с окончанием картинки прошёл мимо него').toContain(
+    expect(refusals, 'answered not by proxy: a path ending like an image bypassed it').toContain(
       response.status(),
     )
   })

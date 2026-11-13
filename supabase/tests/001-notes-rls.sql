@@ -1,6 +1,3 @@
--- Политики таблицы notes: владелец видит и меняет своё, чужое невидимо и неизменяемо; у анонима нет прав на таблицу.
--- Передать строку другому не дают два слоя: права по колонкам (owner_id не меняется) и политика update.
--- Проверка самого теста: временно замените using на (true) в миграции — тест «other user sees nothing» должен упасть.
 begin;
 select plan(13);
 
@@ -40,7 +37,7 @@ select throws_ok(
   'permission denied for table notes',
   'owner cannot hand a note to another user: no privilege on the owner_id column'
 );
--- Вторая линия: даже если право на колонку когда-нибудь выдадут, строку не даст передать политика update.
+-- Defense in depth: even with a column grant on owner_id, the update policy still blocks handing a row over.
 select tests.clear_authentication();
 grant update (owner_id) on public.notes to authenticated;
 select tests.authenticate_as('alice');
@@ -57,7 +54,7 @@ select lives_ok($$ update public.notes set title = 'renamed' where title = 'seco
 select lives_ok($$ delete from public.notes where title = 'renamed' $$, 'owner can delete own note');
 
 select tests.clear_authentication();
-set local role anon; -- clear_authentication возвращает к роли postgres, а она обходит RLS
+set local role anon; -- clear_authentication switches back to postgres, which bypasses RLS
 select throws_ok(
   'select * from public.notes',
   '42501',

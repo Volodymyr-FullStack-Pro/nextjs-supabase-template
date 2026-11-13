@@ -25,15 +25,15 @@ const add = (problem) => {
 const readIfExists = (path) => (existsSync(path) ? readFileSync(path, 'utf8') : undefined)
 const required = (path) => {
   const text = readIfExists(path)
-  if (text === undefined) add(`${path}: файла нет`)
+  if (text === undefined) add(`${path}: file is missing`)
   return text ?? ''
 }
 const lineLimit = (path, limit) => {
   const text = readIfExists(path)
-  if (text !== undefined) add(sizeProblem(path, countLines(text), limit, 'строк'))
+  if (text !== undefined) add(sizeProblem(path, countLines(text), limit, 'lines'))
 }
 
-add(sizeProblem('CLAUDE.md', countWords(required('CLAUDE.md')), LIMITS.claudeWords, 'слов'))
+add(sizeProblem('CLAUDE.md', countWords(required('CLAUDE.md')), LIMITS.claudeWords, 'words'))
 problems.push(
   ...ruleProblems(
     readdirSync(RULES_DIRECTORY)
@@ -64,11 +64,11 @@ problems.push(...glossaryProblems(required('docs/glossary.md')))
 lineLimit('.claude/handoff.md', LIMITS.handoffLines)
 
 if (problems.length === 0) {
-  console.log('Документы в пределах: роли и пределы — .claude/rules/docs.md')
+  console.log('Documents are within limits (.claude/rules/docs.md)')
   process.exit(0)
 }
 console.log(
-  `Документы вне пределов (${String(problems.length)}); роли и пределы — .claude/rules/docs.md`,
+  `Documents over limits (${String(problems.length)}); roles and limits: .claude/rules/docs.md`,
 )
 for (const problem of problems) console.log(`  ${problem}`)
 process.exit(1)

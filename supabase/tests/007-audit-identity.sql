@@ -1,7 +1,6 @@
--- Связь записи с её историей: журнал находит историю по (table_name, row_id), поэтому row_id — это id строки
--- до изменения, а смена id отклоняется для любой роли, включая владельца базы.
--- Таблица создаётся внутри теста: проверяется сам audit.record(), а не таблица-пример.
--- Проверка самого теста: верните audit.record() из *_audit_log.sql — смена id пройдёт, история разорвётся.
+-- The audit log finds a row's history by (table_name, row_id), so row_id is the id before the change, and changing
+-- the id is rejected for every role, including the database owner.
+-- Self-check: restore audit.record() from *_audit_log.sql and the id change goes through, splitting the history.
 begin;
 select plan(3);
 
@@ -18,13 +17,13 @@ update public.audit_identity_probe set label = 'changed' where id = 1;
 select throws_ok(
   $$ update public.audit_identity_probe set id = 2 where id = 1 $$,
   '42501',
-  'смена id в audit_identity_probe запрещена: по id запись связана со своей историей в журнале',
-  'смена id отклоняется'
+  'changing id in audit_identity_probe is not allowed: the id links a row to its history in the audit log',
+  'an id change is rejected'
 );
 select is(
   (select label from public.audit_identity_probe where id = 1),
   'changed',
-  'строка осталась под прежним id'
+  'the row keeps its previous id'
 );
 
 delete from public.audit_identity_probe where id = 1;
@@ -33,7 +32,7 @@ select results_eq(
   $$ select op, row_id from audit.log
      where id > (select id from log_start) and table_name = 'audit_identity_probe' order by id $$,
   $$ values ('INSERT', '1'), ('UPDATE', '1'), ('DELETE', '1') $$,
-  'вся история строки лежит под одним row_id, отклонённая смена id в журнал не попала'
+  'the whole history is under one row_id and the rejected id change is not logged'
 );
 
 select * from finish();

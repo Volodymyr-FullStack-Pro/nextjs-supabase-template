@@ -15,7 +15,7 @@ const NUMBER_TYPE = String.raw`number((?:\[\])*)( \| null)?`
 
 const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl) {
-  console.error('Запуск: npm run db:types при запущенном supabase start')
+  console.error('Run npm run db:types while supabase start is running')
   process.exit(1)
 }
 
@@ -131,12 +131,12 @@ function rewriteTable(block, columns) {
 if (compositeColumns.length > 0) {
   console.error(
     [
-      'Колонки составного типа с numeric внутри:',
+      'Composite-type columns with numeric inside:',
       ...compositeColumns.map(
         (column) => `  ${column.table_name}.${column.column_name} (${column.type_name})`,
       ),
-      'В types.ts поле такого типа — number и в Insert, и в Update: сумма ушла бы в запись числом.',
-      'Объявите колонки по отдельности (amount numeric, currency text) вместо составного типа.',
+      'types.ts makes such a field number in Insert and Update too, so an amount would be written as a number.',
+      'Declare separate columns (amount numeric, currency text) instead of a composite type.',
     ].join('\n'),
   )
   process.exit(1)
@@ -147,10 +147,10 @@ const forbiddenFunctions = numericFunctions.filter(({ name }) => !exceptedFuncti
 if (forbiddenFunctions.length > 0) {
   console.error(
     [
-      'Функции public с numeric в аргументах или результате (в том числе под доменом и в массиве):',
+      'Public functions with numeric in arguments or result (including under a domain or in an array):',
       ...forbiddenFunctions.map(({ signature }) => `  ${signature}`),
-      'В types.ts такой аргумент и результат — number: деньги через rpc передаются и возвращаются text.',
-      `Осознанное исключение — строка с ключом rpc_numeric и D-NNN в ${CONVENTIONS_TEST}.`,
+      'types.ts makes such an argument or result number: money goes through rpc as text.',
+      `A deliberate exception is a row with the rpc_numeric key and D-NNN in ${CONVENTIONS_TEST}.`,
     ].join('\n'),
   )
   process.exit(1)
@@ -162,7 +162,7 @@ const failures = []
 for (const [table, columns] of columnsByTable) {
   const start = tableStart(output, table)
   if (start < 0) {
-    failures.push(`${table} (таблица или представление не найдены)`)
+    failures.push(`${table} (table or view not found)`)
     continue
   }
   const end = output.indexOf(`\n${TABLE_INDENT}}`, start)
@@ -175,15 +175,15 @@ for (const [table, columns] of columnsByTable) {
 }
 if (failures.length > 0) {
   console.error(
-    `numeric-колонки не переписаны в ${OUTPUT}: ${failures.join(', ')} — в выводе supabase gen types тип колонки не number (массив доменов он описывает как unknown[]: объявите колонку numeric[]) или формат вывода изменился`,
+    `numeric columns not rewritten in ${OUTPUT}: ${failures.join(', ')}; supabase gen types did not type the column as number (it describes an array of domains as unknown[]: declare the column numeric[]) or its output format changed`,
   )
   process.exit(1)
 }
 writeFileSync(OUTPUT, output)
 const kept = numericFunctions.map(({ signature }) => signature)
 console.log(
-  `${OUTPUT}: numeric в Row — number (так отдаёт PostgREST без ::text), в Insert и Update — string; колонок ${String(numericColumns.length)}` +
+  `${OUTPUT}: numeric is number in Row (as PostgREST returns it without ::text) and string in Insert and Update; columns ${String(numericColumns.length)}` +
     (kept.length > 0
-      ? `; функции с numeric по исключению rpc_numeric остаются number: ${kept.join(', ')}`
+      ? `; functions with numeric under the rpc_numeric exception stay number: ${kept.join(', ')}`
       : ''),
 )

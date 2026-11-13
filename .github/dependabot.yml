@@ -12,7 +12,7 @@ updates:
     open-pull-requests-limit: 5
     ignore:
       - dependency-name: '*'
-        update-types: ['version-update:semver-major'] # мажоры — руками, после чтения changelog
+        update-types: ['version-update:semver-major'] # majors by hand, after reading the changelog
   - package-ecosystem: github-actions
     directory: /
     schedule:

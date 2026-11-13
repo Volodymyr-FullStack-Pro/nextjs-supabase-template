@@ -36,18 +36,18 @@ test.afterAll(async () => {
 const overBudget = (speed: PageSpeed, budget: Budget): string[] =>
   [
     speed.serverResponseMs > budget.serverResponseMs &&
-      `TTFB ${String(speed.serverResponseMs)} мс > ${String(budget.serverResponseMs)}`,
+      `TTFB ${String(speed.serverResponseMs)} ms > ${String(budget.serverResponseMs)}`,
     speed.largestContentfulPaintMs > budget.largestContentfulPaintMs &&
-      `LCP ${String(speed.largestContentfulPaintMs)} мс > ${String(budget.largestContentfulPaintMs)}`,
+      `LCP ${String(speed.largestContentfulPaintMs)} ms > ${String(budget.largestContentfulPaintMs)}`,
     speed.totalBlockingTimeMs > budget.totalBlockingTimeMs &&
-      `TBT ${String(speed.totalBlockingTimeMs)} мс > ${String(budget.totalBlockingTimeMs)}`,
+      `TBT ${String(speed.totalBlockingTimeMs)} ms > ${String(budget.totalBlockingTimeMs)}`,
     speed.cumulativeLayoutShift > budget.cumulativeLayoutShift &&
       `CLS ${String(speed.cumulativeLayoutShift)} > ${String(budget.cumulativeLayoutShift)}`,
     speed.lighthouseScore < budget.lighthouseScore &&
-      `оценка ${String(speed.lighthouseScore)} < ${String(budget.lighthouseScore)}`,
+      `score ${String(speed.lighthouseScore)} < ${String(budget.lighthouseScore)}`,
     speed.dataArrivedMs !== undefined &&
       speed.dataArrivedMs > budget.dataArrivedMs &&
-      `данные пришли через ${String(speed.dataArrivedMs)} мс > ${String(budget.dataArrivedMs)}`,
+      `data arrived after ${String(speed.dataArrivedMs)} ms > ${String(budget.dataArrivedMs)}`,
   ].filter((line) => line !== false)
 
 for (const target of MEASURED_PAGES) {
@@ -71,7 +71,7 @@ for (const target of MEASURED_PAGES) {
         })
         expect(
           overBudget(speed, budget),
-          `${target.path}, ${profile}: медиана ${String(RUNS_PER_PAGE)} прогонов вне бюджета из tests/perf/pages.ts`,
+          `${target.path}, ${profile}: median of ${String(RUNS_PER_PAGE)} runs is over the budget in tests/perf/pages.ts`,
         ).toEqual([])
       })
     }

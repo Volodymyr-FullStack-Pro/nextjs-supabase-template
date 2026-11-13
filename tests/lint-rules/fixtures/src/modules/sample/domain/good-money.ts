@@ -19,7 +19,7 @@ export function isOverLimit(amount: string, limit: string): boolean {
 }
 
 export function costOf(quantity: string, price: string, fee: string): string {
-  // D-041: комиссия прибавляется после умножения, округление — один раз при выводе
+  // D-041: the fee is added after multiplication and rounded once on output
   return money(quantity).times(price).plus(fee).toFixed()
 }
 

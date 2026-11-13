@@ -30,7 +30,7 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files: только пример в репозитории
+# env files: only the example is committed
 .env*
 !.env.example
 
@@ -41,7 +41,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# тесты и отчёты
 playwright-report/
 test-results/
 playwright/.auth/
@@ -52,7 +51,7 @@ coverage/
 docs/_scratch/
 .playwright-mcp/
 .claude/settings.local.json
-# next dev пишет его сам, если agentRules включён (в next.config.ts выключен); инструкции агенту — в CLAUDE.md
+# written by next dev when agentRules is on (off in next.config.ts)
 /AGENTS.md
 
 

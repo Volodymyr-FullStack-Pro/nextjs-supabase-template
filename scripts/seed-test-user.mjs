@@ -23,16 +23,16 @@ const password = process.env.TEST_USER_PASSWORD
 const totpSecret = process.env.TEST_USER_TOTP_SECRET
 
 if (!url || !secretKey || !databaseUrl)
-  fail('Запуск: npm run seed:test-user при запущенном supabase start')
+  fail('Run npm run seed:test-user while supabase start is running')
 if (!LOCAL_HOSTS.has(new URL(url).hostname) || !LOCAL_HOSTS.has(new URL(databaseUrl).hostname))
-  fail('Тестовый пользователь заводится только в локальном Supabase')
+  fail('The test user is created only in the local Supabase')
 if (!email || !password)
   fail(
-    `Нужны TEST_USER_EMAIL и TEST_USER_PASSWORD (и TEST_USER_TOTP_SECRET для второго фактора): в файле ${ENV_FILE} (образец — .env.example) или в переменных окружения`,
+    `TEST_USER_EMAIL and TEST_USER_PASSWORD are required (and TEST_USER_TOTP_SECRET for the second factor), in ${ENV_FILE} (see .env.example) or in the environment`,
   )
 if (totpSecret && !TOTP_SECRET_PATTERN.test(totpSecret))
   fail(
-    'TEST_USER_TOTP_SECRET — base32 (A–Z, 2–7) не короче 26 символов: такой нужен приложению-аутентификатору',
+    'TEST_USER_TOTP_SECRET must be base32 (A–Z, 2–7) of at least 26 characters, as an authenticator app needs',
   )
 
 const admin = createClient(url, secretKey, {
@@ -62,9 +62,9 @@ try {
     `
   }
   const totpState = totpSecret
-    ? 'подключён, код — npm run totp -s'
-    : 'не настроен (TEST_USER_TOTP_SECRET пуст)'
-  console.log(`Тестовый пользователь ${email}: пароль задан, второй фактор ${totpState}`)
+    ? 'enrolled, code: npm run totp -s'
+    : 'not set up (TEST_USER_TOTP_SECRET is empty)'
+  console.log(`Test user ${email}: password set, second factor ${totpState}`)
 } finally {
   await sql.end()
 }

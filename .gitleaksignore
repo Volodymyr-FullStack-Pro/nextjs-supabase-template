@@ -1,2 +1,2 @@
-# Не секрет: бывшая константа теста планового маршрута в истории ветки (сейчас значение создаётся при запуске теста).
+# Not a secret: a former constant of the scheduled route test in branch history (the test now generates the value).
 293b6cd6a916aae8b96b0ae99ef2f34c77d261e9:tests/unit/shared/cron.test.ts:generic-api-key:7

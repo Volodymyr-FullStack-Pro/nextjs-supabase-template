@@ -6,7 +6,8 @@ import { checkPageQuality } from './support/page-quality'
 import { hasDatabase, NEEDS_DATABASE, storageStatePath } from './support/users'
 
 const PUBLIC_PAGES = ['/', '/login']
-const SIGNED_IN_PAGES = [AFTER_SIGN_IN_PATH, '/mfa/verify']
+const MISSING_PAGE = '/no-such-page'
+const SIGNED_IN_PAGES = [AFTER_SIGN_IN_PATH, '/mfa/verify', MISSING_PAGE]
 
 for (const path of PUBLIC_PAGES) checkPageQuality(path)
 

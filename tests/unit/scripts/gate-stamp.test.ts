@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -102,6 +102,18 @@ describe('workingTreeId', () => {
     write('new.txt', 'new\n')
     expect(workingTreeId(repository)).not.toBe(clean)
     expect(git('status', '--porcelain')).toBe('?? new.txt')
+  })
+
+  it('sees a same-size edit within the second of the last index write', () => {
+    const fileTime = new Date('2020-01-01T00:00:00Z')
+    git('config', 'core.trustctime', 'false')
+    utimesSync(join(repository, 'tracked.txt'), fileTime, fileTime)
+    git('add', 'tracked.txt')
+    utimesSync(join(repository, git('rev-parse', '--git-path', 'index')), fileTime, fileTime)
+    const clean = workingTreeId(repository)
+    write('tracked.txt', 'two\n')
+    utimesSync(join(repository, 'tracked.txt'), fileTime, fileTime)
+    expect(workingTreeId(repository)).not.toBe(clean)
   })
 
   it('ignores a file listed in .gitignore', () => {

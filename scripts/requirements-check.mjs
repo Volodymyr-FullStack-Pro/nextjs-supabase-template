@@ -50,7 +50,7 @@ for (const line of readFileSync(register, 'utf8').split('\n')) {
   if (statusIndex < 0 || SEPARATOR_ROW.test(line.trim())) continue
   const id = cells[1] ?? ''
   if (!ID_PATTERN.test(id)) {
-    errors.push(`строка «${id}»: номер не по формату (латиница и цифры: A3, P7, T-001, R-001)`)
+    errors.push(`row «${id}»: id format is Latin letters and digits (A3, P7, T-001, R-001)`)
     continue
   }
   rows.push({ id, status: cells[statusIndex] ?? '' })
@@ -58,10 +58,10 @@ for (const line of readFileSync(register, 'utf8').split('\n')) {
 
 const seen = new Set()
 for (const { id, status } of rows) {
-  if (seen.has(id)) errors.push(`${id}: номер повторяется`)
+  if (seen.has(id)) errors.push(`${id}: duplicate id`)
   seen.add(id)
   if (!STATUSES.some((known) => status.startsWith(known))) {
-    errors.push(`${id}: статус «${status}» не из списка: ${STATUSES.join(', ')}`)
+    errors.push(`${id}: status «${status}» is not one of ${STATUSES.join(', ')}`)
   }
 }
 
@@ -90,9 +90,9 @@ const unreferenced = rows
   .map(({ id }) => id)
 
 console.log(
-  `Реестр ${register}: ${String(rows.length)} требований, ошибок ${String(errors.length)}, без ссылки в ${scanPaths.join(', ')}: ${String(unreferenced.length)}`,
+  `Register ${register}: ${String(rows.length)} requirements, errors ${String(errors.length)}, not referenced in ${scanPaths.join(', ')}: ${String(unreferenced.length)}`,
 )
-for (const message of errors) console.log(`  ошибка: ${message}`)
-if (unreferenced.length > 0) console.log(`  без ссылки: ${unreferenced.join(' ')}`)
+for (const message of errors) console.log(`  error: ${message}`)
+if (unreferenced.length > 0) console.log(`  not referenced: ${unreferenced.join(' ')}`)
 const strictFailure = flag('--strict') && unreferenced.length > 0
 process.exit(errors.length > 0 || strictFailure ? 1 : 0)

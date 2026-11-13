@@ -8,8 +8,6 @@ import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import { DEFAULT_LOCALE } from '@/shared/domain/locale'
 import { Toaster } from '@/shared/ui/sonner'
 
-import { WebVitals } from './web-vitals'
-
 const geistSans = Geist({
   variable: '--font-body',
   subsets: ['latin', 'cyrillic'],
@@ -47,7 +45,6 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
         >
           <NuqsAdapter>{children}</NuqsAdapter>
           <Toaster />
-          <WebVitals />
         </ThemeProvider>
       </body>
     </html>

@@ -26,12 +26,12 @@ export function countLines(text) {
 }
 
 export function sizeProblem(label, actual, limit, unit) {
-  return actual > limit ? `${label}: ${actual} ${unit}, предел ${limit}` : undefined
+  return actual > limit ? `${label}: ${actual} ${unit}, limit ${limit}` : undefined
 }
 
 export function ruleProblems(rules) {
   return rules
-    .map(({ path, text }) => sizeProblem(path, countWords(text), LIMITS.ruleWords, 'слов'))
+    .map(({ path, text }) => sizeProblem(path, countWords(text), LIMITS.ruleWords, 'words'))
     .filter(Boolean)
 }
 
@@ -85,19 +85,19 @@ export function decisionProblems(journal, architecture) {
       `decisions.md, ${id}`,
       countWords(cells.join(' ')),
       LIMITS.decisionRowWords,
-      'слов',
+      'words',
     )
     if (tooLong) problems.push(tooLong)
     if (isMarked(cells) && !mentions(architecture, id)) {
       problems.push(
-        `decisions.md, ${id}: помечено «${ARCHITECTURE_MARKER}», но в docs/architecture.md не упомянуто`,
+        `decisions.md, ${id}: marked «${ARCHITECTURE_MARKER}», but docs/architecture.md does not mention it`,
       )
     }
   }
-  const tooMany = sizeProblem('decisions.md', rows.length, LIMITS.decisionRows, 'строк')
+  const tooMany = sizeProblem('decisions.md', rows.length, LIMITS.decisionRows, 'rows')
   if (tooMany) {
     problems.push(
-      `${tooMany} — заменённые и выполненные разовые решения перенести в decisions/archive-<год>-Q<N>.md`,
+      `${tooMany}: move replaced and completed one-off decisions to decisions/archive-<year>-Q<N>.md`,
     )
   }
   return problems
@@ -117,11 +117,11 @@ export function architectureReferenceProblems(architecture, journals) {
   for (const id of cited) {
     if (!known.has(id)) {
       problems.push(
-        `docs/architecture.md: ссылка на ${id}, которого нет в журнале и архиве решений`,
+        `docs/architecture.md: links ${id}, which is in neither the decision log nor its archive`,
       )
     } else if (!marked.has(id)) {
       problems.push(
-        `docs/architecture.md: ссылка на ${id}, а в журнале у него нет пометки «${ARCHITECTURE_MARKER}» — действующее решение пометить, заменённое убрать из документа`,
+        `docs/architecture.md: links ${id}, which is not marked «${ARCHITECTURE_MARKER}» in the log; mark a current decision, remove a replaced one from the document`,
       )
     }
   }
@@ -133,10 +133,10 @@ export function tableCellProblems(markdown, label, limit) {
   for (const cells of tableRows(markdown)) {
     for (const [index, cell] of cells.entries()) {
       const problem = sizeProblem(
-        `${label}, ${cells[0]}, столбец ${index + 1}`,
+        `${label}, ${cells[0]}, column ${index + 1}`,
         countWords(cell),
         limit,
-        'слов',
+        'words',
       )
       if (problem) problems.push(problem)
     }
@@ -154,7 +154,7 @@ export function glossaryProblems(glossary) {
       `glossary.md, «${entry}»`,
       lines,
       LIMITS.glossaryEntryLines,
-      'строк',
+      'lines',
     )
     if (problem) problems.push(problem)
   }

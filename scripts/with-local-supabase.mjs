@@ -4,7 +4,7 @@ import { basename } from 'node:path'
 
 const [command, ...commandArguments] = process.argv.slice(2)
 if (!command) {
-  console.error('Использование: node scripts/with-local-supabase.mjs <команда> [аргументы]')
+  console.error('Usage: node scripts/with-local-supabase.mjs <command> [arguments]')
   process.exit(1)
 }
 
@@ -12,23 +12,23 @@ const PROJECT_ID_VARIABLE = 'SUPABASE_PROJECT_ID'
 
 const explainStatusFailure = (error) => {
   if (error.code === 'ENOENT')
-    return 'Supabase CLI не найден в PATH: нужна версия из .github/workflows/db.yml (README, «Новый проект из шаблона»)'
+    return 'Supabase CLI is not in PATH: install the version from .github/workflows/db.yml'
   const folder = basename(process.cwd())
   const projectId = process.env[PROJECT_ID_VARIABLE]
   const project = projectId ?? folder
   const reason =
     String(error.stderr ?? error.message)
       .split('\n')
-      .find((line) => line.trim() !== '') ?? 'supabase status завершился с ошибкой'
+      .find((line) => line.trim() !== '') ?? 'supabase status failed'
   const hint = projectId
-    ? `  ${PROJECT_ID_VARIABLE}=${projectId} задан: стек с таким именем не запущен — проверьте имя папки, из которой делали supabase start`
+    ? `  ${PROJECT_ID_VARIABLE}=${projectId} is set, but no stack with this name is running: check the folder supabase start ran from`
     : [
-        `  Стек запускали из этой папки («${folder}»): supabase start`,
-        `  Эта папка — клон или worktree, а стек запущен из оригинала: имя стека — имя папки оригинала,`,
-        `  задайте его перед командой: ${PROJECT_ID_VARIABLE}=<имя папки оригинала> npm run …`,
+        `  If the stack belongs to this folder («${folder}»): supabase start`,
+        `  If this folder is a clone or worktree and the stack runs from the original, the stack is named after that folder;`,
+        `  set it before the command: ${PROJECT_ID_VARIABLE}=<original folder name> npm run …`,
       ].join('\n')
   return [
-    `Локальный Supabase проекта «${project}» не отвечает (контейнер supabase_db_${project}): ${reason}`,
+    `Local Supabase of «${project}» does not respond (container supabase_db_${project}): ${reason}`,
     hint,
   ].join('\n')
 }

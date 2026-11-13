@@ -42,7 +42,16 @@ const contentCutOffByItsContainer = (page: Page) =>
       .map((element) => element.outerHTML.slice(0, 80)),
   )
 
-const CUT_OFF = 'содержимое обрезано контейнером'
+const CUT_OFF = 'content is cut off by its container'
+const SUBPIXEL_PX = 1
+
+const mainColumnShortfall = (page: Page) =>
+  page.locator('main').evaluate((main) => {
+    const available = main.parentElement?.clientWidth ?? 0
+    const maxWidth = Number.parseFloat(getComputedStyle(main).maxWidth)
+    const expected = Number.isNaN(maxWidth) ? available : Math.min(maxWidth, available)
+    return expected - main.getBoundingClientRect().width
+  })
 
 export function checkPageQuality(path: string, { state, ready }: PageState = {}) {
   const name = state === undefined ? path : `${path} ${state}`
@@ -67,14 +76,14 @@ export function checkPageQuality(path: string, { state, ready }: PageState = {})
         .flatMap(({ nodes }) => nodes.map(({ target }) => target.join(' ')))
       if (unchecked.length > 0) {
         testInfo.annotations.push({
-          type: 'контраст не проверен axe (полупрозрачный фон): сверить с design-system.md',
+          type: 'contrast not checked by axe (semi-transparent background): compare with design-system.md',
           description: unchecked.join(', '),
         })
       }
       const summary = violations.map(
         ({ id, help, nodes }) => `${id}: ${help} (${String(nodes.length)})`,
       )
-      expect(summary, 'нарушения доступности').toEqual([])
+      expect(summary, 'accessibility violations').toEqual([])
     })
   }
 
@@ -87,32 +96,42 @@ export function checkPageQuality(path: string, { state, ready }: PageState = {})
     })
     const response = await open(page)
     const policy = (response?.headers()['content-security-policy'] ?? '').split('; ')
-    expect(policy, 'CSP отличается от согласованного: каждая директива сверяется целиком').toEqual(
+    expect(policy, 'CSP differs from the agreed one: each directive is compared in full').toEqual(
       CONTENT_SECURITY_POLICY,
     )
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-    expect(violations, 'браузер заблокировал ресурс по CSP').toEqual([])
+    expect(violations, 'the browser blocked a resource by CSP').toEqual([])
   })
 
   test(`${name} fits the screen without horizontal scroll or cut-off content`, async ({ page }) => {
     await open(page)
-    expect(await horizontalOverflow(page), 'страница шире экрана').toBeLessThanOrEqual(0)
+    expect(await horizontalOverflow(page), 'the page is wider than the screen').toBeLessThanOrEqual(
+      0,
+    )
     expect(await contentCutOffByItsContainer(page), CUT_OFF).toEqual([])
   })
 
+  test(`${name} gives its main column the full width it may take`, async ({ page }) => {
+    await open(page)
+    expect(
+      await mainColumnShortfall(page),
+      'main shrinks to its content inside a flex body: add w-full',
+    ).toBeLessThanOrEqual(SUBPIXEL_PX)
+  })
+
   test(`${name} reflows on a 320 px screen (WCAG 1.4.10)`, async ({ page, isMobile }) => {
-    test.skip(isMobile, 'ширина задаётся вручную, проверка одна на любом устройстве')
+    test.skip(isMobile, 'the width is set by hand, one check covers every device')
     await page.setViewportSize(NARROWEST_SCREEN)
     await open(page)
     expect(
       await horizontalOverflow(page),
-      'на 320 px появляется горизонтальная прокрутка',
+      'horizontal scrolling appears at 320 px',
     ).toBeLessThanOrEqual(0)
     expect(await contentCutOffByItsContainer(page), CUT_OFF).toEqual([])
   })
 
   test(`${name} has touch targets of at least 44 px on a phone`, async ({ page, isMobile }) => {
-    test.skip(!isMobile, 'размер касания проверяется на телефоне')
+    test.skip(!isMobile, 'touch target size is checked on the phone')
     await open(page)
     const small = await page.locator(CONTROLS).evaluateAll(
       (elements, minimum) =>
@@ -124,6 +143,6 @@ export function checkPageQuality(path: string, { state, ready }: PageState = {})
           .map((element) => element.outerHTML.slice(0, 80)),
       TOUCH_TARGET_PX,
     )
-    expect(small, 'элементы меньше 44 px').toEqual([])
+    expect(small, 'elements smaller than 44 px').toEqual([])
   })
 }

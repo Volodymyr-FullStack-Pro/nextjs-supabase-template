@@ -1,9 +1,5 @@
-# Squawk — проверка новых миграций на операции, опасные для живой базы (npm run db:check-migrations, CI db.yml).
-# Supabase CLI выполняет файл миграции одной транзакцией: CREATE INDEX CONCURRENTLY в ней невозможен, поэтому
-# require-concurrent-index-creation выключено — обычный индекс на таблицах приложения строится быстро, а
-# lock_timeout в начале миграции не даёт ему ждать блокировку бесконечно.
-# Осознанное исключение в миграции (например, удаление колонки отдельным выпуском) — строка
-# `-- squawk-ignore ban-drop-column` перед оператором.
+# Supabase CLI runs a migration file in one transaction, where CREATE INDEX CONCURRENTLY is impossible;
+# lock_timeout at the top of a migration bounds the lock wait instead. Deliberate exception: `-- squawk-ignore <rule>`.
 assume_in_transaction = true
 pg_version = "17.0"
 excluded_rules = ["require-concurrent-index-creation"]

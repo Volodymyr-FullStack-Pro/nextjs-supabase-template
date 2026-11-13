@@ -30,7 +30,7 @@ export function formatDay(
   { locale = DEFAULT_LOCALE }: Pick<DateFormat, 'locale'> = {},
 ): string {
   if (!isCalendarDay(day)) {
-    throw new RangeError(`formatDay: ожидается календарная дата YYYY-MM-DD, получено ${day}`)
+    throw new RangeError(`formatDay: expected a calendar date YYYY-MM-DD, got ${day}`)
   }
   return new Intl.DateTimeFormat(locale, {
     day: 'numeric',

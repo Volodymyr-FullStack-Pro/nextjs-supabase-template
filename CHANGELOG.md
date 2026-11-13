@@ -2,6 +2,18 @@
 
 Что менялось в шаблоне. Проект, созданный раньше, переносит нужное руками и записывает это строкой D-NNN.
 
+## 2026-11-13 — English in code, one build in gate, closed API prefixes
+
+- Comments, script and linter messages, test names and workflow steps are in English; `npm run comments:check` (in `check` and CI) reports Cyrillic in comments, migrations merged before the rule are skipped. Error texts of the audit functions are English through a new migration `20261112235110_audit_messages_in_english.sql`; merged migrations are not edited.
+- `npm run gate` builds once: `check` runs under `scripts/with-local-supabase.mjs` (`NEXT_PUBLIC_*` are inlined at build time) and e2e starts that build (`E2E_PREBUILT=1`); `check` runs `tsc --noEmit` because `lint` already ran `next typegen`.
+- `/api/vitals` and the client Web Vitals report are removed; `/api/webhooks/` is no longer public: only `/`, `/login` and `/api/cron/` skip the session check. A webhook gets its own prefix together with a signature check.
+- Local Supabase is lighter: realtime, vector buckets, edge runtime and analytics are disabled in `supabase/config.toml`.
+- `main` of every page takes the full width it is given (`w-full`); `checkPageQuality` checks it, and the 404 page is in `ui-quality.spec.ts`.
+- `npm run totp` and `npm run seed:test-user` take the secret from the environment when there is no `.env.test.local`.
+- The gate fingerprint copies the index with its original mtime, so a same-size edit within the same second is not missed.
+- `tsconfig.json` excludes `.next/dev`: after `next dev` without API routes its generated `validator.ts` broke `tsc` (unused import under `@tsconfig/strictest`).
+- Rules: the admin client and RLS bypass live in `security.md` only, cron in `architecture.md`.
+
 ## 2026-11-12 — CI at checkpoints, gate fingerprint, knowledge limits, rules split
 
 Entries are in English from this one on; earlier entries are not translated.
