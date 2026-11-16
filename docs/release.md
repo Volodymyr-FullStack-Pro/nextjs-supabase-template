@@ -22,7 +22,7 @@ Preview — для разработчика; заказчику показыва
 3. **GitHub.** Ветка `production` — `git push origin main:production`. Защитить `main` и `production`: только PR, зелёный CI, запрет удаления ветки и force-push (иначе разрешённая Claude команда удаления слитых веток может снести и их); в настройках слияния оставить squash и merge commit, rebase выключить: выпуск `main → production` — только merge commit, а rebase, как и squash, развёл бы `production` и `main`. Разработчик один, поэтому обязательных одобрений PR — 0: он сам читает дифф перед слиянием. Workflow видит секреты окружений, и правку `.github/workflows/*` хук плагина `dev-kit` пропускает только с подтверждением человека. `CODEOWNERS` с обязательным ревью `.github/**` — включить, когда появится второй разработчик.
    Два окружения (Settings → Environments): `staging` и `production`. У каждого — Deployment branches and tags → Selected branches and tags: `staging` — только `main`, `production` — только `production`; без этого workflow с любой ветки может назвать `environment: staging` и получить его секреты. Подтверждения выпуска кнопкой окружения нет: на плане Team в приватном репозитории окружения, их секреты и ограничение веток есть, а required reviewers и таймер ожидания — только в публичном репозитории или на Enterprise. Подтверждение выпуска — слияние PR `main → production` в защищённую ветку `production`, а окружение `production` принимает только эту ветку. Станет репозиторий публичным или организация перейдёт на Enterprise — у `production` можно добавить required reviewers.
    Минуты Actions: Team включает $18 в месяц на вычисления Actions (около 3000 минут Linux-раннера); CI идёт на каждый push в ветку открытого PR и в `main`, замер скорости и проверка генератора — только в контрольных точках (push в `main`, PR не в черновике, раз в неделю). Расход — `npm run ci:usage` (README, «Команды»); бюджет Actions с остановкой — у владельца организации: Settings → Billing and licensing → Budgets and alerts, бюджет не удалять — без него расход не ограничен.
-   Команды настройки — с ролью Admin на репозиторий; защита веток — файл `docs/github/branch-protection.json`:
+   Команды настройки — с ролью Admin на репозиторий; защита веток — файл `docs/ops/github/branch-protection.json`:
 
    ```bash
    R=repos/<org>/<repo>
@@ -35,7 +35,7 @@ Preview — для разработчика; заказчику показыва
    done
    gh api -X POST $R/environments/staging/deployment-branch-policies -f name=main -f type=branch
    gh api -X POST $R/environments/production/deployment-branch-policies -f name=production -f type=branch
-   for B in main production; do gh api -X PUT $R/branches/$B/protection --input docs/github/branch-protection.json; done
+   for B in main production; do gh api -X PUT $R/branches/$B/protection --input docs/ops/github/branch-protection.json; done
    ```
 
    В `branch-protection.json`: `enforce_admins: true` — правила действуют и на администратора; `required_approving_review_count: 0` — разработчик один; `app_id: 15368` — зелёный статус засчитывается только от GitHub Actions. Проверить: Settings → Branches и Settings → Environments.

@@ -2,6 +2,15 @@
 
 Что менялось в шаблоне. Проект, созданный раньше, переносит нужное руками и записывает это строкой D-NNN.
 
+## 2026-11-16 — Order in `docs`: client and ops folders, document lifecycle checks
+
+- `docs/client/` holds everything from and for the client (`source/`, `tz/` with `questionnaires/`, `design-board/`); `docs/ops/` holds service settings made outside the repository (`docs/ops/github/branch-protection.json`, moved from `docs/github/`). `.prettierignore` lists `docs/client/` in one line instead of seven folders.
+- `docs/README.md` is the map of the `docs` folder (moved from `docs/knowledge/README.md`); its «Status» table is gone: the project status lives only in «Сейчас» of `docs/roadmap.md`.
+- `npm run docs:check` got four checks (`scripts/docs-structure.mjs`): «Сейчас» is at most 80 words; a plan in `docs/plans/` that «Сейчас» does not name; a file in `docs/` that no other file links to (except `docs/client/` and `docs/knowledge/decisions/`); a markdown link to a path that is not in git.
+- Limits: `docs/architecture.md` — 7,000 words instead of 400 lines (an entry is counted by its text, not by line wrapping); the decision journal — 200 rows instead of 100.
+- `.claude/rules/docs.md`, section «Жизнь документов»: a working document is deleted in the task where it stops being needed; a task outside blocks closes like a block task (plan deleted, «Сейчас» rewritten, the result as a ClickUp comment). Needs plugin dev-kit 0.19.0 or later, whose skills and commands name the new paths.
+- For a project created earlier: `git mv` the client folders into `docs/client/`, `docs/github` into `docs/ops/github`, `docs/knowledge/README.md` to `docs/README.md`; copy `scripts/docs-structure.mjs`, `scripts/docs-check.mjs`, `scripts/docs-limits.mjs`, their tests and the rule; then fix what `npm run docs:check` reports.
+
 ## 2026-11-13 — Gate fingerprint without the handoff note
 
 - `npm run gate` leaves `.claude/handoff.md` out of the working-tree fingerprint and lists it in the stamp (`excluded`; needs plugin dev-kit 0.18.3 or later, which reads it from there): a handoff commit after a green gate no longer turns `/dev-kit:explain` to "tree changed" and the Stop hook back to typecheck, though no code changed (D-108 Finance Hub).

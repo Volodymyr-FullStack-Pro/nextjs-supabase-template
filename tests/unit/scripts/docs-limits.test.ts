@@ -132,7 +132,7 @@ describe('decisionProblems', () => {
         `| D-${String(index + 1).padStart(3, '0')} | 2026-11-02 | Решение | Разработчик | принято |`,
     )
     expect(decisionProblems(journal(...rows), '')).toEqual([
-      'decisions.md: 101 rows, limit 100: move replaced and completed one-off decisions to decisions/archive-<year>-Q<N>.md',
+      'decisions.md: 201 rows, limit 200: move replaced and completed one-off decisions to decisions/archive-<year>-Q<N>.md',
     ])
   })
 
@@ -210,12 +210,13 @@ describe('LIMITS', () => {
   it.each([
     ['CLAUDE.md', [LIMITS.claudeWords]],
     ['.claude/rules/*.md', [LIMITS.ruleWords]],
-    ['docs/architecture.md', [LIMITS.architectureLines]],
+    ['docs/architecture.md', [LIMITS.architectureWords]],
     ['docs/knowledge/decisions.md', [LIMITS.decisionRowWords, LIMITS.decisionRows]],
     ['docs/knowledge/requirements.md', [LIMITS.requirementCellWords]],
     ['docs/knowledge/open-questions.md', [LIMITS.openQuestionsLines]],
     ['docs/glossary.md', [LIMITS.glossaryEntryLines]],
     ['.claude/handoff.md', [LIMITS.handoffLines]],
+    ['docs/roadmap.md', [LIMITS.roadmapNowWords]],
   ])('match the table of .claude/rules/docs.md for %s', (file, limits) => {
     expect(numbersInRow(file)).toEqual(expect.arrayContaining(limits))
   })
