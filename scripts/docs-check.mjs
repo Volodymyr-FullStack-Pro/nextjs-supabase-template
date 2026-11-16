@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { execFileSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -13,10 +14,18 @@ import {
   sizeProblem,
   tableCellProblems,
 } from './docs-limits.mjs'
+import {
+  brokenLinkProblems,
+  knownPaths,
+  orphanProblems,
+  roadmapNowProblem,
+  stalePlanProblems,
+} from './docs-structure.mjs'
 
 const RULES_DIRECTORY = '.claude/rules'
 const DECISIONS_DIRECTORY = 'docs/knowledge/decisions'
 const ARCHIVE_FILE = /^archive-\d{4}-Q[1-4]\.md$/u
+const LINK_SOURCE = /\.(?:md|mjs|yml)$/u
 
 const problems = []
 const add = (problem) => {
@@ -44,7 +53,9 @@ problems.push(
 )
 
 const architecture = required('docs/architecture.md')
-lineLimit('docs/architecture.md', LIMITS.architectureLines)
+add(
+  sizeProblem('docs/architecture.md', countWords(architecture), LIMITS.architectureWords, 'words'),
+)
 const journal = required('docs/knowledge/decisions.md')
 problems.push(...decisionProblems(journal, architecture))
 const archives = readdirSync(DECISIONS_DIRECTORY)
@@ -62,6 +73,27 @@ problems.push(
 lineLimit('docs/knowledge/open-questions.md', LIMITS.openQuestionsLines)
 problems.push(...glossaryProblems(required('docs/glossary.md')))
 lineLimit('.claude/handoff.md', LIMITS.handoffLines)
+
+const files = execFileSync(
+  'git',
+  ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
+  {
+    encoding: 'utf8',
+  },
+)
+  .split('\0')
+  .filter((path) => path !== '' && existsSync(path))
+const known = knownPaths(files)
+const linkSources = files
+  .filter((path) => LINK_SOURCE.test(path))
+  .map((path) => ({ path, text: readFileSync(path, 'utf8') }))
+const roadmap = required('docs/roadmap.md')
+add(roadmapNowProblem(roadmap))
+problems.push(
+  ...stalePlanProblems(files, roadmap),
+  ...orphanProblems(files, linkSources),
+  ...brokenLinkProblems(linkSources, (path) => known.has(path)),
+)
 
 if (problems.length === 0) {
   console.log('Documents are within limits (.claude/rules/docs.md)')

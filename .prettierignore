@@ -13,11 +13,4 @@ docs/knowledge/requirements.md
 docs/knowledge/decisions.md
 docs/knowledge/decisions/archive-*.md
 # client approval documents (spec, questionnaires, design board, answer exports) are kept as is
-docs/tz/
-docs/source/
-docs/stack/
-docs/design/board/
-docs/design/history/
-docs/design/archive/
-docs/design/reference/
-docs/knowledge/archive/
+docs/client/

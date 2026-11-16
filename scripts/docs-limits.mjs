@@ -1,13 +1,14 @@
 export const LIMITS = {
   claudeWords: 1500,
   ruleWords: 1000,
-  architectureLines: 400,
+  architectureWords: 7000,
   decisionRowWords: 40,
-  decisionRows: 100,
+  decisionRows: 200,
   requirementCellWords: 40,
   openQuestionsLines: 150,
   glossaryEntryLines: 4,
   handoffLines: 80,
+  roadmapNowWords: 80,
 }
 
 const ARCHITECTURE_MARKER = '→ architecture.md'
