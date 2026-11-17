@@ -34,6 +34,7 @@
     "test:e2e": "playwright test",
     "test:e2e:db": "node scripts/with-local-supabase.mjs playwright test",
     "perf": "node scripts/with-local-supabase.mjs playwright test --config playwright.perf.config.ts",
+    "audit:prod": "node scripts/audit.mjs",
     "new:module": "node scripts/new-module.mjs",
     "generator:check": "node scripts/generator-check.mjs",
     "prepare": "simple-git-hooks || true",
