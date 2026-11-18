@@ -18,6 +18,24 @@ permissions:
 
 # Third-party actions are pinned to a commit SHA (tag in the comment); Dependabot updates them monthly.
 jobs:
+  # A pull request that changes only documents skips Playwright; main and the weekly run always get the full run.
+  # e2e uses !cancelled(): a skipped job counts as passed for a required check, so a failure here must give
+  # a full run, not a skip.
+  changes:
+    name: Changed files
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      documents_only: ${{ steps.changes.outputs.documents_only }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2 # the merge commit and its first parent, the tip of the base branch
+      - id: changes
+        run: node scripts/ci-changes.mjs HEAD^1
+
   quality:
     name: Lint, types, unit, dead code, build
     if: github.event_name != 'schedule' # the weekly run is Playwright and perf only
@@ -50,6 +68,8 @@ jobs:
 
   e2e:
     name: Playwright
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.documents_only != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
