@@ -2,6 +2,16 @@
 
 Что менялось в шаблоне. Проект, созданный раньше, переносит нужное руками и записывает это строкой D-NNN.
 
+## 2026-11-18 — Documentation-only pull requests skip Playwright
+
+- CI: a pull request first runs the job «Changed files» (`scripts/ci-changes.mjs`): the files changed against the tip of the base branch (the first parent of the PR merge commit) and whether they are all documents (`scripts/ci-changes-check.mjs`, unit test `tests/unit/scripts/ci-changes.test.ts`). A document is a file in `docs/` or `.claude/`, a `.md` file in the root, `.github/pull_request_template.md` or `supabase/README.md`; everything else, a `.md` in any other folder included, is code. If only documents changed, the Playwright job (with the speed budget and the generator check) is skipped; «Lint, types, unit, dead code, build» with `docs:check`, Secrets and Semgrep run as before.
+- Why: Playwright takes about 13 of the 15 minutes, and documents (spec, register, decisions, rules) change much more often than code (D-144 Finance Hub).
+- A skipped job counts as a passed required check, so Playwright runs on `!cancelled()`: if «Changed files» fails or gets no list, the answer is missing and the run is full, not skipped; an empty list or an unknown base is a full run too. Push to `main` and the weekly run always run everything. `paths-ignore` on the whole workflow was rejected: a skipped workflow leaves required checks pending and blocks the merge.
+- Accepted risk: changing the base branch of a PR does not rerun CI, so a documentation PR into an unchecked branch retargeted to `main` keeps the skip; the full run on `main` catches it after the merge.
+- A new place for documents is an edit of the list in `scripts/ci-changes-check.mjs`; a folder that e2e or the build start reading leaves the list.
+- `CLAUDE.md` and README, `npm run ci:usage`: «without Playwright for documentation-only changes» is no longer a saving to propose, it is built in.
+- For a project created earlier: copy the two scripts and the test, add the `changes` job and `needs: changes` with the `if` to the `e2e` job in `.github/workflows/ci.yml`; check the document list against the project's folders.
+
 ## 2026-11-18 — Dependency audit with dated exceptions
 
 - CI runs `npm run audit:prod` (`scripts/audit.mjs`) instead of `npm audit --omit=dev --audit-level=high`. A high or critical advisory in production dependencies fails the job as before, except the entries in `scripts/audit-exceptions.mjs`: an advisory id, the packages it covers, a reason and a review date at most 31 days ahead. An exception excuses the advisory only in the named packages and stops working the day after the review date; an incomplete entry, an exception the audit no longer reports, or an empty or malformed npm report fail the job too (`scripts/audit-check.mjs`, unit test `tests/unit/scripts/audit-check.test.ts`).
