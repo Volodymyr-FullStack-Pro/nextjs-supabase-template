@@ -22,7 +22,7 @@ paths:
 - Server Actions за прокси с другим хостом — `serverActions.allowedOrigins`, иначе проверка `Origin` их отклонит.
 - Файлы: имя генерирует сервер, путей из запроса нет.
 - Периметр Cloudflare Access: либо `proxy.ts` проверяет `Cf-Access-Jwt-Assertion` (jose, JWKS `https://<team>.cloudflareaccess.com/cdn-cgi/access/certs`, `aud` приложения), либо `*.vercel.app` закрыт Deployment Protection — иначе Access обходится по адресу деплоя.
-- Зависимости: красный `npm audit --omit=dev --audit-level=high` в CI — обновить пакет, а если исправления нет — временный `overrides` в `package.json` с причиной и датой пересмотра. Мажоры — руками после чтения changelog (Dependabot их пропускает).
+- Зависимости: красный `npm run audit:prod` в CI — обновить пакет или `overrides`; исправления нет — запись в `scripts/audit-exceptions.mjs` с причиной и датой пересмотра не дальше 31 дня, с согласия владельца проекта и строкой D-NNN. Мажоры — руками после чтения changelog (Dependabot их пропускает).
 
 Защиты линтера на этой странице ловят ошибку, а не намеренный обход — его ловит ревью кода; как они защищены от отключения и что делать с ложным срабатыванием — `.claude/rules/code-style.md`.
 

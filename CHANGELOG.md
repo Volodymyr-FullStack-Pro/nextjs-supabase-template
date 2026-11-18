@@ -2,6 +2,13 @@
 
 Что менялось в шаблоне. Проект, созданный раньше, переносит нужное руками и записывает это строкой D-NNN.
 
+## 2026-11-18 — Dependency audit with dated exceptions
+
+- CI runs `npm run audit:prod` (`scripts/audit.mjs`) instead of `npm audit --omit=dev --audit-level=high`. A high or critical advisory in production dependencies fails the job as before, except the entries in `scripts/audit-exceptions.mjs`: an advisory id, the packages it covers, a reason and a review date at most 31 days ahead. An exception excuses the advisory only in the named packages and stops working the day after the review date; an incomplete entry, an exception the audit no longer reports, or an empty or malformed npm report fail the job too (`scripts/audit-check.mjs`, unit test `tests/unit/scripts/audit-check.test.ts`).
+- Why: GHSA-fc5q-39xc-vjpf (`picomatch` up to 4.0.7, ReDoS on a crafted glob, high) has no fixed version, so `overrides` cannot help, and the old step was red on every pull request. It is the first exception, review by 2026-12-01; the package comes with the Sentry build plugin, `vite` and `tinyglobby`, which take glob patterns from our code and configuration, not from users (D-134 Finance Hub).
+- `.claude/rules/security.md`: a new exception needs the project owner's consent and a D-NNN row.
+- For a project created earlier: copy the three scripts and the test, add `"audit:prod": "node scripts/audit.mjs"` to `package.json`, replace the audit step in `.github/workflows/ci.yml`; check the reason of the exception against `npm ls picomatch --omit=dev` of the project.
+
 ## 2026-11-16 — Order in `docs`: client and ops folders, document lifecycle checks
 
 - `docs/client/` holds everything from and for the client (`source/`, `tz/` with `questionnaires/`, `design-board/`); `docs/ops/` holds service settings made outside the repository (`docs/ops/github/branch-protection.json`, moved from `docs/github/`). `.prettierignore` lists `docs/client/` in one line instead of seven folders.
