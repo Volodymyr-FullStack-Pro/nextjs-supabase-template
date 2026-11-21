@@ -2,6 +2,11 @@
 
 Что менялось в шаблоне. Проект, созданный раньше, переносит нужное руками и записывает это строкой D-NNN.
 
+## 2026-11-21 — The picomatch audit exception is removed
+
+- `scripts/audit-exceptions.mjs` is empty again: GitHub withdrew GHSA-fc5q-39xc-vjpf on 2026-11-18, `npm audit` no longer reports it, and `npm run audit:prod` fails on an exception the audit does not report — the job was red on every pull request.
+- For a project created earlier: remove the entry from `scripts/audit-exceptions.mjs` and run `npm run audit:prod`.
+
 ## 2026-11-18 — Documentation-only pull requests skip Playwright
 
 - CI: a pull request first runs the job «Changed files» (`scripts/ci-changes.mjs`): the files changed against the tip of the base branch (the first parent of the PR merge commit) and whether they are all documents (`scripts/ci-changes-check.mjs`, unit test `tests/unit/scripts/ci-changes.test.ts`). A document is a file in `docs/` or `.claude/`, a `.md` file in the root, `.github/pull_request_template.md` or `supabase/README.md`; everything else, a `.md` in any other folder included, is code. If only documents changed, the Playwright job (with the speed budget and the generator check) is skipped; «Lint, types, unit, dead code, build» with `docs:check`, Secrets and Semgrep run as before.
