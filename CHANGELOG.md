@@ -2,6 +2,13 @@
 
 Что менялось в шаблоне. Проект, созданный раньше, переносит нужное руками и записывает это строкой D-NNN.
 
+## 2026-11-21 — Page quality check ignores library helper elements
+
+- `checkPageQuality` (`tests/e2e/support/page-quality.ts`): axe skips the focus guards Base UI puts around an open dialog (`[data-base-ui-focus-guard]`); the touch target check skips elements of 1×1 px or less — the visually hidden `input` behind a Base UI checkbox; the page heading is found as a visible `h1` by tag, not by role.
+- Why: with a modal dialog open the rest of the page is hidden from the accessibility tree, so the role query did not find the heading; and WebKit keeps a hidden copy of streamed content for 150–300 ms, so a heading under `<Suspense>` matched twice (D-185, D-186 Finance Hub).
+- Accepted risk: a real control of 1×1 px passes the touch target check; a page with two visible `h1` fails the strict locator — that is a markup error.
+- For a project created earlier: copy the four edits of the file.
+
 ## 2026-11-21 — The picomatch audit exception is removed
 
 - `scripts/audit-exceptions.mjs` is empty again: GitHub withdrew GHSA-fc5q-39xc-vjpf on 2026-11-18, `npm audit` no longer reports it, and `npm run audit:prod` fails on an exception the audit does not report — the job was red on every pull request.
