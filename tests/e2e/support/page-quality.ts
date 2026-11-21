@@ -4,6 +4,8 @@ import { expect, type Page, test } from '@playwright/test'
 const WCAG_AA = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 const COLOR_SCHEMES = ['light', 'dark'] as const
 const TOUCH_TARGET_PX = 44
+const VISUALLY_HIDDEN_PX = 1
+const LIBRARY_FOCUS_GUARDS = '[data-base-ui-focus-guard]'
 const CONTROLS =
   'button, input, select, textarea, summary, [role="button"], [role="checkbox"], [role="radio"], [role="switch"], [role="tab"]'
 const NARROWEST_SCREEN = { width: 320, height: 640 }
@@ -70,7 +72,10 @@ export function checkPageQuality(path: string, { state, ready }: PageState = {})
       await (colorScheme === 'dark'
         ? expect(html).toHaveClass(DARK_CLASS)
         : expect(html).not.toHaveClass(DARK_CLASS))
-      const { violations, incomplete } = await new AxeBuilder({ page }).withTags(WCAG_AA).analyze()
+      const { violations, incomplete } = await new AxeBuilder({ page })
+        .withTags(WCAG_AA)
+        .exclude(LIBRARY_FOCUS_GUARDS)
+        .analyze()
       const unchecked = incomplete
         .filter(({ id }) => id === 'color-contrast')
         .flatMap(({ nodes }) => nodes.map(({ target }) => target.join(' ')))
@@ -99,7 +104,7 @@ export function checkPageQuality(path: string, { state, ready }: PageState = {})
     expect(policy, 'CSP differs from the agreed one: each directive is compared in full').toEqual(
       CONTENT_SECURITY_POLICY,
     )
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    await expect(page.locator('h1').filter({ visible: true })).toBeVisible()
     expect(violations, 'the browser blocked a resource by CSP').toEqual([])
   })
 
@@ -134,14 +139,15 @@ export function checkPageQuality(path: string, { state, ready }: PageState = {})
     test.skip(!isMobile, 'touch target size is checked on the phone')
     await open(page)
     const small = await page.locator(CONTROLS).evaluateAll(
-      (elements, minimum) =>
+      (elements, { minimum, hidden }) =>
         elements
           .filter((element) => {
             const box = element.getBoundingClientRect()
-            return box.width > 0 && (box.height < minimum || box.width < minimum)
+            const visuallyHidden = box.width <= hidden && box.height <= hidden
+            return box.width > 0 && !visuallyHidden && (box.height < minimum || box.width < minimum)
           })
           .map((element) => element.outerHTML.slice(0, 80)),
-      TOUCH_TARGET_PX,
+      { minimum: TOUCH_TARGET_PX, hidden: VISUALLY_HIDDEN_PX },
     )
     expect(small, 'elements smaller than 44 px').toEqual([])
   })

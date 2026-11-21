@@ -2,6 +2,13 @@
 
 Что менялось в шаблоне. Проект, созданный раньше, переносит нужное руками и записывает это строкой D-NNN.
 
+## 2026-11-21 — Page quality check ignores library helper elements
+
+- `checkPageQuality` (`tests/e2e/support/page-quality.ts`): axe skips the focus guards Base UI puts around an open dialog (`[data-base-ui-focus-guard]`); the touch target check skips elements of 1×1 px or less — the visually hidden `input` behind a Base UI checkbox; the page heading is found as a visible `h1` by tag, not by role.
+- Why: with a modal dialog open the rest of the page is hidden from the accessibility tree, so the role query did not find the heading; and WebKit keeps a hidden copy of streamed content for 150–300 ms, so a heading under `<Suspense>` matched twice (D-185, D-186 Finance Hub).
+- Accepted risk: a real control of 1×1 px passes the touch target check; a page with two visible `h1` fails the strict locator — that is a markup error.
+- For a project created earlier: copy the four edits of the file.
+
 ## 2026-11-18 — Documentation-only pull requests skip Playwright
 
 - CI: a pull request first runs the job «Changed files» (`scripts/ci-changes.mjs`): the files changed against the tip of the base branch (the first parent of the PR merge commit) and whether they are all documents (`scripts/ci-changes-check.mjs`, unit test `tests/unit/scripts/ci-changes.test.ts`). A document is a file in `docs/` or `.claude/`, a `.md` file in the root, `.github/pull_request_template.md` or `supabase/README.md`; everything else, a `.md` in any other folder included, is code. If only documents changed, the Playwright job (with the speed budget and the generator check) is skipped; «Lint, types, unit, dead code, build» with `docs:check`, Secrets and Semgrep run as before.
