@@ -2,6 +2,20 @@
 
 Что менялось в шаблоне. Проект, созданный раньше, переносит нужное руками и записывает это строкой D-NNN.
 
+## 2026-11-22 — Task route: every sign of the full route, the checks of each route
+
+- `CLAUDE.md`, «Маршрут задачи»: the full route lists every sign — code that checks sign-in or permissions or computes or stores money (a text on the sign-in screen is not a sign), a migration, `src/proxy.ts`, CSP in `next.config.ts`, `.github/workflows`, the «Не сломать» field, a large task; its review (`/code-review high` and an agent with the `/security-review` prompt on the task diff) moved here from the task path. The fast route names what it skips — test cases, the completeness pass, the lesson page — and Claude checks the screen himself. Tests and code are written by different authors, not «by different agents»: a task without a plan gets its code from the main session.
+- `CLAUDE.md`, other lines: the task path says its steps follow the route; «Готово» — a fast task without touched e2e scenarios is `npm run check` (was «documents only»: `gate:quick` refuses to run without scenarios); the block closing points to its task in `docs/blocks/_template/tasks.md` instead of repeating the list; Superpowers — a subagent writes code only from a ready plan, one writes at a time (replaces «parallel subagents only read»).
+- `docs/blocks/_template/tasks.md`: «Как проверить» adds `npm run check` for a task without touched e2e scenarios; «Проверено» — the route's checks and, on the full route, the line «Мутация: …»; «Закрытие блока» — findings are checked against the block's `review-log.md`, the file is deleted after the review. The same line goes to «Закрытие блока» of `docs/blocks/B00-setup/tasks.md`.
+- `.claude/rules/tests.md`: «готово» of a task is the route's checks, not always `npm run gate`. README, «Команды»: `gate:quick` is for the fast route with touched e2e scenarios as well as for a full e2e over 3 minutes.
+- `.claude/rules/docs.md`: the task lesson is the page `docs/_scratch/lesson.html` written by `/dev-kit:explain` (the outdated `current-diff.md` row and the word «разбор» are gone).
+- `CLAUDE.md`, «Окна и расход CI»: the handoff advice is at about 300k tokens (the next checkpoint) and 400k (after the current small step), as in plugin dev-kit 0.22.1; an accepted task always means a new window — the exception for a small next task in a window under ~100k tokens is gone. The fast route also skips the block's findings log.
+- ClickUp: a block subtask gets a short summary of «Итог» for the manager, without technical details, not «Итог» word for word (`.claude/rules/docs.md`, `docs/blocks/_template/tasks.md`, `.claude/rules/clickup.md.example`); «Итог» in `tasks.md` and its English version in the PR stay as they were. Needs plugin dev-kit 0.22.1.
+- `docs/blocks/_template/tasks.md`: a large task keeps its «Тест-кейсы» in its plan.
+- `docs/blocks/B00-setup/tasks.md`: every task line names its route and sign (T01, T03, T04, T07 — full; T02, T05, T06 — fast; T08 — standard).
+- Project-specific decision numbers and the project name are gone from this changelog, `docs/blocks/B00-setup/tasks.md`, `.claude/rules/db.md`, README and a comment in `next.config.ts`; the wording keeps its meaning.
+- For a project created earlier: copy the edited lines of `CLAUDE.md`, `.claude/rules/tests.md`, `.claude/rules/docs.md`, README «Команды» and `docs/blocks/_template/tasks.md`; `.claude/rules/clickup.md` — by the example.
+
 ## 2026-11-22 — Task route and test cases before code
 
 - `docs/blocks/_template/tasks.md`: the task line gets `Маршрут: <быстрый | обычный | полный>` between «Требования» and «Подзадача»; a comment after «Не сломать» shows the «Тест-кейсы» section Claude adds before code on the standard and full routes («название — дано …, когда …, тогда …; проверяется: e2e | unit | pgTAP | вручную»).
@@ -13,7 +27,7 @@
 ## 2026-11-21 — Page quality check ignores library helper elements
 
 - `checkPageQuality` (`tests/e2e/support/page-quality.ts`): axe skips the focus guards Base UI puts around an open dialog (`[data-base-ui-focus-guard]`); the touch target check skips elements of 1×1 px or less — the visually hidden `input` behind a Base UI checkbox; the page heading is found as a visible `h1` by tag, not by role.
-- Why: with a modal dialog open the rest of the page is hidden from the accessibility tree, so the role query did not find the heading; and WebKit keeps a hidden copy of streamed content for 150–300 ms, so a heading under `<Suspense>` matched twice (D-185, D-186 Finance Hub).
+- Why: with a modal dialog open the rest of the page is hidden from the accessibility tree, so the role query did not find the heading; and WebKit keeps a hidden copy of streamed content for 150–300 ms, so a heading under `<Suspense>` matched twice.
 - Accepted risk: a real control of 1×1 px passes the touch target check; a page with two visible `h1` fails the strict locator — that is a markup error.
 - For a project created earlier: copy the four edits of the file.
 
@@ -25,7 +39,7 @@
 ## 2026-11-18 — Documentation-only pull requests skip Playwright
 
 - CI: a pull request first runs the job «Changed files» (`scripts/ci-changes.mjs`): the files changed against the tip of the base branch (the first parent of the PR merge commit) and whether they are all documents (`scripts/ci-changes-check.mjs`, unit test `tests/unit/scripts/ci-changes.test.ts`). A document is a file in `docs/` or `.claude/`, a `.md` file in the root, `.github/pull_request_template.md` or `supabase/README.md`; everything else, a `.md` in any other folder included, is code. If only documents changed, the Playwright job (with the speed budget and the generator check) is skipped; «Lint, types, unit, dead code, build» with `docs:check`, Secrets and Semgrep run as before.
-- Why: Playwright takes about 13 of the 15 minutes, and documents (spec, register, decisions, rules) change much more often than code (D-144 Finance Hub).
+- Why: Playwright takes about 13 of the 15 minutes, and documents (spec, register, decisions, rules) change much more often than code.
 - A skipped job counts as a passed required check, so Playwright runs on `!cancelled()`: if «Changed files» fails or gets no list, the answer is missing and the run is full, not skipped; an empty list or an unknown base is a full run too. Push to `main` and the weekly run always run everything. `paths-ignore` on the whole workflow was rejected: a skipped workflow leaves required checks pending and blocks the merge.
 - Accepted risk: changing the base branch of a PR does not rerun CI, so a documentation PR into an unchecked branch retargeted to `main` keeps the skip; the full run on `main` catches it after the merge.
 - A new place for documents is an edit of the list in `scripts/ci-changes-check.mjs`; a folder that e2e or the build start reading leaves the list.
@@ -35,7 +49,7 @@
 ## 2026-11-18 — Dependency audit with dated exceptions
 
 - CI runs `npm run audit:prod` (`scripts/audit.mjs`) instead of `npm audit --omit=dev --audit-level=high`. A high or critical advisory in production dependencies fails the job as before, except the entries in `scripts/audit-exceptions.mjs`: an advisory id, the packages it covers, a reason and a review date at most 31 days ahead. An exception excuses the advisory only in the named packages and stops working the day after the review date; an incomplete entry, an exception the audit no longer reports, or an empty or malformed npm report fail the job too (`scripts/audit-check.mjs`, unit test `tests/unit/scripts/audit-check.test.ts`).
-- Why: GHSA-fc5q-39xc-vjpf (`picomatch` up to 4.0.7, ReDoS on a crafted glob, high) has no fixed version, so `overrides` cannot help, and the old step was red on every pull request. It is the first exception, review by 2026-12-01; the package comes with the Sentry build plugin, `vite` and `tinyglobby`, which take glob patterns from our code and configuration, not from users (D-134 Finance Hub).
+- Why: GHSA-fc5q-39xc-vjpf (`picomatch` up to 4.0.7, ReDoS on a crafted glob, high) has no fixed version, so `overrides` cannot help, and the old step was red on every pull request. It is the first exception, review by 2026-12-01; the package comes with the Sentry build plugin, `vite` and `tinyglobby`, which take glob patterns from our code and configuration, not from users.
 - `.claude/rules/security.md`: a new exception needs the project owner's consent and a D-NNN row.
 - For a project created earlier: copy the three scripts and the test, add `"audit:prod": "node scripts/audit.mjs"` to `package.json`, replace the audit step in `.github/workflows/ci.yml`; check the reason of the exception against `npm ls picomatch --omit=dev` of the project.
 
@@ -53,7 +67,7 @@
 
 ## 2026-11-13 — Gate fingerprint without the handoff note
 
-- `npm run gate` leaves `.claude/handoff.md` out of the working-tree fingerprint and lists it in the stamp (`excluded`; needs plugin dev-kit 0.18.3 or later, which reads it from there): a handoff commit after a green gate no longer turns `/dev-kit:explain` to "tree changed" and the Stop hook back to typecheck, though no code changed (D-108 Finance Hub).
+- `npm run gate` leaves `.claude/handoff.md` out of the working-tree fingerprint and lists it in the stamp (`excluded`; needs plugin dev-kit 0.18.3 or later, which reads it from there): a handoff commit after a green gate no longer turns `/dev-kit:explain` to "tree changed" and the Stop hook back to typecheck, though no code changed.
 
 ## 2026-11-13 — English in code, one build in gate, closed API prefixes
 
