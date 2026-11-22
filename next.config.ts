@@ -5,7 +5,7 @@ import type { NextConfig } from 'next'
 const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env['ANALYZE'] === 'true' })
 const isDev = process.env.NODE_ENV === 'development'
 
-// CSP without nonce (D-075): App Router inlines scripts on every page, so script-src without 'unsafe-inline' needs
+// CSP without nonce: App Router inlines scripts on every page, so script-src without 'unsafe-inline' needs
 // a nonce, and a nonce needs every page rendered per request; SRI does not cover inline scripts.
 // An app fully behind sign-in may choose a nonce: docs/blocks/B00-setup/tasks.md, B00-T07.
 // Dev React needs 'unsafe-eval'. With OAuth sign-in, form-action also applies to the provider redirect:
