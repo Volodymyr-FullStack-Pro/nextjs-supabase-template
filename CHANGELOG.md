@@ -2,6 +2,14 @@
 
 Что менялось в шаблоне. Проект, созданный раньше, переносит нужное руками и записывает это строкой D-NNN.
 
+## 2026-11-22 — Task route and test cases before code
+
+- `docs/blocks/_template/tasks.md`: the task line gets `Маршрут: <быстрый | обычный | полный>` between «Требования» and «Подзадача»; a comment after «Не сломать» shows the «Тест-кейсы» section Claude adds before code on the standard and full routes («название — дано …, когда …, тогда …; проверяется: e2e | unit | pgTAP | вручную»).
+- `CLAUDE.md`: a «Маршрут задачи» line — fast: `gate:quick`, `/code-review medium`, a chat summary without the lesson page and test cases; full (sign-in, permissions, money, migrations, a large task): also the plan critic, tests and code by different agents and one mutation check; only the human lowers a route. The task path starts with test cases, runs the completeness pass with the review and checks findings against the block's `review-log.md`; the review level follows the route instead of a list of files; «Готово» names the fast route (`gate:quick`, documents only — `npm run check`).
+- Needs plugin dev-kit 0.22.0 or later: `route.md` of the `delivery` skill and the agents `plan-critic` and `criteria-trace`.
+- No script parses the task line: `npm run req:check` looks for requirement ids anywhere in `docs/blocks` and skips `_template`.
+- For a project created earlier: copy the two edits of `docs/blocks/_template/tasks.md` and the three edited lines of `CLAUDE.md`; a task planned earlier gets its route named in chat when it is taken.
+
 ## 2026-11-21 — Page quality check ignores library helper elements
 
 - `checkPageQuality` (`tests/e2e/support/page-quality.ts`): axe skips the focus guards Base UI puts around an open dialog (`[data-base-ui-focus-guard]`); the touch target check skips elements of 1×1 px or less — the visually hidden `input` behind a Base UI checkbox; the page heading is found as a visible `h1` by tag, not by role.
