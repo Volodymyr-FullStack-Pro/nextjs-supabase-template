@@ -2,6 +2,10 @@
 
 Что менялось в шаблоне. Проект, созданный раньше, переносит нужное руками и записывает это строкой D-NNN.
 
+## 2026-11-27 — `generator:check` after an e2e helper edit: only helpers the templates import
+
+- `.claude/rules/architecture.md`, `.claude/rules/tests.md`, `CLAUDE.md` («Команды»): `npm run generator:check` after a `tests/e2e/support` edit only when the generator templates import that file, directly or through another support file; other helpers are not checked by the templates (plugin dev-kit 0.22.2).
+
 ## 2026-11-22 — Task route: every sign of the full route, the checks of each route
 
 - `CLAUDE.md`, «Маршрут задачи»: the full route lists every sign — code that checks sign-in or permissions or computes or stores money (a text on the sign-in screen is not a sign), a migration, `src/proxy.ts`, CSP in `next.config.ts`, `.github/workflows`, the «Не сломать» field, a large task; its review (`/code-review high` and an agent with the `/security-review` prompt on the task diff) moved here from the task path. The fast route names what it skips — test cases, the completeness pass, the lesson page — and Claude checks the screen himself. Tests and code are written by different authors, not «by different agents»: a task without a plan gets its code from the main session.
