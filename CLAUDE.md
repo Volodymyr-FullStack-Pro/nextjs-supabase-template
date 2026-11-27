@@ -34,7 +34,7 @@ npm run req:check      # реестр требований: номера, ста
 npm run docs:check     # роли и пределы файлов знаний (.claude/rules/docs.md)
 npm run ci:usage       # минуты Actions за месяц и прогноз (CI_INCLUDED_MINUTES — README)
 npm run new:module businesses business   # полный срез модуля из scripts/module-template
-npm run generator:check   # срез из шаблонов проходит gate и убирается; после правки шаблонов, src/shared, tests/e2e/support, линтера
+npm run generator:check   # срез из шаблонов проходит gate и убирается; после правки шаблонов, src/shared, их помощников e2e, линтера
 supabase start         # локальный Supabase; supabase test db — pgTAP; npm run db:check-migrations — Squawk
 npm run db:new <имя>   # миграция с lock_timeout и statement_timeout; применить — supabase migration up
 npm run db:types       # типы supabase-js из локальной базы (numeric: в Row — number, в Insert и Update — string)
