@@ -2,6 +2,10 @@
 
 Что менялось в шаблоне. Проект, созданный раньше, переносит нужное руками и записывает это строкой D-NNN.
 
+## 2026-11-27 — Windows: the next task in the same window under 200k tokens
+
+- `CLAUDE.md`, «Окна и расход CI»: after an accepted task the next one is taken by «дальше» in the same window while the context holds under 200k tokens, from 200k — in a new window without a handoff (was «always a new window»); mid-task the handoff advice is at about 200k and 300k tokens (was 300k and 400k), as in plugin dev-kit 0.22.3.
+
 ## 2026-11-27 — `generator:check` after an e2e helper edit: only helpers the templates import
 
 - `.claude/rules/architecture.md`, `.claude/rules/tests.md`, `CLAUDE.md` («Команды»): `npm run generator:check` after a `tests/e2e/support` edit only when the generator templates import that file, directly or through another support file; other helpers are not checked by the templates (plugin dev-kit 0.22.2).
